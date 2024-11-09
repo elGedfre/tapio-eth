@@ -34,7 +34,7 @@ describe("TapETH", function () {
       const { tapETH, accounts, governance, owner, pool1, pool2 } =
         await deployeFixture();
       await expect(
-        tapETH.connect(owner).addPool(pool1.address)
+        tapETH.connect(owner).addPool(pool1.address),
       ).to.be.revertedWith("TapETH: no governance");
     });
     it("It Should revert when the pool is already added ", async function () {
@@ -42,7 +42,7 @@ describe("TapETH", function () {
         await deployeFixture();
       await tapETH.connect(governance).addPool(pool1.address);
       await expect(
-        tapETH.connect(governance).addPool(pool1.address)
+        tapETH.connect(governance).addPool(pool1.address),
       ).to.be.revertedWith("TapETH: pool is already added");
     });
   });
@@ -62,7 +62,7 @@ describe("TapETH", function () {
         await deployeFixture();
       await tapETH.connect(governance).addPool(pool1.address);
       await expect(
-        tapETH.connect(owner).removePool(pool1.address)
+        tapETH.connect(owner).removePool(pool1.address),
       ).to.be.revertedWith("TapETH: no governance");
     });
     it("It Should revert when the pool is already removed ", async function () {
@@ -71,7 +71,7 @@ describe("TapETH", function () {
       await tapETH.connect(governance).addPool(pool1.address);
       await tapETH.connect(governance).removePool(pool1.address);
       await expect(
-        tapETH.connect(governance).removePool(pool1.address)
+        tapETH.connect(governance).removePool(pool1.address),
       ).to.be.revertedWith("TapETH: pool doesn't exist");
     });
   });
@@ -82,7 +82,7 @@ describe("TapETH", function () {
         await deployeFixture();
       let newGovernance = accounts[4];
       await expect(
-        tapETH.connect(governance).proposeGovernance(newGovernance.address)
+        tapETH.connect(governance).proposeGovernance(newGovernance.address),
       )
         .to.emit(tapETH, "GovernanceProposed")
         .withArgs(newGovernance.address);
@@ -93,7 +93,7 @@ describe("TapETH", function () {
         await deployeFixture();
       let newGovernance = accounts[4];
       await expect(
-        tapETH.connect(owner).proposeGovernance(newGovernance.address)
+        tapETH.connect(owner).proposeGovernance(newGovernance.address),
       ).to.be.revertedWith("TapETH: no governance");
     });
   });
@@ -109,7 +109,7 @@ describe("TapETH", function () {
         .withArgs(newGovernance.address);
       expect(await tapETH.governance()).to.equal(newGovernance.address);
       expect(await tapETH.pendingGovernance()).to.equal(
-        "0x0000000000000000000000000000000000000000"
+        "0x0000000000000000000000000000000000000000",
       );
     });
     it("It Should revert when the caller is not the pending governance ", async function () {
@@ -118,7 +118,7 @@ describe("TapETH", function () {
       let newGovernance = accounts[4];
       tapETH.connect(governance).proposeGovernance(newGovernance.address);
       await expect(
-        tapETH.connect(governance).acceptGovernance()
+        tapETH.connect(governance).acceptGovernance(),
       ).to.be.revertedWith("TapETH: no pending governance");
     });
   });
@@ -132,7 +132,7 @@ describe("TapETH", function () {
       let amount = 1_000_000_000_000_000_000_000n;
       tapETH.connect(user).approve(spender.address, amount);
       expect(await tapETH.allowance(user.address, spender.address)).to.equal(
-        amount
+        amount,
       );
     });
   });
@@ -146,7 +146,7 @@ describe("TapETH", function () {
       let amount = 1_000_000_000_000_000_000_000n;
       tapETH.connect(user).approve(spender.address, amount);
       expect(await tapETH.allowance(user.address, spender.address)).to.equal(
-        amount
+        amount,
       );
     });
   });
@@ -162,7 +162,7 @@ describe("TapETH", function () {
       tapETH.connect(user).approve(spender.address, amount1);
       tapETH.connect(user).increaseAllowance(spender.address, amount2);
       expect(await tapETH.allowance(user.address, spender.address)).to.equal(
-        totalAmount
+        totalAmount,
       );
     });
   });
@@ -179,7 +179,7 @@ describe("TapETH", function () {
       tapETH.connect(user).approve(spender.address, amount1);
       tapETH.connect(user).decreaseAllowance(spender.address, amount2);
       expect(await tapETH.allowance(user.address, spender.address)).to.equal(
-        totalAmount
+        totalAmount,
       );
     });
   });
@@ -290,22 +290,22 @@ describe("TapETH", function () {
       expect(await tapETH.totalSupply()).to.equal(deltaAmount);
       expect(await tapETH.totalShares()).to.equal(deltaAmount);
       expect(await tapETH.sharesOf(user1.address)).to.equal(
-        amount1 - amountToBurn
+        amount1 - amountToBurn,
       );
       expect(await tapETH.balanceOf(user1.address)).to.equal(
-        amount1 - amountToBurn
+        amount1 - amountToBurn,
       );
       expect(await tapETH.sharesOf(user2.address)).to.equal(
-        amount2 - amountToBurn
+        amount2 - amountToBurn,
       );
       expect(await tapETH.balanceOf(user2.address)).to.equal(
-        amount2 - amountToBurn
+        amount2 - amountToBurn,
       );
       expect(await tapETH.sharesOf(user3.address)).to.equal(
-        amount3 - amountToBurn
+        amount3 - amountToBurn,
       );
       expect(await tapETH.balanceOf(user3.address)).to.equal(
-        amount3 - amountToBurn
+        amount3 - amountToBurn,
       );
     });
   });
@@ -328,7 +328,7 @@ describe("TapETH", function () {
       expect(await tapETH.sharesOf(user.address)).to.equal(deltaAmount);
       expect(await tapETH.balanceOf(user.address)).to.equal(deltaAmount);
       expect(await tapETH.allowance(user.address, spender.address)).to.equal(
-        deltaAmount
+        deltaAmount,
       );
     });
     it("it Should revert when amount exceeds allowances", async function () {
@@ -344,7 +344,7 @@ describe("TapETH", function () {
       await tapETH.connect(pool1).mintShares(user.address, amount1);
       await tapETH.connect(user).approve(spender.address, amount2);
       await expect(
-        tapETH.connect(spender).burnSharesFrom(user.address, amount3)
+        tapETH.connect(spender).burnSharesFrom(user.address, amount3),
       ).to.be.revertedWithCustomError(tapETH, "InsufficientAllowance");
     });
   });
@@ -393,7 +393,7 @@ describe("TapETH", function () {
       expect(await tapETH.balanceOf(user1.address)).to.equal(deltaAmount);
       expect(await tapETH.balanceOf(user2.address)).to.equal(amount2);
       expect(await tapETH.allowance(user1.address, spender.address)).to.equal(
-        deltaAmount
+        deltaAmount,
       );
     });
 
@@ -413,7 +413,7 @@ describe("TapETH", function () {
       await expect(
         tapETH
           .connect(spender)
-          .transferFrom(user1.address, user2.address, amount3)
+          .transferFrom(user1.address, user2.address, amount3),
       ).to.be.revertedWithCustomError(tapETH, "InsufficientAllowance");
     });
   });
@@ -461,7 +461,7 @@ describe("TapETH", function () {
       expect(await tapETH.balanceOf(user1.address)).to.equal(deltaAmount);
       expect(await tapETH.balanceOf(user2.address)).to.equal(amount2);
       expect(await tapETH.allowance(user1.address, spender.address)).to.equal(
-        deltaAmount
+        deltaAmount,
       );
     });
 
@@ -481,7 +481,7 @@ describe("TapETH", function () {
       await expect(
         tapETH
           .connect(spender)
-          .transferSharesFrom(user1.address, user2.address, amount3)
+          .transferSharesFrom(user1.address, user2.address, amount3),
       ).to.be.revertedWithCustomError(tapETH, "InsufficientAllowance");
     });
   });

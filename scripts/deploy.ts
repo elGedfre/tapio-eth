@@ -30,7 +30,7 @@ async function main() {
   const wrappedPoolToken = await upgrades.deployProxy(
     WTapETH,
     [poolToken.address],
-    { timeout: 600000 }
+    { timeout: 600000 },
   );
   console.log("wrapped poolToken deployed");
   console.log(`wrappedPoolToken: ${wrappedPoolToken.address}`);
@@ -46,7 +46,7 @@ async function main() {
       constantAddress,
       1,
     ],
-    { timeout: 600000 }
+    { timeout: 600000 },
   );
   const rETHSwap = await upgrades.deployProxy(
     StableAsset,
@@ -59,7 +59,7 @@ async function main() {
       rocketRateAddress,
       1,
     ],
-    { timeout: 600000 }
+    { timeout: 600000 },
   );
   console.log(`stETHSwap: ${stETHSwap.address}`);
   console.log(`rETHSwap: ${rETHSwap.address}`);
@@ -68,7 +68,7 @@ async function main() {
   await poolToken.addPool(rETHSwap.address);
 
   const StableAssetApplication = await ethers.getContractFactory(
-    "StableAssetApplication"
+    "StableAssetApplication",
   );
 
   const application = await upgrades.deployProxy(StableAssetApplication, [

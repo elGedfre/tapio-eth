@@ -5,7 +5,10 @@ async function main() {
   console.log(deployer.address);
   const TapETH = await ethers.getContractFactory("TapETH");
 
-  const tapETH = await upgrades.upgradeProxy('0x0C68f684324551b4B6Ff6DFc6314655f8e7d761a', TapETH);
+  const tapETH = await upgrades.upgradeProxy(
+    "0x0C68f684324551b4B6Ff6DFc6314655f8e7d761a",
+    TapETH,
+  );
 
   console.log("application deployed");
 }

@@ -42,14 +42,14 @@ describe("wtapETH", function () {
       expect(await tapETH.totalSupply()).to.equal(targetTotalSupply);
       expect(await tapETH.totalShares()).to.equal(amount1);
       expect(await tapETH.sharesOf(user.address)).to.equal(
-        amount1 - wtapETHTargetAmount
+        amount1 - wtapETHTargetAmount,
       );
       expect(await tapETH.sharesOf(wtapETH.address)).to.equal(
-        wtapETHTargetAmount
+        wtapETHTargetAmount,
       );
       expect(await tapETH.balanceOf(wtapETH.address)).to.equal(amountToWrap);
       expect(await wtapETH.balanceOf(user.address)).to.equal(
-        wtapETHTargetAmount
+        wtapETHTargetAmount,
       );
     });
   });

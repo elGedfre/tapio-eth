@@ -15,13 +15,13 @@ describe("StableAssetApplication", function () {
 
     const StableAsset = await ethers.getContractFactory("StableAsset");
     const StableAssetApplication = await ethers.getContractFactory(
-      "StableAssetApplication"
+      "StableAssetApplication",
     );
     const MockToken = await ethers.getContractFactory("MockToken");
     const WETH = await ethers.getContractFactory("WETH9");
     const StableAssetToken = await ethers.getContractFactory("TapETH");
     const ConstantExchangeRateProvider = await ethers.getContractFactory(
-      "ConstantExchangeRateProvider"
+      "ConstantExchangeRateProvider",
     );
     const constant = await ConstantExchangeRateProvider.deploy();
 
@@ -61,20 +61,20 @@ describe("StableAssetApplication", function () {
 
     const StableAsset = await ethers.getContractFactory("StableAsset");
     const StableAssetApplication = await ethers.getContractFactory(
-      "StableAssetApplication"
+      "StableAssetApplication",
     );
     const MockToken = await ethers.getContractFactory("MockToken");
     const WETH = await ethers.getContractFactory("WETH9");
     const StableAssetToken = await ethers.getContractFactory("TapETH");
     const MockTokenWithExchangeRate = await ethers.getContractFactory(
-      "MockExchangeRateProvider"
+      "MockExchangeRateProvider",
     );
 
     const wETH = await WETH.deploy();
     const token2 = await MockToken.deploy("test 2", "T2", 18);
     const exchangeRate = await MockTokenWithExchangeRate.deploy(
       "1000000000000000000",
-      "18"
+      "18",
     );
     const poolToken = await upgrades.deployProxy(StableAssetToken, [
       governance.address,
@@ -105,13 +105,13 @@ describe("StableAssetApplication", function () {
 
     const StableAsset = await ethers.getContractFactory("StableAsset");
     const StableAssetApplication = await ethers.getContractFactory(
-      "StableAssetApplication"
+      "StableAssetApplication",
     );
     const MockToken = await ethers.getContractFactory("MockToken");
     const WETH = await ethers.getContractFactory("WETH9");
     const StableAssetToken = await ethers.getContractFactory("TapETH");
     const ConstantExchangeRateProvider = await ethers.getContractFactory(
-      "ConstantExchangeRateProvider"
+      "ConstantExchangeRateProvider",
     );
     const constant = await ConstantExchangeRateProvider.deploy();
 
@@ -160,9 +160,8 @@ describe("StableAssetApplication", function () {
 
   it("should mint", async () => {
     /// Deploy swap and tokens
-    const { swap, wETH, token2, poolToken, application } = await loadFixture(
-      deploySwapAndTokens
-    );
+    const { swap, wETH, token2, poolToken, application } =
+      await loadFixture(deploySwapAndTokens);
     const [owner, feeRecipient, user] = await ethers.getSigners();
 
     /// Unpause swap contract
@@ -180,7 +179,7 @@ describe("StableAssetApplication", function () {
         swap.address,
         [web3.utils.toWei("100"), web3.utils.toWei("100")],
         0,
-        { value: web3.utils.toWei("100") }
+        { value: web3.utils.toWei("100") },
       );
 
     /// Check balance of pool token of user is greater than 0
@@ -190,9 +189,8 @@ describe("StableAssetApplication", function () {
 
   it("should swap with ETH", async () => {
     /// Deploy swap and tokens
-    const { swap, wETH, token2, poolToken, application } = await loadFixture(
-      deploySwapAndTokens
-    );
+    const { swap, wETH, token2, poolToken, application } =
+      await loadFixture(deploySwapAndTokens);
     const [owner, feeRecipient, user] = await ethers.getSigners();
 
     /// Unpause swap contract
@@ -210,7 +208,7 @@ describe("StableAssetApplication", function () {
         swap.address,
         [web3.utils.toWei("100"), web3.utils.toWei("100")],
         0,
-        { value: web3.utils.toWei("100") }
+        { value: web3.utils.toWei("100") },
       );
 
     /// Swap 1 ETH to token2
@@ -226,9 +224,8 @@ describe("StableAssetApplication", function () {
 
   it("should swap with token", async () => {
     /// Deploy swap and tokens
-    const { swap, wETH, token2, poolToken, application } = await loadFixture(
-      deploySwapAndTokens
-    );
+    const { swap, wETH, token2, poolToken, application } =
+      await loadFixture(deploySwapAndTokens);
     const [owner, feeRecipient, user] = await ethers.getSigners();
 
     /// Unpause swap contract
@@ -246,7 +243,7 @@ describe("StableAssetApplication", function () {
         swap.address,
         [web3.utils.toWei("100"), web3.utils.toWei("100")],
         0,
-        { value: web3.utils.toWei("100") }
+        { value: web3.utils.toWei("100") },
       );
     /// Mint 1 token2 to user
     await token2.mint(user.address, web3.utils.toWei("1"));
@@ -268,7 +265,7 @@ describe("StableAssetApplication", function () {
 
   it("should swap with token with exchange rate", async () => {
     const { swap, wETH, token2, poolToken, application } = await loadFixture(
-      deploySwapAndTokensExchangeRate
+      deploySwapAndTokensExchangeRate,
     );
     const [owner, feeRecipient, user] = await ethers.getSigners();
 
@@ -284,7 +281,7 @@ describe("StableAssetApplication", function () {
         swap.address,
         [web3.utils.toWei("100"), web3.utils.toWei("100")],
         0,
-        { value: web3.utils.toWei("100") }
+        { value: web3.utils.toWei("100") },
       );
     await token2.mint(user.address, web3.utils.toWei("1"));
 
@@ -301,7 +298,7 @@ describe("StableAssetApplication", function () {
 
   it("should swap with eth with exchange rate", async () => {
     const { swap, wETH, token2, poolToken, application } = await loadFixture(
-      deploySwapAndTokensExchangeRate
+      deploySwapAndTokensExchangeRate,
     );
     const [owner, feeRecipient, user] = await ethers.getSigners();
 
@@ -317,7 +314,7 @@ describe("StableAssetApplication", function () {
         swap.address,
         [web3.utils.toWei("100"), web3.utils.toWei("100")],
         0,
-        { value: web3.utils.toWei("100") }
+        { value: web3.utils.toWei("100") },
       );
     await token2.mint(user.address, web3.utils.toWei("1"));
 
@@ -333,9 +330,8 @@ describe("StableAssetApplication", function () {
 
   it("should redeem proportion", async () => {
     /// Deploy swap and tokens
-    const { swap, wETH, token2, poolToken, application } = await loadFixture(
-      deploySwapAndTokens
-    );
+    const { swap, wETH, token2, poolToken, application } =
+      await loadFixture(deploySwapAndTokens);
     const [owner, feeRecipient, user] = await ethers.getSigners();
 
     /// Unpause swap contract
@@ -353,7 +349,7 @@ describe("StableAssetApplication", function () {
         swap.address,
         [web3.utils.toWei("100"), web3.utils.toWei("100")],
         0,
-        { value: web3.utils.toWei("100") }
+        { value: web3.utils.toWei("100") },
       );
     /// Mint 1 token2 to user
     await token2.mint(user.address, web3.utils.toWei("1"));
@@ -381,9 +377,8 @@ describe("StableAssetApplication", function () {
 
   it("should redeem single eth", async () => {
     /// Deploy swap and tokens
-    const { swap, wETH, token2, poolToken, application } = await loadFixture(
-      deploySwapAndTokens
-    );
+    const { swap, wETH, token2, poolToken, application } =
+      await loadFixture(deploySwapAndTokens);
     const [owner, feeRecipient, user] = await ethers.getSigners();
 
     /// Unpause swap contract
@@ -401,7 +396,7 @@ describe("StableAssetApplication", function () {
         swap.address,
         [web3.utils.toWei("100"), web3.utils.toWei("100")],
         0,
-        { value: web3.utils.toWei("100") }
+        { value: web3.utils.toWei("100") },
       );
     /// Mint 1 token2 to user
     await token2.mint(user.address, web3.utils.toWei("1"));
@@ -423,9 +418,8 @@ describe("StableAssetApplication", function () {
 
   it("should redeem single token", async () => {
     /// Deploy swap and tokens
-    const { swap, wETH, token2, poolToken, application } = await loadFixture(
-      deploySwapAndTokens
-    );
+    const { swap, wETH, token2, poolToken, application } =
+      await loadFixture(deploySwapAndTokens);
     const [owner, feeRecipient, user] = await ethers.getSigners();
 
     /// Unpause swap contract
@@ -443,7 +437,7 @@ describe("StableAssetApplication", function () {
         swap.address,
         [web3.utils.toWei("100"), web3.utils.toWei("100")],
         0,
-        { value: web3.utils.toWei("100") }
+        { value: web3.utils.toWei("100") },
       );
     /// Mint 1 token2 to user
     await token2.mint(user.address, web3.utils.toWei("1"));
@@ -484,7 +478,7 @@ describe("StableAssetApplication", function () {
         swapTwo.address,
         [web3.utils.toWei("100"), web3.utils.toWei("100")],
         0,
-        { value: web3.utils.toWei("100") }
+        { value: web3.utils.toWei("100") },
       );
 
     /// Unpause swapOne contract
@@ -502,7 +496,7 @@ describe("StableAssetApplication", function () {
         swapOne.address,
         [web3.utils.toWei("100"), web3.utils.toWei("100")],
         0,
-        { value: web3.utils.toWei("100") }
+        { value: web3.utils.toWei("100") },
       );
 
     /// Get swap amount cross pool with token1 to token2
@@ -511,7 +505,7 @@ describe("StableAssetApplication", function () {
       swapTwo.address,
       token1.address,
       token2.address,
-      web3.utils.toWei("1")
+      web3.utils.toWei("1"),
     );
     /// Check amount is greater than 0
     expect(amount.toString()).to.equal("993980347757552144,5994925804469116");
@@ -538,7 +532,7 @@ describe("StableAssetApplication", function () {
         swapTwo.address,
         [web3.utils.toWei("100"), web3.utils.toWei("100")],
         0,
-        { value: web3.utils.toWei("100") }
+        { value: web3.utils.toWei("100") },
       );
 
     /// Unpause swapOne contract
@@ -556,7 +550,7 @@ describe("StableAssetApplication", function () {
         swapOne.address,
         [web3.utils.toWei("100"), web3.utils.toWei("100")],
         0,
-        { value: web3.utils.toWei("100") }
+        { value: web3.utils.toWei("100") },
       );
 
     /// Mint 1 token1 to user
@@ -577,7 +571,7 @@ describe("StableAssetApplication", function () {
         token1.address,
         token2.address,
         web3.utils.toWei("1"),
-        "0"
+        "0",
       );
     /// Get balance of user after swap and check it is greater than before
     const balanceAfter = await token2.balanceOf(user.address);
