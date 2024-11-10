@@ -110,23 +110,6 @@ function exchangeRateTokenIndex() external view returns (uint256)
 |---|---|---|
 | _0 | uint256 | undefined |
 
-### feeErrorMargin
-
-```solidity
-function feeErrorMargin() external view returns (uint256)
-```
-
-
-
-*Fee error margin.*
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
 ### futureA
 
 ```solidity
@@ -385,23 +368,6 @@ function initialize(address[] _tokens, uint256[] _precisions, uint256[] _fees, c
 | _A | uint256 | The initial value of the amplification coefficient A for the pool. |
 | _exchangeRateProvider | contract IExchangeRateProvider | undefined |
 | _exchangeRateTokenIndex | uint256 | undefined |
-
-### maxDeltaD
-
-```solidity
-function maxDeltaD() external view returns (uint256)
-```
-
-
-
-*Max delta D.*
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
 
 ### mint
 
@@ -821,71 +787,6 @@ function updateA(uint256 _futureA, uint256 _futureABlock) external nonpayable
 | _futureA | uint256 | The new A value. |
 | _futureABlock | uint256 | The block number to update A value. |
 
-### updateFeeErrorMargin
-
-```solidity
-function updateFeeErrorMargin(uint256 newValue) external nonpayable
-```
-
-
-
-*update fee error margin.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| newValue | uint256 | undefined |
-
-### updateMaxDeltaDMargin
-
-```solidity
-function updateMaxDeltaDMargin(uint256 newValue) external nonpayable
-```
-
-
-
-*update yield error margin.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| newValue | uint256 | undefined |
-
-### updateYieldErrorMargin
-
-```solidity
-function updateYieldErrorMargin(uint256 newValue) external nonpayable
-```
-
-
-
-*update yield error margin.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| newValue | uint256 | undefined |
-
-### yieldErrorMargin
-
-```solidity
-function yieldErrorMargin() external view returns (uint256)
-```
-
-
-
-*Yield error margin.*
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
 
 
 ## Events
@@ -923,22 +824,6 @@ event FeeCollected(uint256 feeAmount, uint256 totalSupply)
 |---|---|---|
 | feeAmount  | uint256 | is the amount of fee collected. |
 | totalSupply  | uint256 | is the total supply of LP token. |
-
-### FeeMarginModified
-
-```solidity
-event FeeMarginModified(uint256 margin)
-```
-
-
-
-*This event is emitted when the fee margin is modified.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| margin  | uint256 | is the new value of the margin. |
 
 ### GovernanceModified
 
@@ -987,22 +872,6 @@ event Initialized(uint8 version)
 | Name | Type | Description |
 |---|---|---|
 | version  | uint8 | undefined |
-
-### MaxDeltaDModified
-
-```solidity
-event MaxDeltaDModified(uint256 delta)
-```
-
-
-
-*This event is emitted when the max delta D is modified.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| delta  | uint256 | is the new value of the delta. |
 
 ### MintFeeModified
 
@@ -1128,42 +997,9 @@ event YieldCollected(uint256[] amounts, uint256 feeAmount, uint256 totalSupply)
 | feeAmount  | uint256 | is the amount of yield collected. |
 | totalSupply  | uint256 | is the total supply of LP token. |
 
-### YieldMarginModified
-
-```solidity
-event YieldMarginModified(uint256 margin)
-```
-
-
-
-*This event is emitted when the fee margin is modified.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| margin  | uint256 | is the new value of the margin. |
-
 
 
 ## Errors
-
-### ImbalancedPool
-
-```solidity
-error ImbalancedPool(uint256 oldD, uint256 newD)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| oldD | uint256 | undefined |
-| newD | uint256 | undefined |
 
 ### InsufficientMintAmount
 
