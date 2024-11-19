@@ -69,6 +69,8 @@ describe("StableAsset", function () {
     /// Deploy pool token with name "Pool Token", symbol "PT", decimals 18
     const poolToken = await upgrades.deployProxy(StableAssetToken, [
       governance.address,
+      "Tapio",
+      "SA",
     ]);
     /// Deploy constant exchange rate provider with exchange rate 1
     const constant = await ConstantExchangeRateProvider.deploy();
@@ -185,6 +187,8 @@ describe("StableAsset", function () {
     /// Deploy pool token with name "Pool Token", symbol "PT", decimals 18
     const poolToken = await upgrades.deployProxy(StableAssetToken, [
       governance.address,
+      "Tapio",
+      "SA",
     ]);
 
     /// Check deploy swap with no tokens
@@ -1651,7 +1655,7 @@ describe("StableAsset", function () {
     expect(await swap.admins(admin.address)).to.equals(false);
   });
 
-  it("updateA should work", async () => {
+  it("increaseA should work", async () => {
     /// Deploy swap and tokens
     const { swap, token1, token2, poolToken } =
       await loadFixture(deploySwapAndTokens);
@@ -1661,25 +1665,55 @@ describe("StableAsset", function () {
     /// Check future A is 100
     expect(await swap.futureA()).to.equals(100);
 
-    /// Check updateA fails if not governance
-    await expect(swap.connect(admin).updateA(1000, 20)).to.be.revertedWith(
+    /// Check increaseA fails if not governance
+    await expect(swap.connect(admin).increaseA(1000, 20)).to.be.revertedWith(
       "not governance",
     );
-    /// Check updateA fails if block in the past
-    await expect(swap.updateA(1000, 8)).to.be.revertedWith("block in the past");
+    /// Check increaseA fails if block in the past
+    await expect(swap.increaseA(1000, 8)).to.be.revertedWith(
+      "block in the past",
+    );
 
-    /// Check updateA fails if A not set
-    await expect(swap.updateA(0, 40)).to.be.revertedWith("A not set");
+    /// Check increaseA fails if A not set
+    await expect(swap.increaseA(0, 40)).to.be.revertedWith("A not set");
 
-    /// Check updateA fails if A exceeds max
-    await expect(swap.updateA(1000000, 40)).to.be.revertedWith("A not set");
+    /// Check increaseA fails if A exceeds max
+    await expect(swap.increaseA(1000000, 40)).to.be.revertedWith("A not set");
 
     /// Update A to 1000 at block 50
-    await swap.updateA(1000, 50); // need extra block to update
+    await swap.increaseA(1000, 50); // need extra block to update
     /// Check initial A is 100
     expect(await swap.initialA()).to.equals(100);
     /// Check future A is 1000
     expect(await swap.futureA()).to.equals(1000);
+  });
+
+  it("decreaseA should work", async () => {
+    /// Deploy swap and tokens
+    const { swap, token1, token2, poolToken } =
+      await loadFixture(deploySwapAndTokens);
+    const [owner, feeRecipient, user, admin] = await ethers.getSigners();
+    /// Check initial A is 100
+    expect(await swap.initialA()).to.equals(100);
+    /// Check future A is 100
+    expect(await swap.futureA()).to.equals(100);
+
+    /// Check decreaseA fails if not governance
+    await expect(swap.connect(admin).decreaseA(50)).to.be.revertedWith(
+      "not governance",
+    );
+    /// Check decreaseA fails if A not set
+    await expect(swap.decreaseA(0)).to.be.revertedWith("A not set");
+
+    /// Check decreaseA fails if A exceeds max
+    await expect(swap.decreaseA(1000000)).to.be.revertedWith("A not set");
+
+    /// Update A to 50
+    await swap.decreaseA(50); // need extra block to update
+    /// Check initial A is 50
+    expect(await swap.initialA()).to.equals(50);
+    /// Check future A is 50
+    expect(await swap.futureA()).to.equals(50);
   });
 
   it("getA should work", async () => {
@@ -1694,7 +1728,7 @@ describe("StableAsset", function () {
     expect(await swap.getA()).to.equals(100);
 
     /// Update A to 1000 when block is 100
-    await swap.updateA(1000, (await ethers.provider.getBlockNumber()) + 39);
+    await swap.increaseA(1000, (await ethers.provider.getBlockNumber()) + 39);
     /// Check future A is 1000
     expect(await swap.initialA()).to.equals(100);
     /// Check future A is 1000
@@ -1731,22 +1765,5 @@ describe("StableAsset", function () {
     });
     /// Check getA is 1000
     expect(await swap.getA()).to.equals(1000);
-
-    /// Update A to 500 when block number is 200
-    await swap.updateA(500, 200);
-    /// Mine 40 blocks
-    await hre.network.provider.request({
-      method: "hardhat_mine",
-      params: [ethers.utils.hexStripZeros(ethers.utils.hexlify(40))],
-    });
-    /// Check getA is 796
-    expect(await swap.getA()).to.lessThan(1000);
-
-    await hre.network.provider.request({
-      method: "hardhat_mine",
-      params: [ethers.utils.hexStripZeros(ethers.utils.hexlify(100))],
-    });
-    /// Check getA is 500
-    expect(await swap.getA()).to.equals(500);
   });
 });

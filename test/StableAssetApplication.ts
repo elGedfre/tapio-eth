@@ -32,6 +32,8 @@ describe("StableAssetApplication", function () {
     // Deploy pool token with name "Pool Token", symbol "PT", decimals 18
     const poolToken = await upgrades.deployProxy(StableAssetToken, [
       governance.address,
+      "Tapio",
+      "SA",
     ]);
 
     /// Deploy swap contract with [wETH, token2], [precision, precision], [mint fee, swap fee, redeem fee], fee recipient feeRecipient, yield recipient yieldRecipient, pool token poolToken, A = 100 and ConstantExchangeRate
@@ -78,6 +80,8 @@ describe("StableAssetApplication", function () {
     );
     const poolToken = await upgrades.deployProxy(StableAssetToken, [
       governance.address,
+      "Tapio",
+      "SA",
     ]);
 
     const swap = await upgrades.deployProxy(StableAsset, [
@@ -123,6 +127,8 @@ describe("StableAssetApplication", function () {
     /// Deploy pool token with name "Pool Token", symbol "PT", decimals 18
     const poolToken = await upgrades.deployProxy(StableAssetToken, [
       governance.address,
+      "Tapio",
+      "SA",
     ]);
 
     /// Deploy swap contract with [wETH, token1], [precision, precision], [mint fee, swap fee, redeem fee], fee recipient feeRecipient, yield recipient yieldRecipient, pool token poolToken, A = 100 and ConstantExchangeRate

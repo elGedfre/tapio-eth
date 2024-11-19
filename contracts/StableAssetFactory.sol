@@ -9,10 +9,13 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import "./StableAsset.sol";
 import "./TapETH.sol";
 import "./misc/ConstantExchangeRateProvider.sol";
+import "./misc/ERC4626ExchangeRate.sol";
+import "./interfaces/IExchangeRateProvider.sol";
 
 /**
  * @title StableAsset Application
@@ -102,12 +105,26 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
     emit GovernanceModified(governance);
   }
 
-  function createPool(CreatePoolArgument calldata argument) public {
+  function createPool(
+    CreatePoolArgument memory argument,
+    IExchangeRateProvider exchangeRateProvider
+  ) internal {
     ProxyAdmin proxyAdmin = new ProxyAdmin();
     proxyAdmin.transferOwnership(msg.sender);
+
+    string memory symbolA = ERC20Upgradeable(argument.tokenA).symbol();
+    string memory symbolB = ERC20Upgradeable(argument.tokenB).symbol();
+    string memory symbol = string.concat(
+      string.concat(string.concat("SA-", symbolA), "-"),
+      symbolB
+    );
+    string memory name = string.concat(
+      string.concat(string.concat("Stable Asset ", symbolA), " "),
+      symbolB
+    );
     bytes memory tapETHInit = abi.encodeCall(
       TapETH.initialize,
-      (address(this))
+      (address(this), name, symbol)
     );
     TransparentUpgradeableProxy tapETHProxy = new TransparentUpgradeableProxy(
       address(tapETHImplentation),
@@ -136,7 +153,7 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         fees,
         TapETH(address(tapETHProxy)),
         A,
-        constantExchangeRateProvider,
+        exchangeRateProvider,
         exchangeRateTokenIndex
       )
     );
@@ -156,5 +173,18 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
       address(tapETHProxy),
       address(stableAssetProxy)
     );
+  }
+
+  function createPoolConstantExchangeRate(
+    CreatePoolArgument calldata argument
+  ) public {
+    createPool(argument, constantExchangeRateProvider);
+  }
+
+  function createPoolERC4626(CreatePoolArgument calldata argument) public {
+    ERC4626ExchangeRate exchangeRate = new ERC4626ExchangeRate(
+      IERC4626(argument.tokenB)
+    );
+    createPool(argument, exchangeRate);
   }
 }

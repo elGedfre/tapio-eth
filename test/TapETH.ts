@@ -17,7 +17,11 @@ describe("TapETH", function () {
 
     const TapETH = await ethers.getContractFactory("TapETH");
 
-    const tapETH = await upgrades.deployProxy(TapETH, [governance.address]);
+    const tapETH = await upgrades.deployProxy(TapETH, [
+      governance.address,
+      "Tapio",
+      "SA",
+    ]);
     return { tapETH, accounts, governance, owner, pool1, pool2 };
   }
 
@@ -261,6 +265,23 @@ describe("TapETH", function () {
       expect(await tapETH.totalShares()).to.equal(deltaAmount);
       expect(await tapETH.sharesOf(user.address)).to.equal(deltaAmount);
       expect(await tapETH.balanceOf(user.address)).to.equal(deltaAmount);
+    });
+
+    it("it Should donate shares for one user", async function () {
+      const { tapETH, accounts, governance, owner, pool1, pool2 } =
+        await deployeFixture();
+      let user = accounts[4];
+      await tapETH.connect(governance).addPool(pool1.address);
+      let amount1 = 1_000_000_000_000_000_000_000n;
+      let amount2 = 500_000_000_000_000_000_000n;
+      let deltaAmount = amount1 - amount2;
+      await tapETH.connect(pool1).mintShares(user.address, amount1);
+      await tapETH.connect(user).donateShares(amount2);
+      expect(await tapETH.totalSupply()).to.equal(deltaAmount);
+      expect(await tapETH.totalShares()).to.equal(deltaAmount);
+      expect(await tapETH.sharesOf(user.address)).to.equal(deltaAmount);
+      expect(await tapETH.balanceOf(user.address)).to.equal(deltaAmount);
+      expect(await tapETH.bufferAmount()).to.equal(deltaAmount);
     });
 
     it("it Should burn shares for many users", async function () {

@@ -36,6 +36,8 @@ contract TapETH is Initializable, ITapETH {
   mapping(address => bool) public pools;
   uint256 public bufferPercent;
   uint256 public bufferAmount;
+  string internal tokenName;
+  string internal tokenSymbol;
 
   event TransferShares(
     address indexed from,
@@ -65,9 +67,15 @@ contract TapETH is Initializable, ITapETH {
   event BufferIncreased(uint256, uint256);
   event BufferDecreased(uint256, uint256);
 
-  function initialize(address _governance) public initializer {
+  function initialize(
+    address _governance,
+    string memory _name,
+    string memory _symbol
+  ) public initializer {
     require(_governance != address(0), "TapETH: zero address");
     governance = _governance;
+    tokenName = _name;
+    tokenSymbol = _symbol;
   }
 
   function proposeGovernance(address _governance) public {
@@ -101,16 +109,16 @@ contract TapETH is Initializable, ITapETH {
   /**
    * @return the name of the token.
    */
-  function name() external pure returns (string memory) {
-    return "Tapio v1.5";
+  function name() external view returns (string memory) {
+    return tokenName;
   }
 
   /**
    * @return the symbol of the token, usually a shorter version of the
    * name.
    */
-  function symbol() external pure returns (string memory) {
-    return "tapETH";
+  function symbol() external view returns (string memory) {
+    return tokenSymbol;
   }
 
   /**
@@ -355,6 +363,12 @@ contract TapETH is Initializable, ITapETH {
   function mintShares(address _account, uint256 _tokenAmount) external {
     require(pools[msg.sender], "TapETH: no pool");
     _mintShares(_account, _tokenAmount);
+  }
+
+  function donateShares(uint256 _tokenAmount) external {
+    bufferAmount += _tokenAmount;
+    emit BufferIncreased(_tokenAmount, bufferAmount);
+    _burnShares(msg.sender, _tokenAmount);
   }
 
   function burnShares(uint256 _tokenAmount) external {

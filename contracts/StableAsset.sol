@@ -1148,11 +1148,11 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable {
   }
 
   /**
-   * @dev Update the A value.
+   * @dev Increase the A value.
    * @param _futureA The new A value.
    * @param _futureABlock The block number to update A value.
    */
-  function updateA(uint256 _futureA, uint256 _futureABlock) external {
+  function increaseA(uint256 _futureA, uint256 _futureABlock) external {
     require(msg.sender == governance, "not governance");
     require(_futureA > 0 && _futureA < MAX_A, "A not set");
     require(_futureABlock > block.number, "block in the past");
@@ -1160,15 +1160,40 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable {
     collectFeeOrYield(false);
 
     initialA = getA();
+    require(_futureA > initialA, "A decreasing");
     initialABlock = block.number;
     futureA = _futureA;
     futureABlock = _futureABlock;
 
     uint256 newD = _getD(balances, futureA);
     if (newD < totalSupply) {
-      poolToken.removeTotalSupply(totalSupply - newD);
+      revert("Can't update A");
     }
     emit AModified(_futureA, _futureABlock);
+  }
+
+  /**
+   * @dev Decrease the A value.
+   * @param _futureA The new A value.
+   */
+  function decreaseA(uint256 _futureA) external {
+    require(msg.sender == governance, "not governance");
+    require(_futureA > 0 && _futureA < MAX_A, "A not set");
+
+    collectFeeOrYield(false);
+
+    initialA = getA();
+    require(initialA > _futureA, "A increasing");
+    initialABlock = block.number;
+    futureA = _futureA;
+    futureABlock = block.number;
+
+    uint256 newD = _getD(balances, futureA);
+    if (newD < totalSupply) {
+      poolToken.removeTotalSupply(totalSupply - newD);
+    }
+    initialA = _futureA;
+    emit AModified(_futureA, block.number);
   }
 
   /**

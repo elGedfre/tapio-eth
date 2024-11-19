@@ -416,13 +416,22 @@
 - Deploy swap and tokens
 - Check initial A is 100
 - Check future A is 100
-- Check updateA fails if not governance
-- Check updateA fails if block in the past
-- Check updateA fails if A not set
-- Check updateA fails if A exceeds max
+- Check increaseA fails if not governance
+- Check increaseA fails if block in the past
+- Check increaseA fails if A not set
+- Check increaseA fails if A exceeds max
 - Update A to 1000 at block 50
 - Check initial A is 100
 - Check future A is 1000
+- Deploy swap and tokens
+- Check initial A is 100
+- Check future A is 100
+- Check decreaseA fails if not governance
+- Check decreaseA fails if A not set
+- Check decreaseA fails if A exceeds max
+- Update A to 50
+- Check initial A is 50
+- Check future A is 50
 - Deploy swap and tokens
 - Check initial A is 100
 - Check future A is 100
@@ -437,7 +446,3 @@
 - Check getA is 1000
 - Mine 1 block
 - Check getA is 1000
-- Update A to 500 when block number is 200
-- Mine 40 blocks
-- Check getA is 796
-- Check getA is 500

@@ -16,7 +16,11 @@ describe("wtapETH", function () {
     const pool2 = accounts[3];
 
     const TapETH = await ethers.getContractFactory("TapETH");
-    const tapETH = await upgrades.deployProxy(TapETH, [governance.address]);
+    const tapETH = await upgrades.deployProxy(TapETH, [
+      governance.address,
+      "Tapio",
+      "SA",
+    ]);
     const WtapETH = await ethers.getContractFactory("WtapETH");
     const wtapETH = await upgrades.deployProxy(WtapETH, [tapETH.address]);
 

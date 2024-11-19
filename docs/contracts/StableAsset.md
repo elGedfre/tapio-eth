@@ -65,6 +65,22 @@ function balances(uint256) external view returns (uint256)
 |---|---|---|
 | _0 | uint256 | undefined |
 
+### decreaseA
+
+```solidity
+function decreaseA(uint256 _futureA) external nonpayable
+```
+
+
+
+*Decrease the A value.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _futureA | uint256 | The new A value. |
+
 ### distributeLoss
 
 ```solidity
@@ -312,6 +328,23 @@ function governance() external view returns (address)
 | Name | Type | Description |
 |---|---|---|
 | _0 | address | undefined |
+
+### increaseA
+
+```solidity
+function increaseA(uint256 _futureA, uint256 _futureABlock) external nonpayable
+```
+
+
+
+*Increase the A value.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _futureA | uint256 | The new A value. |
+| _futureABlock | uint256 | The block number to update A value. |
 
 ### initialA
 
@@ -769,23 +802,6 @@ function unpause() external nonpayable
 
 *Unpause mint/swap/redeem actions.*
 
-
-### updateA
-
-```solidity
-function updateA(uint256 _futureA, uint256 _futureABlock) external nonpayable
-```
-
-
-
-*Update the A value.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _futureA | uint256 | The new A value. |
-| _futureABlock | uint256 | The block number to update A value. |
 
 
 

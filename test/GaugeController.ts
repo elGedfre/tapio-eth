@@ -22,6 +22,8 @@ describe("GaugeController", function () {
     const rewardToken = await MockToken.deploy("Reward", "R", 18);
     const poolToken = await upgrades.deployProxy(StableAssetToken, [
       owner.address,
+      "Tapio",
+      "SA",
     ]);
 
     const votingEscrow = await upgrades.deployProxy(VotingEscrow, [

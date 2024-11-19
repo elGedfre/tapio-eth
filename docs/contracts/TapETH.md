@@ -268,6 +268,22 @@ Atomically decreases the allowance granted to `_spender` by the caller by `_subt
 |---|---|---|
 | _0 | bool | undefined |
 
+### donateShares
+
+```solidity
+function donateShares(uint256 _tokenAmount) external nonpayable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _tokenAmount | uint256 | undefined |
+
 ### getPooledEthByShares
 
 ```solidity
@@ -355,7 +371,7 @@ Atomically increases the allowance granted to `_spender` by the caller by `_adde
 ### initialize
 
 ```solidity
-function initialize(address _governance) external nonpayable
+function initialize(address _governance, string _name, string _symbol) external nonpayable
 ```
 
 
@@ -367,6 +383,8 @@ function initialize(address _governance) external nonpayable
 | Name | Type | Description |
 |---|---|---|
 | _governance | address | undefined |
+| _name | string | undefined |
+| _symbol | string | undefined |
 
 ### mintShares
 
@@ -388,7 +406,7 @@ function mintShares(address _account, uint256 _tokenAmount) external nonpayable
 ### name
 
 ```solidity
-function name() external pure returns (string)
+function name() external view returns (string)
 ```
 
 
@@ -552,7 +570,7 @@ function sharesOf(address _account) external view returns (uint256)
 ### symbol
 
 ```solidity
-function symbol() external pure returns (string)
+function symbol() external view returns (string)
 ```
 
 
