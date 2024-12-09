@@ -10,6 +10,8 @@ import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
+import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 
 import "./StableAsset.sol";
 import "./TapETH.sol";
@@ -41,6 +43,28 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
     }
 
     /**
+     * @dev This is the account that has governance control over the StableAssetApplication contract.
+     */
+    address public governance;
+
+    /**
+     * @dev Pending governance address,
+     */
+    address public pendingGovernance;
+
+    uint256 public fee;
+
+    uint256 public A;
+
+    address public stableAssetBeacon;
+
+    address public tapETHBeacon;
+
+    address public wtapETHBeacon;
+
+    ConstantExchangeRateProvider public constantExchangeRateProvider;
+
+    /**
      * @dev This event is emitted when the governance is modified.
      * @param governance is the new value of the governance.
      */
@@ -58,28 +82,26 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
      */
     event PoolCreated(address proxyAdmin, address poolToken, address stableAsset);
 
-    /**
-     * @dev This is the account that has governance control over the StableAssetApplication contract.
-     */
-    address public governance;
-
-    /**
-     * @dev Pending governance address,
-     */
-    address public pendingGovernance;
-
-    address public stableAssetImplentation;
-    address public tapETHImplentation;
-    ConstantExchangeRateProvider public constantExchangeRateProvider;
+    
 
     /**
      * @dev Initializes the StableSwap Application contract.
      */
-    function initialize(address _stableAssetImplentation, address _tapETHImplentation) public initializer {
+    function initialize(address _governance) public initializer {
         __ReentrancyGuard_init();
-        governance = msg.sender;
-        stableAssetImplentation = _stableAssetImplentation;
-        tapETHImplentation = _tapETHImplentation;
+        governance = _governance;
+
+        address stableAssetImplentation = address(new StableAsset());
+        address tapETHImplentation = address(new TapETH());
+
+        UpgradeableBeacon beacon = new UpgradeableBeacon(stableAssetImplentation);
+        beacon.transferOwnership(_governance);
+        stableAssetBeacon = address(beacon);
+
+        beacon = new UpgradeableBeacon(tapETHImplentation);
+        beacon.transferOwnership(_governance);
+        tapETHBeacon = address(beacon);
+
         constantExchangeRateProvider = new ConstantExchangeRateProvider();
     }
 
@@ -103,6 +125,15 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         emit GovernanceModified(governance);
     }
 
+    function createPoolConstantExchangeRate(CreatePoolArgument calldata argument) external {
+        createPool(argument, constantExchangeRateProvider);
+    }
+
+    function createPoolERC4626(CreatePoolArgument calldata argument) external {
+        ERC4626ExchangeRate exchangeRate = new ERC4626ExchangeRate(IERC4626(argument.tokenB));
+        createPool(argument, exchangeRate);
+    }
+
     function createPool(CreatePoolArgument memory argument, IExchangeRateProvider exchangeRateProvider) internal {
         ProxyAdmin proxyAdmin = new ProxyAdmin();
         proxyAdmin.transferOwnership(msg.sender);
@@ -112,8 +143,8 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         string memory symbol = string.concat(string.concat(string.concat("SA-", symbolA), "-"), symbolB);
         string memory name = string.concat(string.concat(string.concat("Stable Asset ", symbolA), " "), symbolB);
         bytes memory tapETHInit = abi.encodeCall(TapETH.initialize, (address(this), name, symbol));
-        TransparentUpgradeableProxy tapETHProxy =
-            new TransparentUpgradeableProxy(address(tapETHImplentation), address(proxyAdmin), tapETHInit);
+        BeaconProxy tapETHProxy =
+            new BeaconProxy(tapETHBeacon, tapETHInit);
 
         address[] memory tokens = new address[](2);
         uint256[] memory precisions = new uint256[](2);
@@ -125,15 +156,14 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         fees[0] = argument.mintFee;
         fees[1] = argument.swapFee;
         fees[2] = argument.redeemFee;
-        uint256 A = argument.A;
         uint256 exchangeRateTokenIndex = 1;
 
         bytes memory stableAssetInit = abi.encodeCall(
             StableAsset.initialize,
             (tokens, precisions, fees, TapETH(address(tapETHProxy)), A, exchangeRateProvider, exchangeRateTokenIndex)
         );
-        TransparentUpgradeableProxy stableAssetProxy =
-            new TransparentUpgradeableProxy(address(stableAssetImplentation), address(proxyAdmin), stableAssetInit);
+        BeaconProxy stableAssetProxy =
+            new BeaconProxy(stableAssetBeacon, stableAssetInit);
         StableAsset stableAsset = StableAsset(address(stableAssetProxy));
         TapETH tapETH = TapETH(address(tapETHProxy));
 
@@ -141,14 +171,5 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         tapETH.addPool(address(stableAsset));
         tapETH.proposeGovernance(msg.sender);
         emit PoolCreated(address(proxyAdmin), address(tapETHProxy), address(stableAssetProxy));
-    }
-
-    function createPoolConstantExchangeRate(CreatePoolArgument calldata argument) public {
-        createPool(argument, constantExchangeRateProvider);
-    }
-
-    function createPoolERC4626(CreatePoolArgument calldata argument) public {
-        ERC4626ExchangeRate exchangeRate = new ERC4626ExchangeRate(IERC4626(argument.tokenB));
-        createPool(argument, exchangeRate);
     }
 }
