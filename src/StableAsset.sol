@@ -104,6 +104,13 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable {
     event GovernanceProposed(address governance);
 
     /**
+     * @dev This event is emitted when a new admin is added or removed.
+     * @param admin is the address of the admin.
+     * @param allowed is a boolean indicating whether the admin is allowed to perform administrative functions.
+     */
+    event AdminModified(address indexed admin, bool allowed);
+
+    /**
      * @dev This is the denominator used for calculating transaction fees in the StableAsset contract.
      */
     uint256 private constant FEE_DENOMINATOR = 10 ** 10;
@@ -1055,6 +1062,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable {
         require(_account != address(0x0), "account not set");
 
         admins[_account] = _allowed;
+        emit AdminModified(_account, _allowed);
     }
 
     /**
