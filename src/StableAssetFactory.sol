@@ -15,6 +15,7 @@ import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 
 import "./StableAsset.sol";
 import "./TapETH.sol";
+import "./WTapETH.sol";
 import "./misc/ConstantExchangeRateProvider.sol";
 import "./misc/ERC4626ExchangeRate.sol";
 import "./interfaces/IExchangeRateProvider.sol";
@@ -36,14 +37,10 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         address tokenB;
         uint256 precisionA;
         uint256 precisionB;
-        uint256 mintFee;
-        uint256 swapFee;
-        uint256 redeemFee;
-        uint256 A;
     }
 
     /**
-     * @dev This is the account that has governance control over the StableAssetApplication contract.
+     * @dev This is the account that has governance control over the protocol.
      */
     address public governance;
 
@@ -52,16 +49,44 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
      */
     address public pendingGovernance;
 
-    uint256 public fee;
+    /**
+     * @dev Default mint fee for the pool.
+     */
+    uint256 public mintFee;
 
+    /**
+     * @dev Default swap fee for the pool.
+     */
+    uint256 public swapFee;
+
+    /**
+     * @dev Default redeem fee for the pool.
+     */
+    uint256 public redeemFee;
+
+    /**
+     * @dev Default A parameter for the pool.
+     */
     uint256 public A;
 
+    /**
+     * @dev Beacon for the StableAsset implementation.
+     */
     address public stableAssetBeacon;
 
+    /**
+     * @dev Beacon for the TapETH implementation.
+     */
     address public tapETHBeacon;
 
+    /**
+     * @dev Beacon for the TapETH implementation.
+     */
     address public wtapETHBeacon;
 
+    /**
+     * @dev Constant exchange rate provider.
+     */
     ConstantExchangeRateProvider public constantExchangeRateProvider;
 
     /**
@@ -80,9 +105,31 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
      * @dev This event is emitted when a new pool is created.
      * @param poolToken is the pool token created.
      */
-    event PoolCreated(address proxyAdmin, address poolToken, address stableAsset);
+    event PoolCreated(address poolToken, address stableAsset);
 
-    
+    /**
+     * @dev This event is emitted when the mint fee is updated.
+     * @param mintFee is the new value of the mint fee.
+     */
+    event MintFeeUpdated(uint256 mintFee);
+
+    /**
+     * @dev This event is emitted when the swap fee is updated.
+     * @param swapFee is the new value of the swap fee.
+     */
+    event SwapFeeUpdated(uint256 swapFee);
+
+    /**
+     * @dev This event is emitted when the redeem fee is updated.
+     * @param redeemFee is the new value of the redeem fee.
+     */
+    event RedeemFeeUpdated(uint256 redeemFee);
+
+    /**
+     * @dev This event is emitted when the A parameter is updated.
+     * @param A is the new value of the A parameter.
+     */
+    event AUpdated(uint256 A);
 
     /**
      * @dev Initializes the StableSwap Application contract.
@@ -101,6 +148,10 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         beacon = new UpgradeableBeacon(tapETHImplentation);
         beacon.transferOwnership(_governance);
         tapETHBeacon = address(beacon);
+
+        beacon = new UpgradeableBeacon(address(new WtapETH()));
+        beacon.transferOwnership(_governance);
+        wtapETHBeacon = address(beacon);
 
         constantExchangeRateProvider = new ConstantExchangeRateProvider();
     }
@@ -134,10 +185,32 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         createPool(argument, exchangeRate);
     }
 
-    function createPool(CreatePoolArgument memory argument, IExchangeRateProvider exchangeRateProvider) internal {
-        ProxyAdmin proxyAdmin = new ProxyAdmin();
-        proxyAdmin.transferOwnership(msg.sender);
+    modifier onlyGovernance() {
+        require(msg.sender == governance, "not governance");
+        _;
+    }
 
+    function setMintFee(uint256 _mintFee) external onlyGovernance {
+        mintFee = _mintFee;
+        emit MintFeeUpdated(_mintFee);
+    }
+
+    function setSwapFee(uint256 _swapFee) external onlyGovernance {
+        swapFee = _swapFee;
+        emit SwapFeeUpdated(_swapFee);
+    }
+
+    function setRedeemFee(uint256 _redeemFee) external onlyGovernance {
+        redeemFee = _redeemFee;
+        emit RedeemFeeUpdated(_redeemFee);
+    }
+
+    function setA(uint256 _A) external onlyGovernance {
+        A = _A;
+        emit AUpdated(_A);
+    }
+
+    function createPool(CreatePoolArgument memory argument, IExchangeRateProvider exchangeRateProvider) internal {
         string memory symbolA = ERC20Upgradeable(argument.tokenA).symbol();
         string memory symbolB = ERC20Upgradeable(argument.tokenB).symbol();
         string memory symbol = string.concat(string.concat(string.concat("SA-", symbolA), "-"), symbolB);
@@ -153,9 +226,9 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         tokens[1] = argument.tokenB;
         precisions[0] = argument.precisionA;
         precisions[1] = argument.precisionB;
-        fees[0] = argument.mintFee;
-        fees[1] = argument.swapFee;
-        fees[2] = argument.redeemFee;
+        fees[0] = mintFee;
+        fees[1] = swapFee;
+        fees[2] = redeemFee;
         uint256 exchangeRateTokenIndex = 1;
 
         bytes memory stableAssetInit = abi.encodeCall(
@@ -170,6 +243,6 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         stableAsset.proposeGovernance(msg.sender);
         tapETH.addPool(address(stableAsset));
         tapETH.proposeGovernance(msg.sender);
-        emit PoolCreated(address(proxyAdmin), address(tapETHProxy), address(stableAssetProxy));
+        emit PoolCreated(address(tapETHProxy), address(stableAssetProxy));
     }
 }
