@@ -111,25 +111,25 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
      * @dev This event is emitted when the mint fee is updated.
      * @param mintFee is the new value of the mint fee.
      */
-    event MintFeeUpdated(uint256 mintFee);
+    event MintFeeModified(uint256 mintFee);
 
     /**
      * @dev This event is emitted when the swap fee is updated.
      * @param swapFee is the new value of the swap fee.
      */
-    event SwapFeeUpdated(uint256 swapFee);
+    event SwapFeeModified(uint256 swapFee);
 
     /**
      * @dev This event is emitted when the redeem fee is updated.
      * @param redeemFee is the new value of the redeem fee.
      */
-    event RedeemFeeUpdated(uint256 redeemFee);
+    event RedeemFeeModified(uint256 redeemFee);
 
     /**
      * @dev This event is emitted when the A parameter is updated.
      * @param A is the new value of the A parameter.
      */
-    event AUpdated(uint256 A);
+    event AModified(uint256 A);
 
     /**
      * @dev Initializes the StableSwap Application contract.
@@ -192,22 +192,22 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
 
     function setMintFee(uint256 _mintFee) external onlyGovernance {
         mintFee = _mintFee;
-        emit MintFeeUpdated(_mintFee);
+        emit MintFeeModified(_mintFee);
     }
 
     function setSwapFee(uint256 _swapFee) external onlyGovernance {
         swapFee = _swapFee;
-        emit SwapFeeUpdated(_swapFee);
+        emit SwapFeeModified(_swapFee);
     }
 
     function setRedeemFee(uint256 _redeemFee) external onlyGovernance {
         redeemFee = _redeemFee;
-        emit RedeemFeeUpdated(_redeemFee);
+        emit RedeemFeeModified(_redeemFee);
     }
 
     function setA(uint256 _A) external onlyGovernance {
         A = _A;
-        emit AUpdated(_A);
+        emit AModified(_A);
     }
 
     function createPool(CreatePoolArgument memory argument, IExchangeRateProvider exchangeRateProvider) internal {

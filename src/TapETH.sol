@@ -55,6 +55,7 @@ contract TapETH is Initializable, ITapETH {
     event SetBufferPercent(uint256);
     event BufferIncreased(uint256, uint256);
     event BufferDecreased(uint256, uint256);
+    event SymbolModified(string);
 
     function initialize(address _governance, string memory _name, string memory _symbol) public initializer {
         require(_governance != address(0), "TapETH: zero address");
@@ -216,6 +217,12 @@ contract TapETH is Initializable, ITapETH {
         require(_buffer < BUFFER_DENOMINATOR, "TapETH: out of range");
         bufferPercent = _buffer;
         emit SetBufferPercent(_buffer);
+    }
+
+    function setSymbol(string memory _symbol) external {
+        require(msg.sender == governance, "TapETH: no governance");
+        tokenSymbol = _symbol;
+        emit SymbolModified(_symbol);
     }
 
     /**
