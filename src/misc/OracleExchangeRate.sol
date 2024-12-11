@@ -16,9 +16,7 @@ contract OracleExchangeRate is IExchangeRateProvider {
     }
 
     function exchangeRate() external view returns (uint256) {
-         bytes memory data = abi.encodeWithSignature(
-            string(abi.encodePacked(func, "()"))
-        );
+        bytes memory data = abi.encodeWithSignature(string(abi.encodePacked(func, "()")));
 
         (bool success, bytes memory result) = oracle.staticcall(data);
         require(success, "Function call failed");

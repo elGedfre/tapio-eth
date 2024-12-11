@@ -43,6 +43,7 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
     struct CreatePoolArgument {
         address tokenA;
         address tokenB;
+        address initialMinter;
         TokenBType tokenBType;
         address tokenBOracle;
         string tokenBFunctionSig;
@@ -86,12 +87,12 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
     /**
      * @dev Beacon for the LPToken implementation.
      */
-    address public tapETHBeacon;
+    address public lpTokenBeacon;
 
     /**
      * @dev Beacon for the LPToken implementation.
      */
-    address public wtapETHBeacon;
+    address public wlpTokenBeacon;
 
     /**
      * @dev Constant exchange rate provider.
@@ -114,7 +115,7 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
      * @dev This event is emitted when a new pool is created.
      * @param poolToken is the pool token created.
      */
-    event PoolCreated(address poolToken, address stableAsset);
+    event PoolCreated(address poolToken, address stableAsset, address wrappedPoolToken);
 
     /**
      * @dev This event is emitted when the mint fee is updated.
@@ -143,26 +144,40 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
     /**
      * @dev Initializes the StableSwap Application contract.
      */
-    function initialize(address _governance) public initializer {
+    function initialize(
+        address _governance,
+        uint256 _mintFee,
+        uint256 _swapFee,
+        uint256 _redeemFee,
+        uint256 _A
+    )
+        public
+        initializer
+    {
         __ReentrancyGuard_init();
         governance = _governance;
 
         address stableAssetImplentation = address(new StableAsset());
-        address tapETHImplentation = address(new LPToken());
+        address lpTokenImplentation = address(new LPToken());
 
         UpgradeableBeacon beacon = new UpgradeableBeacon(stableAssetImplentation);
         beacon.transferOwnership(_governance);
         stableAssetBeacon = address(beacon);
 
-        beacon = new UpgradeableBeacon(tapETHImplentation);
+        beacon = new UpgradeableBeacon(lpTokenImplentation);
         beacon.transferOwnership(_governance);
-        tapETHBeacon = address(beacon);
+        lpTokenBeacon = address(beacon);
 
         beacon = new UpgradeableBeacon(address(new WLPToken()));
         beacon.transferOwnership(_governance);
-        wtapETHBeacon = address(beacon);
+        wlpTokenBeacon = address(beacon);
 
         constantExchangeRateProvider = new ConstantExchangeRateProvider();
+
+        mintFee = _mintFee;
+        swapFee = _swapFee;
+        redeemFee = _redeemFee;
+        A = _A;
     }
 
     /**
@@ -215,9 +230,8 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         string memory symbolB = ERC20Upgradeable(argument.tokenB).symbol();
         string memory symbol = string.concat(string.concat(string.concat("SA-", symbolA), "-"), symbolB);
         string memory name = string.concat(string.concat(string.concat("Stable Asset ", symbolA), " "), symbolB);
-        bytes memory tapETHInit = abi.encodeCall(LPToken.initialize, (address(this), name, symbol));
-        BeaconProxy tapETHProxy =
-            new BeaconProxy(tapETHBeacon, tapETHInit);
+        bytes memory lpTokenInit = abi.encodeCall(LPToken.initialize, (address(this), name, symbol));
+        BeaconProxy lpTokenProxy = new BeaconProxy(lpTokenBeacon, lpTokenInit);
 
         address[] memory tokens = new address[](2);
         uint256[] memory precisions = new uint256[](2);
@@ -235,7 +249,8 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         if (argument.tokenBType == TokenBType.Standard || argument.tokenBType == TokenBType.Rebasing) {
             exchangeRateProvider = address(constantExchangeRateProvider);
         } else if (argument.tokenBType == TokenBType.Oracle) {
-            OracleExchangeRate oracleExchangeRate = new OracleExchangeRate(argument.tokenBOracle, argument.tokenBFunctionSig);
+            OracleExchangeRate oracleExchangeRate =
+                new OracleExchangeRate(argument.tokenBOracle, argument.tokenBFunctionSig);
             exchangeRateProvider = address(oracleExchangeRate);
         } else if (argument.tokenBType == TokenBType.ERC4626) {
             ERC4626ExchangeRate erc4626ExchangeRate = new ERC4626ExchangeRate(IERC4626(argument.tokenB));
@@ -244,16 +259,29 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
 
         bytes memory stableAssetInit = abi.encodeCall(
             StableAsset.initialize,
-            (tokens, precisions, fees, LPToken(address(tapETHProxy)), A, IExchangeRateProvider(exchangeRateProvider), exchangeRateTokenIndex)
+            (
+                tokens,
+                precisions,
+                fees,
+                LPToken(address(lpTokenProxy)),
+                A,
+                IExchangeRateProvider(exchangeRateProvider),
+                exchangeRateTokenIndex
+            )
         );
-        BeaconProxy stableAssetProxy =
-            new BeaconProxy(stableAssetBeacon, stableAssetInit);
+        BeaconProxy stableAssetProxy = new BeaconProxy(stableAssetBeacon, stableAssetInit);
         StableAsset stableAsset = StableAsset(address(stableAssetProxy));
-        LPToken tapETH = LPToken(address(tapETHProxy));
+        LPToken lpToken = LPToken(address(lpTokenProxy));
 
-        stableAsset.proposeGovernance(msg.sender);
-        tapETH.addPool(address(stableAsset));
-        tapETH.proposeGovernance(msg.sender);
-        emit PoolCreated(address(tapETHProxy), address(stableAssetProxy));
+        stableAsset.setAdmin(argument.initialMinter, true);
+
+        stableAsset.proposeGovernance(governance);
+        lpToken.addPool(address(stableAsset));
+        lpToken.proposeGovernance(governance);
+
+        bytes memory wlpTokenInit = abi.encodeCall(WLPToken.initialize, (ILPToken(lpToken)));
+        BeaconProxy wlpTokenProxy = new BeaconProxy(wlpTokenBeacon, wlpTokenInit);
+
+        emit PoolCreated(address(lpTokenProxy), address(stableAssetProxy), address(wlpTokenProxy));
     }
 }
