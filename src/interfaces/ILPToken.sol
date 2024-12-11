@@ -3,7 +3,7 @@ pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface ITapETH is IERC20 {
+interface ILPToken is IERC20 {
     function proposeGovernance(address _governance) external;
 
     function acceptGovernance() external;

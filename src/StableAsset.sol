@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 
 import "./misc/IERC20MintableBurnable.sol";
 import "./interfaces/IExchangeRateProvider.sol";
-import "./interfaces/ITapETH.sol";
+import "./interfaces/ILPToken.sol";
 
 error InsufficientMintAmount(uint256 mintAmount, uint256 minMintAmount);
 error InsufficientSwapOutAmount(uint256 outAmount, uint256 minOutAmount);
@@ -156,7 +156,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable {
     /**
      * @dev This is the address of the ERC20 token contract that represents the StableAsset pool token.
      */
-    ITapETH public poolToken;
+    ILPToken public poolToken;
     /**
      * @dev The total supply of pool token minted by the swap.
      * It might be different from the pool token supply as the pool token can have multiple minters.
@@ -222,7 +222,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable {
         address[] memory _tokens,
         uint256[] memory _precisions,
         uint256[] memory _fees,
-        ITapETH _poolToken,
+        ILPToken _poolToken,
         uint256 _A,
         IExchangeRateProvider _exchangeRateProvider,
         uint256 _exchangeRateTokenIndex
@@ -1149,7 +1149,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable {
     }
 
     /**
-     * @notice This function allows to rebase TapETH by increasing his total supply
+     * @notice This function allows to rebase LPToken by increasing his total supply
      * from the current stableSwap pool by the staking rewards and the swap fee.
      */
     function rebase() external returns (uint256) {

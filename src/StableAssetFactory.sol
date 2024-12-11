@@ -14,8 +14,8 @@ import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 
 import "./StableAsset.sol";
-import "./TapETH.sol";
-import "./WTapETH.sol";
+import "./LPToken.sol";
+import "./WLPToken.sol";
 import "./misc/ConstantExchangeRateProvider.sol";
 import "./misc/ERC4626ExchangeRate.sol";
 import "./misc/OracleExchangeRate.sol";
@@ -86,12 +86,12 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
     address public stableAssetBeacon;
 
     /**
-     * @dev Beacon for the TapETH implementation.
+     * @dev Beacon for the LPToken implementation.
      */
     address public tapETHBeacon;
 
     /**
-     * @dev Beacon for the TapETH implementation.
+     * @dev Beacon for the LPToken implementation.
      */
     address public wtapETHBeacon;
 
@@ -150,7 +150,7 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         governance = _governance;
 
         address stableAssetImplentation = address(new StableAsset());
-        address tapETHImplentation = address(new TapETH());
+        address tapETHImplentation = address(new LPToken());
 
         UpgradeableBeacon beacon = new UpgradeableBeacon(stableAssetImplentation);
         beacon.transferOwnership(_governance);
@@ -160,7 +160,7 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         beacon.transferOwnership(_governance);
         tapETHBeacon = address(beacon);
 
-        beacon = new UpgradeableBeacon(address(new WtapETH()));
+        beacon = new UpgradeableBeacon(address(new WLPToken()));
         beacon.transferOwnership(_governance);
         wtapETHBeacon = address(beacon);
 
@@ -217,7 +217,7 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         string memory symbolB = ERC20Upgradeable(argument.tokenB).symbol();
         string memory symbol = string.concat(string.concat(string.concat("SA-", symbolA), "-"), symbolB);
         string memory name = string.concat(string.concat(string.concat("Stable Asset ", symbolA), " "), symbolB);
-        bytes memory tapETHInit = abi.encodeCall(TapETH.initialize, (address(this), name, symbol));
+        bytes memory tapETHInit = abi.encodeCall(LPToken.initialize, (address(this), name, symbol));
         BeaconProxy tapETHProxy =
             new BeaconProxy(tapETHBeacon, tapETHInit);
 
@@ -246,12 +246,12 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
 
         bytes memory stableAssetInit = abi.encodeCall(
             StableAsset.initialize,
-            (tokens, precisions, fees, TapETH(address(tapETHProxy)), A, IExchangeRateProvider(exchangeRateProvider), exchangeRateTokenIndex)
+            (tokens, precisions, fees, LPToken(address(tapETHProxy)), A, IExchangeRateProvider(exchangeRateProvider), exchangeRateTokenIndex)
         );
         BeaconProxy stableAssetProxy =
             new BeaconProxy(stableAssetBeacon, stableAssetInit);
         StableAsset stableAsset = StableAsset(address(stableAssetProxy));
-        TapETH tapETH = TapETH(address(tapETHProxy));
+        LPToken tapETH = LPToken(address(tapETHProxy));
 
         stableAsset.proposeGovernance(msg.sender);
         tapETH.addPool(address(stableAsset));

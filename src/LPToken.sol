@@ -3,7 +3,7 @@ pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "./interfaces/ITapETH.sol";
+import "./interfaces/ILPToken.sol";
 
 error InsufficientAllowance(uint256 currentAllowance, uint256 amount);
 error InsufficientBalance(uint256 currentBalance, uint256 amount);
@@ -12,16 +12,16 @@ error InsufficientBalance(uint256 currentBalance, uint256 amount);
  * @title Interest-bearing ERC20-like token for Tapio protocol
  * @author Nuts Finance Developer
  * @notice ERC20 token minted by the StableSwap pools.
- * @dev TapETH is ERC20 rebase token minted by StableSwap pools for liquidity providers.
- * TapETH balances are dynamic and represent the holder's share in the total amount
- * of tapETH controlled by the protocol. Account shares aren't normalized, so the
+ * @dev LPToken is ERC20 rebase token minted by StableSwap pools for liquidity providers.
+ * LPToken balances are dynamic and represent the holder's share in the total amount
+ * of lpToken controlled by the protocol. Account shares aren't normalized, so the
  * contract also stores the sum of all shares to calculate each account's token balance
  * which equals to:
  *
  *   shares[account] * _totalSupply / _totalShares
- * where the _totalSupply is the total supply of tapETH controlled by the protocol.
+ * where the _totalSupply is the total supply of lpToken controlled by the protocol.
  */
-contract TapETH is Initializable, ITapETH {
+contract LPToken is Initializable, ILPToken {
     using Math for uint256;
 
     uint256 internal constant INFINITE_ALLOWANCE = ~uint256(0);
@@ -58,36 +58,36 @@ contract TapETH is Initializable, ITapETH {
     event SymbolModified(string);
 
     function initialize(address _governance, string memory _name, string memory _symbol) public initializer {
-        require(_governance != address(0), "TapETH: zero address");
+        require(_governance != address(0), "LPToken: zero address");
         governance = _governance;
         tokenName = _name;
         tokenSymbol = _symbol;
     }
 
     function proposeGovernance(address _governance) public {
-        require(msg.sender == governance, "TapETH: no governance");
+        require(msg.sender == governance, "LPToken: no governance");
         pendingGovernance = _governance;
         emit GovernanceProposed(_governance);
     }
 
     function acceptGovernance() public {
-        require(msg.sender == pendingGovernance, "TapETH: no pending governance");
+        require(msg.sender == pendingGovernance, "LPToken: no pending governance");
         governance = pendingGovernance;
         pendingGovernance = address(0);
         emit GovernanceModified(governance);
     }
 
     function addPool(address _pool) public {
-        require(msg.sender == governance, "TapETH: no governance");
-        require(_pool != address(0), "TapETH: zero address");
-        require(!pools[_pool], "TapETH: pool is already added");
+        require(msg.sender == governance, "LPToken: no governance");
+        require(_pool != address(0), "LPToken: zero address");
+        require(!pools[_pool], "LPToken: pool is already added");
         pools[_pool] = true;
         emit PoolAdded(_pool);
     }
 
     function removePool(address _pool) public {
-        require(msg.sender == governance, "TapETH: no governance");
-        require(pools[_pool], "TapETH: pool doesn't exist");
+        require(msg.sender == governance, "LPToken: no governance");
+        require(pools[_pool], "LPToken: pool doesn't exist");
         pools[_pool] = false;
         emit PoolRemoved(_pool);
     }
@@ -118,7 +118,7 @@ contract TapETH is Initializable, ITapETH {
      * @return the amount of tokens owned by the `_account`.
      *
      * @dev Balances are dynamic and equal the `_account`'s share in the amount of the
-     * total tapETH controlled by the protocol. See `sharesOf`.
+     * total lpToken controlled by the protocol. See `sharesOf`.
      */
     function balanceOf(address _account) external view returns (uint256) {
         return getPooledEthByShares(_sharesOf(_account));
@@ -203,7 +203,7 @@ contract TapETH is Initializable, ITapETH {
      */
     function decreaseAllowance(address _spender, uint256 _subtractedValue) external returns (bool) {
         uint256 currentAllowance = allowances[msg.sender][_spender];
-        require(currentAllowance >= _subtractedValue, "TapETH:ALLOWANCE_BELOW_ZERO");
+        require(currentAllowance >= _subtractedValue, "LPToken:ALLOWANCE_BELOW_ZERO");
         _approve(msg.sender, _spender, currentAllowance - _subtractedValue);
         return true;
     }
@@ -213,25 +213,25 @@ contract TapETH is Initializable, ITapETH {
      * @notice This function is called by the governance to set the buffer rate.
      */
     function setBuffer(uint256 _buffer) external {
-        require(msg.sender == governance, "TapETH: no governance");
-        require(_buffer < BUFFER_DENOMINATOR, "TapETH: out of range");
+        require(msg.sender == governance, "LPToken: no governance");
+        require(_buffer < BUFFER_DENOMINATOR, "LPToken: out of range");
         bufferPercent = _buffer;
         emit SetBufferPercent(_buffer);
     }
 
     function setSymbol(string memory _symbol) external {
-        require(msg.sender == governance, "TapETH: no governance");
+        require(msg.sender == governance, "LPToken: no governance");
         tokenSymbol = _symbol;
         emit SymbolModified(_symbol);
     }
 
     /**
      * @notice This function is called only by a stableSwap pool to increase
-     * the total supply of TapETH by the staking rewards and the swap fee.
+     * the total supply of LPToken by the staking rewards and the swap fee.
      */
     function addTotalSupply(uint256 _amount) external {
-        require(pools[msg.sender], "TapETH: no pool");
-        require(_amount != 0, "TapETH: no amount");
+        require(pools[msg.sender], "LPToken: no pool");
+        require(_amount != 0, "LPToken: no amount");
         uint256 _deltaBuffer = (bufferPercent * _amount) / BUFFER_DENOMINATOR;
         uint256 actualAmount = _amount - _deltaBuffer;
 
@@ -245,12 +245,12 @@ contract TapETH is Initializable, ITapETH {
 
     /**
      * @notice This function is called only by a stableSwap pool to decrease
-     * the total supply of TapETH by lost amount.
+     * the total supply of LPToken by lost amount.
      */
     function removeTotalSupply(uint256 _amount) external {
-        require(pools[msg.sender], "TapETH: no pool");
-        require(_amount != 0, "TapETH: no amount");
-        require(_amount <= bufferAmount, "TapETH: insuffcient buffer");
+        require(pools[msg.sender], "LPToken: no pool");
+        require(_amount != 0, "LPToken: no amount");
+        require(_amount <= bufferAmount, "LPToken: insuffcient buffer");
 
         bufferAmount -= _amount;
 
@@ -265,18 +265,18 @@ contract TapETH is Initializable, ITapETH {
     }
 
     /**
-     * @return the amount of shares that corresponds to `_tapETHAmount` protocol-controlled tapETH.
+     * @return the amount of shares that corresponds to `_lpTokenAmount` protocol-controlled lpToken.
      */
-    function getSharesByPooledEth(uint256 _tapETHAmount) public view returns (uint256) {
+    function getSharesByPooledEth(uint256 _lpTokenAmount) public view returns (uint256) {
         if (totalSupply == 0) {
             return 0;
         } else {
-            return (_tapETHAmount * totalShares) / totalSupply;
+            return (_lpTokenAmount * totalShares) / totalSupply;
         }
     }
 
     /**
-     * @return the amount of tapETH that corresponds to `_sharesAmount` token shares.
+     * @return the amount of lpToken that corresponds to `_sharesAmount` token shares.
      */
     function getPooledEthByShares(uint256 _sharesAmount) public view returns (uint256) {
         if (totalShares == 0) {
@@ -327,7 +327,7 @@ contract TapETH is Initializable, ITapETH {
     }
 
     function mintShares(address _account, uint256 _tokenAmount) external {
-        require(pools[msg.sender], "TapETH: no pool");
+        require(pools[msg.sender], "LPToken: no pool");
         _mintShares(_account, _tokenAmount);
     }
 
@@ -363,8 +363,8 @@ contract TapETH is Initializable, ITapETH {
      * Emits an `Approval` event.
      */
     function _approve(address _owner, address _spender, uint256 _amount) internal {
-        require(_owner != address(0), "TapETH: APPROVE_FROM_ZERO_ADDR");
-        require(_spender != address(0), "TapETH: APPROVE_TO_ZERO_ADDR");
+        require(_owner != address(0), "LPToken: APPROVE_FROM_ZERO_ADDR");
+        require(_spender != address(0), "LPToken: APPROVE_TO_ZERO_ADDR");
 
         allowances[_owner][_spender] = _amount;
         emit Approval(_owner, _spender, _amount);
@@ -400,9 +400,9 @@ contract TapETH is Initializable, ITapETH {
      * @notice Moves `_sharesAmount` shares from `_sender` to `_recipient`.
      */
     function _transferShares(address _sender, address _recipient, uint256 _sharesAmount) internal {
-        require(_sender != address(0), "TapETH: zero address");
-        require(_recipient != address(0), "TapETH: zero address");
-        require(_recipient != address(this), "TapETH: TRANSFER_TO_tapETH_CONTRACT");
+        require(_sender != address(0), "LPToken: zero address");
+        require(_recipient != address(0), "LPToken: zero address");
+        require(_recipient != address(this), "LPToken: TRANSFER_TO_lpToken_CONTRACT");
 
         uint256 currentSenderShares = shares[_sender];
 
@@ -418,7 +418,7 @@ contract TapETH is Initializable, ITapETH {
      * @notice Creates `_sharesAmount` shares and assigns them to `_recipient`, increasing the total amount of shares.
      */
     function _mintShares(address _recipient, uint256 _tokenAmount) internal returns (uint256 newTotalShares) {
-        require(_recipient != address(0), "TapETH: MINT_TO_ZERO_ADDR");
+        require(_recipient != address(0), "LPToken: MINT_TO_ZERO_ADDR");
         uint256 _sharesAmount;
         if (totalSupply != 0 && totalShares != 0) {
             _sharesAmount = getSharesByPooledEth(_tokenAmount);
@@ -437,7 +437,7 @@ contract TapETH is Initializable, ITapETH {
      * @notice Destroys `_sharesAmount` shares from `_account`'s holdings, decreasing the total amount of shares.
      */
     function _burnShares(address _account, uint256 _tokenAmount) internal returns (uint256 newTotalShares) {
-        require(_account != address(0), "TapETH: BURN_FROM_ZERO_ADDR");
+        require(_account != address(0), "LPToken: BURN_FROM_ZERO_ADDR");
 
         uint256 _balance = getPooledEthByShares(_sharesOf(_account));
         if (_tokenAmount > _balance) {
