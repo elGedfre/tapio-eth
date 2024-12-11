@@ -18,6 +18,7 @@ import "./TapETH.sol";
 import "./WTapETH.sol";
 import "./misc/ConstantExchangeRateProvider.sol";
 import "./misc/ERC4626ExchangeRate.sol";
+import "./misc/OracleExchangeRate.sol";
 import "./interfaces/IExchangeRateProvider.sol";
 
 /**
@@ -32,11 +33,21 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
     using SafeMathUpgradeable for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    enum TokenBType {
+        Standard,
+        Oracle,
+        Rebasing,
+        ERC4626
+    }
+
     struct CreatePoolArgument {
         address tokenA;
         address tokenB;
         uint256 precisionA;
         uint256 precisionB;
+        TokenBType tokenBType;
+        address oracle;
+        string functionSig;
     }
 
     /**
@@ -176,15 +187,6 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         emit GovernanceModified(governance);
     }
 
-    function createPoolConstantExchangeRate(CreatePoolArgument calldata argument) external {
-        createPool(argument, constantExchangeRateProvider);
-    }
-
-    function createPoolERC4626(CreatePoolArgument calldata argument) external {
-        ERC4626ExchangeRate exchangeRate = new ERC4626ExchangeRate(IERC4626(argument.tokenB));
-        createPool(argument, exchangeRate);
-    }
-
     modifier onlyGovernance() {
         require(msg.sender == governance, "not governance");
         _;
@@ -210,7 +212,7 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         emit AModified(_A);
     }
 
-    function createPool(CreatePoolArgument memory argument, IExchangeRateProvider exchangeRateProvider) internal {
+    function createPool(CreatePoolArgument memory argument) external {
         string memory symbolA = ERC20Upgradeable(argument.tokenA).symbol();
         string memory symbolB = ERC20Upgradeable(argument.tokenB).symbol();
         string memory symbol = string.concat(string.concat(string.concat("SA-", symbolA), "-"), symbolB);
@@ -231,9 +233,20 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         fees[2] = redeemFee;
         uint256 exchangeRateTokenIndex = 1;
 
+        address exchangeRateProvider;
+        if (argument.tokenBType == TokenBType.Standard || argument.tokenBType == TokenBType.Rebasing) {
+            exchangeRateProvider = address(constantExchangeRateProvider);
+        } else if (argument.tokenBType == TokenBType.Oracle) {
+            OracleExchangeRate oracleExchangeRate = new OracleExchangeRate(argument.oracle, argument.functionSig);
+            exchangeRateProvider = address(oracleExchangeRate);
+        } else if (argument.tokenBType == TokenBType.ERC4626) {
+            ERC4626ExchangeRate erc4626ExchangeRate = new ERC4626ExchangeRate(IERC4626(argument.tokenB));
+            exchangeRateProvider = address(erc4626ExchangeRate);
+        }
+
         bytes memory stableAssetInit = abi.encodeCall(
             StableAsset.initialize,
-            (tokens, precisions, fees, TapETH(address(tapETHProxy)), A, exchangeRateProvider, exchangeRateTokenIndex)
+            (tokens, precisions, fees, TapETH(address(tapETHProxy)), A, IExchangeRateProvider(exchangeRateProvider), exchangeRateTokenIndex)
         );
         BeaconProxy stableAssetProxy =
             new BeaconProxy(stableAssetBeacon, stableAssetInit);
