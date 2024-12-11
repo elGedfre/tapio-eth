@@ -43,11 +43,9 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
     struct CreatePoolArgument {
         address tokenA;
         address tokenB;
-        uint256 precisionA;
-        uint256 precisionB;
         TokenBType tokenBType;
-        address oracle;
-        string functionSig;
+        address tokenBOracle;
+        string tokenBFunctionSig;
     }
 
     /**
@@ -226,8 +224,8 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         uint256[] memory fees = new uint256[](3);
         tokens[0] = argument.tokenA;
         tokens[1] = argument.tokenB;
-        precisions[0] = argument.precisionA;
-        precisions[1] = argument.precisionB;
+        precisions[0] = 10 ** (18 - ERC20Upgradeable(argument.tokenA).decimals());
+        precisions[1] = 10 ** (18 - ERC20Upgradeable(argument.tokenB).decimals());
         fees[0] = mintFee;
         fees[1] = swapFee;
         fees[2] = redeemFee;
@@ -237,7 +235,7 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         if (argument.tokenBType == TokenBType.Standard || argument.tokenBType == TokenBType.Rebasing) {
             exchangeRateProvider = address(constantExchangeRateProvider);
         } else if (argument.tokenBType == TokenBType.Oracle) {
-            OracleExchangeRate oracleExchangeRate = new OracleExchangeRate(argument.oracle, argument.functionSig);
+            OracleExchangeRate oracleExchangeRate = new OracleExchangeRate(argument.tokenBOracle, argument.tokenBFunctionSig);
             exchangeRateProvider = address(oracleExchangeRate);
         } else if (argument.tokenBType == TokenBType.ERC4626) {
             ERC4626ExchangeRate erc4626ExchangeRate = new ERC4626ExchangeRate(IERC4626(argument.tokenB));
