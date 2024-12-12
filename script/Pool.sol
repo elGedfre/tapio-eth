@@ -6,6 +6,8 @@ import { stdJson } from "forge-std/StdJson.sol";
 import { console } from "forge-std/console.sol";
 import { Config } from "script/Config.sol";
 import { StableAssetFactory } from "../src/StableAssetFactory.sol";
+import { StableAsset } from "../src/StableAsset.sol";
+import { MockToken } from "../src/mock/MockToken.sol";
 
 contract Pool is Config {
     function createStandardPool() internal returns (address, address, address) {
@@ -48,8 +50,8 @@ contract Pool is Config {
         console.log("initial-mint-logs");
         console.log("---------------");
 
-        usdc.approve(address(factory), usdcAmount);
-        usdt.approve(address(factory), usdtAmount);
+        MockToken(usdc).approve(address(factory), usdcAmount);
+        MockToken(usdt).approve(address(factory), usdtAmount);
 
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = usdcAmount;
