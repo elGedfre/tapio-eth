@@ -2,13 +2,13 @@
 pragma solidity 0.8.28;
 
 import { Vm } from "forge-std/Vm.sol";
-import {stdJson} from "forge-std/StdJson.sol";
-import {console} from "forge-std/console.sol";
-import {Config} from "script/Config.sol";
+import { stdJson } from "forge-std/StdJson.sol";
+import { console } from "forge-std/console.sol";
+import { Config } from "script/Config.sol";
 import { StableAssetFactory } from "../src/StableAssetFactory.sol";
 
 contract Pool is Config {
-    function createStandardPool() internal returns(address, address, address) {
+    function createStandardPool() internal returns (address, address, address) {
         console.log("---------------");
         console.log("create-pool-logs");
         console.log("---------------");
@@ -43,11 +43,7 @@ contract Pool is Config {
         return (decodedPoolToken, decodedStableAsset, decodedWrappedPoolToken);
     }
 
-    function initialMintAndUnpause(
-        uint256 usdcAmount,
-        uint256 usdtAmount,
-        address decodedStableAsset,
-    ) internal {
+    function initialMintAndUnpause(uint256 usdcAmount, uint256 usdtAmount, address decodedStableAsset) internal {
         console.log("---------------");
         console.log("initial-mint-logs");
         console.log("---------------");

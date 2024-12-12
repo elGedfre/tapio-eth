@@ -2,13 +2,13 @@
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import {stdJson} from "forge-std/StdJson.sol";
-import {console} from "forge-std/console.sol";
+import { stdJson } from "forge-std/StdJson.sol";
+import { console } from "forge-std/console.sol";
 import { StableAsset } from "../src/StableAsset.sol";
 import { LPToken } from "../src/LPToken.sol";
 import { WLPToken } from "../src/WLPToken.sol";
 import { StableAssetFactory } from "../src/StableAssetFactory.sol";
-import {Config} from "script/Config.sol";
+import { Config } from "script/Config.sol";
 import "../src/misc/ConstantExchangeRateProvider.sol";
 
 contract Deploy is Config {

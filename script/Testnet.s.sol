@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {stdJson} from "forge-std/StdJson.sol";
-import {console} from "forge-std/console.sol";
+import { stdJson } from "forge-std/StdJson.sol";
+import { console } from "forge-std/console.sol";
 
-import {Deploy} from "script/Deploy.sol";
-import {Setup} from "script/Setup.sol";
+import { Deploy } from "script/Deploy.sol";
+import { Setup } from "script/Setup.sol";
 
 contract Testnet is Deploy, Setup {
     function init() internal {
@@ -14,7 +14,7 @@ contract Testnet is Deploy, Setup {
         initialMinterPrivateKey = vm.envUint("HEX_PRIV_KEY");
         GOVERNANCE = vm.addr(deployerPrivateKey);
         DEPLOYER = vm.addr(deployerPrivateKey);
-        INITIAL_MINTER  = vm.addr(initialMinterPrivateKey);
+        INITIAL_MINTER = vm.addr(initialMinterPrivateKey);
         testnet = true;
     }
 
@@ -28,37 +28,19 @@ contract Testnet is Deploy, Setup {
         deployBeacons();
         deployFactory();
 
-        vm.writeJson(
-            vm.serializeAddress("contracts", "USDC", usdc),
-            "./broadcast/testnet.json"
-        );
+        vm.writeJson(vm.serializeAddress("contracts", "USDC", usdc), "./broadcast/testnet.json");
+
+        vm.writeJson(vm.serializeAddress("contracts", "USDT", usdt), "./broadcast/testnet.json");
+
+        vm.writeJson(vm.serializeAddress("contracts", "Factory", address(factory)), "./broadcast/testnet.json");
 
         vm.writeJson(
-            vm.serializeAddress("contracts", "USDT", usdt),
-            "./broadcast/testnet.json"
+            vm.serializeAddress("contracts", "StableAssetBeacon", stableAssetBeacon), "./broadcast/testnet.json"
         );
 
-        vm.writeJson(
-            vm.serializeAddress("contracts", "Factory", address(factory)),
-            "./broadcast/testnet.json"
-        );
+        vm.writeJson(vm.serializeAddress("contracts", "LPTokenBeacon", lpTokenBeacon), "./broadcast/testnet.json");
 
-        vm.writeJson(
-            vm.serializeAddress("contracts", "StableAssetBeacon", stableAssetBeacon),
-            "./broadcast/testnet.json"
-        );
-
-        vm.writeJson(
-            vm.serializeAddress("contracts", "LPTokenBeacon", lpTokenBeacon),
-            "./broadcast/testnet.json"
-        );
-
-        vm.writeJson(
-            vm.serializeAddress("contracts", "WLPTokenBeacon", wlpTokenBeacon),
-            "./broadcast/testnet.json"
-        );
-
-        
+        vm.writeJson(vm.serializeAddress("contracts", "WLPTokenBeacon", wlpTokenBeacon), "./broadcast/testnet.json");
 
         vm.stopBroadcast();
     }

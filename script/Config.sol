@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {Script} from "forge-std/Script.sol";
-import {console} from "forge-std/console.sol";
+import { Script } from "forge-std/Script.sol";
+import { console } from "forge-std/console.sol";
 import { StableAssetFactory } from "../src/StableAssetFactory.sol";
 
 contract Config is Script {
@@ -10,7 +10,7 @@ contract Config is Script {
 
     uint256 deployerPrivateKey;
     uint256 initialMinterPrivateKey;
-    
+
     address GOVERNANCE;
     address DEPLOYER;
     address INITIAL_MINTER;
