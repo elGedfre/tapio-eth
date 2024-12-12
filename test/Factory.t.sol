@@ -71,5 +71,6 @@ contract FactoryTest is Test {
         stableAsset.mint(amounts, 0);
 
         assertEq(poolToken.balanceOf(initialMinter), 200e18);
+        assertNotEq(address(wrappedPoolToken), address(0));
     }
 }
