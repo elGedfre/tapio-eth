@@ -9,6 +9,8 @@ import { MockToken } from "../src/mock/MockToken.sol";
 import { StableAsset } from "../src/StableAsset.sol";
 import { LPToken } from "../src/LPToken.sol";
 import { WLPToken } from "../src/WLPToken.sol";
+import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import "../src/misc/ConstantExchangeRateProvider.sol";
 
 contract FactoryTest is Test {
     StableAssetFactory internal factory;
@@ -17,7 +19,34 @@ contract FactoryTest is Test {
 
     function setUp() public virtual {
         factory = new StableAssetFactory();
-        factory.initialize(governance, 0, 0, 0, 100);
+
+        address stableAssetImplentation = address(new StableAsset());
+        address lpTokenImplentation = address(new LPToken());
+        address wlpTokenImplentation = address(new WLPToken());
+
+        UpgradeableBeacon beacon = new UpgradeableBeacon(stableAssetImplentation);
+        beacon.transferOwnership(governance);
+        address stableAssetBeacon = address(beacon);
+
+        beacon = new UpgradeableBeacon(lpTokenImplentation);
+        beacon.transferOwnership(governance);
+        address lpTokenBeacon = address(beacon);
+
+        beacon = new UpgradeableBeacon(wlpTokenImplentation);
+        beacon.transferOwnership(governance);
+        address wlpTokenBeacon = address(beacon);
+
+        factory.initialize(
+            governance,
+            0,
+            0,
+            0,
+            100,
+            stableAssetBeacon,
+            lpTokenBeacon,
+            wlpTokenBeacon,
+            new ConstantExchangeRateProvider()
+        );
     }
 
     function test_CreatePoolConstantExchangeRate() external {

@@ -11,7 +11,6 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
-import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 
 import "./StableAsset.sol";
 import "./LPToken.sol";
@@ -149,7 +148,11 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         uint256 _mintFee,
         uint256 _swapFee,
         uint256 _redeemFee,
-        uint256 _A
+        uint256 _A,
+        address _stableAssetBeacon,
+        address _lpTokenBeacon,
+        address _wlpTokenBeacon,
+        ConstantExchangeRateProvider _constantExchangeRateProvider
     )
         public
         initializer
@@ -157,22 +160,11 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         __ReentrancyGuard_init();
         governance = _governance;
 
-        address stableAssetImplentation = address(new StableAsset());
-        address lpTokenImplentation = address(new LPToken());
+        stableAssetBeacon = _stableAssetBeacon;
+        lpTokenBeacon = _lpTokenBeacon;
+        wlpTokenBeacon = _wlpTokenBeacon;
 
-        UpgradeableBeacon beacon = new UpgradeableBeacon(stableAssetImplentation);
-        beacon.transferOwnership(_governance);
-        stableAssetBeacon = address(beacon);
-
-        beacon = new UpgradeableBeacon(lpTokenImplentation);
-        beacon.transferOwnership(_governance);
-        lpTokenBeacon = address(beacon);
-
-        beacon = new UpgradeableBeacon(address(new WLPToken()));
-        beacon.transferOwnership(_governance);
-        wlpTokenBeacon = address(beacon);
-
-        constantExchangeRateProvider = new ConstantExchangeRateProvider();
+        constantExchangeRateProvider = _constantExchangeRateProvider;
 
         mintFee = _mintFee;
         swapFee = _swapFee;
