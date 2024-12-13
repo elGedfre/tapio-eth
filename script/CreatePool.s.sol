@@ -1,0 +1,56 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.28;
+
+import { stdJson } from "forge-std/StdJson.sol";
+import { console } from "forge-std/console.sol";
+
+import { Deploy } from "script/Deploy.sol";
+import { Setup } from "script/Setup.sol";
+import { Pool } from "script/Pool.sol";
+import { StableAssetFactory } from "../src/StableAssetFactory.sol";
+import { StableAsset } from "../src/StableAsset.sol";
+import { MockToken } from "../src/mock/MockToken.sol";
+
+contract Testnet is Deploy, Setup, Pool {
+    function init() internal {
+        if (vm.envUint("HEX_PRIV_KEY") == 0) revert("No private key found");
+        initialMinterPrivateKey = vm.envUint("HEX_PRIV_KEY");
+        INITIAL_MINTER = vm.addr(initialMinterPrivateKey);
+    }
+
+    function run() public payable {
+        init();
+        loadConfig();
+
+        vm.startBroadcast(initialMinterPrivateKey);
+
+        string memory root = vm.projectRoot();
+        string memory path;
+        if (testnet) {
+            path = string.concat(root, "/broadcast/testnet.json");
+        } else {
+            path = string.concat(root, "/broadcast/mainnet.json");
+        }
+
+        string memory json = vm.readFile(path);
+        bytes memory data = vm.parseJson(json);
+
+        JSONData memory jsonData = abi.decode(data, (JSONData));
+
+        factory = StableAssetFactory(jsonData.Factory);
+        stableAssetBeacon = jsonData.StableAssetBeacon;
+        lpTokenBeacon = jsonData.LPTokenBeacon;
+        wlpTokenBeacon = jsonData.WLPTokenBeacon;
+        usdc = jsonData.USDC;
+        usdt = jsonData.USDT;
+
+        (, address stableAsset,) = createStandardPool();
+
+        MockToken(usdc).mint(INITIAL_MINTER, 100e18);
+        MockToken(usdt).mint(INITIAL_MINTER, 100e18);
+
+        initialMintAndUnpause(100e18, 100e18, StableAsset(stableAsset));
+
+        vm.stopBroadcast();
+    }
+}

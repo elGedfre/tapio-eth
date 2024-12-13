@@ -11,11 +11,8 @@ contract Testnet is Deploy, Setup {
     function init() internal {
         if (vm.envUint("HEX_PRIV_KEY") == 0) revert("No private key found");
         deployerPrivateKey = vm.envUint("HEX_PRIV_KEY");
-        initialMinterPrivateKey = vm.envUint("HEX_PRIV_KEY");
         GOVERNANCE = vm.addr(deployerPrivateKey);
         DEPLOYER = vm.addr(deployerPrivateKey);
-        INITIAL_MINTER = vm.addr(initialMinterPrivateKey);
-        testnet = true;
     }
 
     function run() public payable {

@@ -24,11 +24,11 @@ contract Config is Script {
     address wlpTokenBeacon;
 
     struct JSONData {
+        address Factory;
+        address LPTokenBeacon;
+        address StableAssetBeacon;
         address USDC;
         address USDT;
-        address Factory;
-        address StableAssetBeacon;
-        address LPTokenBeacon;
         address WLPTokenBeacon;
     }
 

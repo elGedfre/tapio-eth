@@ -45,7 +45,7 @@ contract Pool is Config {
         return (decodedPoolToken, decodedStableAsset, decodedWrappedPoolToken);
     }
 
-    function initialMintAndUnpause(uint256 usdcAmount, uint256 usdtAmount, address decodedStableAsset) internal {
+    function initialMintAndUnpause(uint256 usdcAmount, uint256 usdtAmount, StableAsset stableAsset) internal {
         console.log("---------------");
         console.log("initial-mint-logs");
         console.log("---------------");
@@ -57,7 +57,7 @@ contract Pool is Config {
         amounts[0] = usdcAmount;
         amounts[1] = usdtAmount;
 
-        StableAsset stableAsset = StableAsset(decodedStableAsset);
         stableAsset.mint(amounts, 0);
+        stableAsset.unpause();
     }
 }
