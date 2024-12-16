@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.18;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -179,7 +179,6 @@ contract LPToken is Initializable, ILPToken {
         return true;
     }
 
-    // solhint-disable max-line-length
     /**
      * @notice Atomically increases the allowance granted to `_spender` by the caller by `_addedValue`.
      *
@@ -207,7 +206,6 @@ contract LPToken is Initializable, ILPToken {
         _approve(msg.sender, _spender, currentAllowance - _subtractedValue);
         return true;
     }
-    // solhint-enable max-line-length
 
     /**
      * @notice This function is called by the governance to set the buffer rate.
@@ -329,12 +327,6 @@ contract LPToken is Initializable, ILPToken {
     function mintShares(address _account, uint256 _tokenAmount) external {
         require(pools[msg.sender], "LPToken: no pool");
         _mintShares(_account, _tokenAmount);
-    }
-
-    function donateShares(uint256 _tokenAmount) external {
-        bufferAmount += _tokenAmount;
-        emit BufferIncreased(_tokenAmount, bufferAmount);
-        _burnShares(msg.sender, _tokenAmount);
     }
 
     function burnShares(uint256 _tokenAmount) external {

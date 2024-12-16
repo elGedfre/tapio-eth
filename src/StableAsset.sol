@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.18;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -104,17 +104,41 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable {
     event GovernanceProposed(address governance);
 
     /**
-     * @dev This event is emitted when a new admin is added or removed.
-     * @param admin is the address of the admin.
-     * @param allowed is a boolean indicating whether the admin is allowed to perform administrative functions.
+     * @dev This event is emitted when the fee margin is modified.
+     * @param margin is the new value of the margin.
      */
-    event AdminModified(address indexed admin, bool allowed);
+    event FeeMarginModified(uint256 margin);
+
+    /**
+     * @dev This event is emitted when the fee margin is modified.
+     * @param margin is the new value of the margin.
+     */
+    event YieldMarginModified(uint256 margin);
+
+    /**
+     * @dev This event is emitted when the max delta D is modified.
+     * @param delta is the new value of the delta.
+     */
+    event MaxDeltaDModified(uint256 delta);
 
     /**
      * @dev This is the denominator used for calculating transaction fees in the StableAsset contract.
      */
     uint256 private constant FEE_DENOMINATOR = 10 ** 10;
+    /**
+     *  @dev This is the maximum error margin for calculating transaction fees in the StableAsset contract.
+     */
+    uint256 private constant DEFAULT_FEE_ERROR_MARGIN = 100_000;
 
+    /**
+     *  @dev This is the maximum error margin for calculating transaction yield in the StableAsset contract.
+     */
+    uint256 private constant DEFAULT_YIELD_ERROR_MARGIN = 10_000;
+
+    /**
+     *  @dev This is the maximum error margin for updating A in the StableAsset contract.
+     */
+    uint256 private constant DEFAULT_MAX_DELTA_D = 100_000;
     /**
      * @dev This is the maximum value of the amplification coefficient A.
      */
@@ -201,6 +225,21 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable {
     uint256 public exchangeRateTokenIndex;
 
     /**
+     * @dev Fee error margin.
+     */
+    uint256 public feeErrorMargin;
+
+    /**
+     * @dev Yield error margin.
+     */
+    uint256 public yieldErrorMargin;
+
+    /**
+     * @dev Max delta D.
+     */
+    uint256 public maxDeltaD;
+
+    /**
      * @dev Pending governance address.
      */
     address public pendingGovernance;
@@ -267,6 +306,9 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable {
         futureA = _A;
         initialABlock = block.number;
         futureABlock = block.number;
+        feeErrorMargin = DEFAULT_FEE_ERROR_MARGIN;
+        yieldErrorMargin = DEFAULT_YIELD_ERROR_MARGIN;
+        maxDeltaD = DEFAULT_MAX_DELTA_D;
         lastRedeemOrMint = block.timestamp;
 
         // The swap must start with paused state!
@@ -951,11 +993,19 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable {
         balances = _balances;
         totalSupply = newD;
 
-        if (oldD > newD) {
-            poolToken.removeTotalSupply(oldD - newD);
-            return 0;
+        if (isFee) {
+            if (oldD > newD && (oldD - newD) < feeErrorMargin) {
+                return 0;
+            } else if (oldD > newD) {
+                revert ImbalancedPool(oldD, newD);
+            }
+        } else {
+            if (oldD > newD && (oldD - newD) < yieldErrorMargin) {
+                return 0;
+            } else if (oldD > newD) {
+                revert ImbalancedPool(oldD, newD);
+            }
         }
-
         uint256 feeAmount = newD - oldD;
         if (feeAmount == 0) {
             return 0;
@@ -1062,56 +1112,56 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable {
         require(_account != address(0x0), "account not set");
 
         admins[_account] = _allowed;
-        emit AdminModified(_account, _allowed);
     }
 
     /**
-     * @dev Increase the A value.
+     * @dev Update the A value.
      * @param _futureA The new A value.
      * @param _futureABlock The block number to update A value.
      */
-    function increaseA(uint256 _futureA, uint256 _futureABlock) external {
+    function updateA(uint256 _futureA, uint256 _futureABlock) external {
         require(msg.sender == governance, "not governance");
         require(_futureA > 0 && _futureA < MAX_A, "A not set");
         require(_futureABlock > block.number, "block in the past");
 
-        collectFeeOrYield(false);
-
         initialA = getA();
-        require(_futureA > initialA, "A decreasing");
         initialABlock = block.number;
         futureA = _futureA;
         futureABlock = _futureABlock;
 
+        collectFeeOrYield(false);
         uint256 newD = _getD(balances, futureA);
-        if (newD < totalSupply) {
-            revert("Can't update A");
-        }
+        uint256 absolute = totalSupply > newD ? totalSupply - newD : newD - totalSupply;
+        require(absolute < maxDeltaD, "Pool imbalanced");
+
         emit AModified(_futureA, _futureABlock);
     }
 
     /**
-     * @dev Decrease the A value.
-     * @param _futureA The new A value.
+     * @dev update fee error margin.
      */
-    function decreaseA(uint256 _futureA) external {
+    function updateFeeErrorMargin(uint256 newValue) external {
         require(msg.sender == governance, "not governance");
-        require(_futureA > 0 && _futureA < MAX_A, "A not set");
+        feeErrorMargin = newValue;
+        emit FeeMarginModified(newValue);
+    }
 
-        collectFeeOrYield(false);
+    /**
+     * @dev update yield error margin.
+     */
+    function updateYieldErrorMargin(uint256 newValue) external {
+        require(msg.sender == governance, "not governance");
+        yieldErrorMargin = newValue;
+        emit YieldMarginModified(newValue);
+    }
 
-        initialA = getA();
-        require(initialA > _futureA, "A increasing");
-        initialABlock = block.number;
-        futureA = _futureA;
-        futureABlock = block.number;
-
-        uint256 newD = _getD(balances, futureA);
-        if (newD < totalSupply) {
-            poolToken.removeTotalSupply(totalSupply - newD);
-        }
-        initialA = _futureA;
-        emit AModified(_futureA, block.number);
+    /**
+     * @dev update yield error margin.
+     */
+    function updateMaxDeltaDMargin(uint256 newValue) external {
+        require(msg.sender == governance, "not governance");
+        maxDeltaD = newValue;
+        emit MaxDeltaDModified(newValue);
     }
 
     /**

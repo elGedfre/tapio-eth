@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.18;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
@@ -395,7 +395,7 @@ contract StableAssetApplication is Initializable, ReentrancyGuardUpgradeable {
     }
 
     /**
-     * @notice This function allows to rebase TapETH by increasing his total supply
+     * @notice This function allows to rebase LPToken by increasing his total supply
      * from all stableSwap pools by the staking rewards and the swap fee.
      */
     function rebase() external returns (uint256 _amount) {
