@@ -514,7 +514,6 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable {
         poolToken.mintShares(msg.sender, mintAmount);
         feeAmount = collectFeeOrYield(true);
         emit Minted(msg.sender, mintAmount, _amounts, feeAmount);
-        lastRedeemOrMint = block.timestamp;
         return mintAmount;
     }
 
