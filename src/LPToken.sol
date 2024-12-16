@@ -179,6 +179,7 @@ contract LPToken is Initializable, ILPToken {
         return true;
     }
 
+    // solhint-disable max-line-length
     /**
      * @notice Atomically increases the allowance granted to `_spender` by the caller by `_addedValue`.
      *
@@ -206,6 +207,7 @@ contract LPToken is Initializable, ILPToken {
         _approve(msg.sender, _spender, currentAllowance - _subtractedValue);
         return true;
     }
+    // solhint-enable max-line-length
 
     /**
      * @notice This function is called by the governance to set the buffer rate.

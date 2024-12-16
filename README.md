@@ -341,7 +341,8 @@ Deploy to Base Testnet:
 $ forge script ./script/Testnet.s.sol -vvv --rpc-url basesepolia --broadcast
 ```
 
-Before deploying make sure you configure the neccessary variables in `.env` file. To just test the scripts with just a dry run remove the `--broadcast` flag.
+Before deploying make sure you configure the neccessary variables in `.env` file. To just test the scripts with just a
+dry run remove the `--broadcast` flag.
 
 ### Verifying Contracts on Testnet Explorer
 
@@ -351,7 +352,8 @@ Here is an example on how to verify a contract on base sepolia:
 $ forge verify-contract <contract-address> <contract-name> --watch --etherscan-api-key <basescan-api-key>  --chain-id 84532 --constructor-args <encoded-constructor-args>
 ```
 
-You can find the contract name and constructor args in the broadcast directory. To encode the constructor args you can use: https://abi.hashex.org/
+You can find the contract name and constructor args in the broadcast directory. To encode the constructor args you can
+use: https://abi.hashex.org/
 
 ### Format
 
