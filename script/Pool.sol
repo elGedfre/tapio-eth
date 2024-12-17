@@ -19,7 +19,10 @@ contract Pool is Config {
             tokenA: usdc,
             tokenB: usdt,
             initialMinter: INITIAL_MINTER,
-            tokenBType: StableAssetFactory.TokenBType.Standard,
+            tokenAType: StableAssetFactory.TokenType.Standard,
+            tokenAOracle: address(0),
+            tokenAFunctionSig: "",
+            tokenBType: StableAssetFactory.TokenType.Standard,
             tokenBOracle: address(0),
             tokenBFunctionSig: ""
         });

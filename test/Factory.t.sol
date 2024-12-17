@@ -57,7 +57,10 @@ contract FactoryTest is Test {
             tokenA: address(tokenA),
             tokenB: address(tokenB),
             initialMinter: address(initialMinter),
-            tokenBType: StableAssetFactory.TokenBType.Standard,
+            tokenAType: StableAssetFactory.TokenType.Standard,
+            tokenAOracle: address(0),
+            tokenAFunctionSig: "",
+            tokenBType: StableAssetFactory.TokenType.Standard,
             tokenBOracle: address(0),
             tokenBFunctionSig: ""
         });

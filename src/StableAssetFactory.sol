@@ -32,7 +32,7 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
     using SafeMathUpgradeable for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    enum TokenBType {
+    enum TokenType {
         Standard,
         Oracle,
         Rebasing,
@@ -43,7 +43,10 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         address tokenA;
         address tokenB;
         address initialMinter;
-        TokenBType tokenBType;
+        TokenType tokenAType;
+        address tokenAOracle;
+        string tokenAFunctionSig;
+        TokenType tokenBType;
         address tokenBOracle;
         string tokenBFunctionSig;
     }
@@ -235,31 +238,33 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
         fees[0] = mintFee;
         fees[1] = swapFee;
         fees[2] = redeemFee;
-        uint256 exchangeRateTokenIndex = 1;
 
-        address exchangeRateProvider;
-        if (argument.tokenBType == TokenBType.Standard || argument.tokenBType == TokenBType.Rebasing) {
-            exchangeRateProvider = address(constantExchangeRateProvider);
-        } else if (argument.tokenBType == TokenBType.Oracle) {
+        IExchangeRateProvider[] memory exchangeRateProviders = new IExchangeRateProvider[](2);
+
+        if (argument.tokenAType == TokenType.Standard || argument.tokenAType == TokenType.Rebasing) {
+            exchangeRateProviders[0] = IExchangeRateProvider(constantExchangeRateProvider);
+        } else if (argument.tokenAType == TokenType.Oracle) {
+            OracleExchangeRate oracleExchangeRate =
+                new OracleExchangeRate(argument.tokenAOracle, argument.tokenAFunctionSig);
+            exchangeRateProviders[0] = IExchangeRateProvider(oracleExchangeRate);
+        } else if (argument.tokenAType == TokenType.ERC4626) {
+            ERC4626ExchangeRate erc4626ExchangeRate = new ERC4626ExchangeRate(IERC4626(argument.tokenA));
+            exchangeRateProviders[0] = IExchangeRateProvider(erc4626ExchangeRate);
+        }
+
+        if (argument.tokenBType == TokenType.Standard || argument.tokenBType == TokenType.Rebasing) {
+            exchangeRateProviders[1] = IExchangeRateProvider(constantExchangeRateProvider);
+        } else if (argument.tokenBType == TokenType.Oracle) {
             OracleExchangeRate oracleExchangeRate =
                 new OracleExchangeRate(argument.tokenBOracle, argument.tokenBFunctionSig);
-            exchangeRateProvider = address(oracleExchangeRate);
-        } else if (argument.tokenBType == TokenBType.ERC4626) {
+            exchangeRateProviders[1] = IExchangeRateProvider(oracleExchangeRate);
+        } else if (argument.tokenBType == TokenType.ERC4626) {
             ERC4626ExchangeRate erc4626ExchangeRate = new ERC4626ExchangeRate(IERC4626(argument.tokenB));
-            exchangeRateProvider = address(erc4626ExchangeRate);
+            exchangeRateProviders[1] = IExchangeRateProvider(erc4626ExchangeRate);
         }
 
         bytes memory stableAssetInit = abi.encodeCall(
-            StableAsset.initialize,
-            (
-                tokens,
-                precisions,
-                fees,
-                LPToken(address(lpTokenProxy)),
-                A,
-                IExchangeRateProvider(exchangeRateProvider),
-                exchangeRateTokenIndex
-            )
+            StableAsset.initialize, (tokens, precisions, fees, LPToken(address(lpTokenProxy)), A, exchangeRateProviders)
         );
         BeaconProxy stableAssetProxy = new BeaconProxy(stableAssetBeacon, stableAssetInit);
         StableAsset stableAsset = StableAsset(address(stableAssetProxy));
