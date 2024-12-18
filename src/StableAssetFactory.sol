@@ -283,5 +283,5 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
         emit PoolCreated(address(lpTokenProxy), address(stableAssetProxy), address(wlpTokenProxy));
     }
 
-    function _authorizeUpgrade(address) internal override onlyGovernance {}
+    function _authorizeUpgrade(address) internal override onlyGovernance { }
 }

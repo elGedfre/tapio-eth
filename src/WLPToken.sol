@@ -76,11 +76,7 @@ contract WLPToken is ERC4626Upgradeable {
      * @param owner Address whose shares will be burned.
      * @return shares Burned shares corresponding to the assets withdrawn.
      */
-    function withdraw(
-        uint256 assets,
-        address receiver,
-        address owner
-    ) public override returns (uint256 shares) {
+    function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256 shares) {
         require(assets > 0, "ERC4626: cannot withdraw zero assets");
         shares = convertToShares(assets);
         if (msg.sender != owner) {
@@ -99,11 +95,7 @@ contract WLPToken is ERC4626Upgradeable {
      * @param owner Address whose shares will be burned.
      * @return assets Amount of lpToken withdrawn.
      */
-    function redeem(
-        uint256 shares,
-        address receiver,
-        address owner
-    ) public override returns (uint256 assets) {
+    function redeem(uint256 shares, address receiver, address owner) public override returns (uint256 assets) {
         require(shares > 0, "ERC4626: cannot redeem zero shares");
         assets = convertToAssets(shares);
         if (msg.sender != owner) {
