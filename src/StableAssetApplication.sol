@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "./interfaces/IWETH.sol";
 import "./interfaces/Ipool.sol";
 import "./StableAsset.sol";
@@ -23,7 +24,7 @@ error FailedEtherTransfer();
  * pool tokens to underlying tokens.
  * This contract should never store assets.
  */
-contract StableAssetApplication is Initializable, ReentrancyGuardUpgradeable {
+contract StableAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradeable {
     using SafeMathUpgradeable for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -405,5 +406,13 @@ contract StableAssetApplication is Initializable, ReentrancyGuardUpgradeable {
                 _amount += Ipool(_pool).rebase();
             }
         }
+    }
+
+    /**
+     * @dev Upgrade the contract.
+     * @param newImplementation New implementation address.
+     */
+    function _authorizeUpgrade(address newImplementation) internal override {
+        require(msg.sender == governance, "not governance");
     }
 }

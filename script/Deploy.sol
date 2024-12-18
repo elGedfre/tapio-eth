@@ -9,6 +9,7 @@ import { LPToken } from "../src/LPToken.sol";
 import { WLPToken } from "../src/WLPToken.sol";
 import { StableAssetFactory } from "../src/StableAssetFactory.sol";
 import { Config } from "script/Config.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "../src/misc/ConstantExchangeRateProvider.sol";
 
 contract Deploy is Config {
@@ -39,18 +40,9 @@ contract Deploy is Config {
         console.log("deploy-factory-logs");
         console.log("---------------");
 
-        factory = new StableAssetFactory();
+        bytes memory data = abi.encodeCall(StableAssetFactory.initialize, (GOVERNANCE, 0, 0, 0, 100, stableAssetBeacon, lpTokenBeacon, wlpTokenBeacon, new ConstantExchangeRateProvider()));
+        ERC1967Proxy proxy = new ERC1967Proxy(address(new StableAssetFactory()), data);
 
-        factory.initialize(
-            GOVERNANCE,
-            0,
-            0,
-            0,
-            100,
-            stableAssetBeacon,
-            lpTokenBeacon,
-            wlpTokenBeacon,
-            new ConstantExchangeRateProvider()
-        );
+        factory = StableAssetFactory(address(proxy));
     }
 }

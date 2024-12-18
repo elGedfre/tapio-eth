@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import "./StableAsset.sol";
 import "./LPToken.sol";
@@ -28,7 +29,7 @@ import "./interfaces/IExchangeRateProvider.sol";
  * pool tokens to underlying tokens.
  * This contract should never store assets.
  */
-contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
+contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
     using SafeMathUpgradeable for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -281,4 +282,6 @@ contract StableAssetFactory is Initializable, ReentrancyGuardUpgradeable {
 
         emit PoolCreated(address(lpTokenProxy), address(stableAssetProxy), address(wlpTokenProxy));
     }
+
+    function _authorizeUpgrade(address) internal override onlyGovernance {}
 }
