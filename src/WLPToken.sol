@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import "./interfaces/ILPToken.sol";
 
 /**
@@ -19,75 +20,98 @@ import "./interfaces/ILPToken.sol";
  * staking it and wrapping the received lpToken.
  *
  */
-contract WLPToken is ERC20PermitUpgradeable {
+contract WLPToken is ERC4626Upgradeable {
     ILPToken public lpToken;
 
     function initialize(ILPToken _lpToken) public initializer {
-        __ERC20Permit_init("Wrapped lpToken");
-        __ERC20_init("Wrapped lpToken", "wlpToken");
+        __ERC20_init("Wrapped LP Token", "wlpToken");
+        __ERC4626_init(IERC20Upgradeable(address(_lpToken)));
         lpToken = _lpToken;
     }
 
     /**
-     * @notice Exchanges lpToken to wlpToken
-     * @param _lpTokenAmount amount of lpToken to wrap in exchange for wlpToken
-     * @dev Requirements:
-     *  - msg.sender must approve at least `_lpTokenAmount` lpToken to this
-     *    contract.
-     * @return Amount of wlpToken user receives after wrap
+     * @dev Returns the total assets managed by the vault.
+     * Overrides the virtual totalAssets method of ERC4626.
+     * @return The total amount of lpToken held by the vault.
      */
-    function wrap(uint256 _lpTokenAmount) external returns (uint256) {
-        require(_lpTokenAmount > 0, "wlpToken: can't wrap zero lpToken");
-        uint256 _wlpTokenAmount = lpToken.getSharesByPooledEth(_lpTokenAmount);
-        _mint(msg.sender, _wlpTokenAmount);
-        lpToken.transferFrom(msg.sender, address(this), _lpTokenAmount);
-        return _wlpTokenAmount;
+    function totalAssets() public view override returns (uint256) {
+        return lpToken.balanceOf(address(this));
     }
 
     /**
-     * @notice Exchanges wlpToken to lpToken
-     * @param _wlpTokenAmount amount of wlpToken to uwrap in exchange for lpToken
-     * @return Amount of lpToken user receives after unwrap
+     * @dev Converts an amount of lpToken to the equivalent amount of shares.
+     * @param assets Amount of lpToken.
+     * @return The equivalent shares.
      */
-    function unwrap(uint256 _wlpTokenAmount) external returns (uint256) {
-        require(_wlpTokenAmount > 0, "wlpToken: zero amount unwrap not allowed");
-        uint256 _lpTokenAmount = lpToken.getPooledEthByShares(_wlpTokenAmount);
-        _burn(msg.sender, _wlpTokenAmount);
-        lpToken.transfer(msg.sender, _lpTokenAmount);
-        return _lpTokenAmount;
+    function convertToShares(uint256 assets) public view override returns (uint256) {
+        return lpToken.getSharesByPooledEth(assets);
     }
 
     /**
-     * @notice Get amount of wlpToken for a given amount of lpToken
-     * @param _lpTokenAmount amount of lpToken
-     * @return Amount of wlpToken for a given lpToken amount
+     * @dev Converts an amount of shares to the equivalent amount of lpToken.
+     * @param shares Amount of shares.
+     * @return The equivalent lpToken.
      */
-    function getWLPTokenByLPToken(uint256 _lpTokenAmount) external view returns (uint256) {
-        return lpToken.getSharesByPooledEth(_lpTokenAmount);
+    function convertToAssets(uint256 shares) public view override returns (uint256) {
+        return lpToken.getPooledEthByShares(shares);
     }
 
     /**
-     * @notice Get amount of lpToken for a given amount of wlpToken
-     * @param _wlpTokenAmount amount of wlpToken
-     * @return Amount of lpToken for a given wlpToken amount
+     * @dev Deposits lpToken into the vault in exchange for shares.
+     * @param assets Amount of lpToken to deposit.
+     * @param receiver Address to receive the minted shares.
+     * @return shares Amount of shares minted.
      */
-    function getLPTokenByWLPToken(uint256 _wlpTokenAmount) external view returns (uint256) {
-        return lpToken.getPooledEthByShares(_wlpTokenAmount);
+    function deposit(uint256 assets, address receiver) public override returns (uint256 shares) {
+        require(assets > 0, "ERC4626: cannot deposit zero assets");
+        shares = convertToShares(assets);
+        lpToken.transferFrom(msg.sender, address(this), assets);
+        _mint(receiver, shares);
     }
 
     /**
-     * @notice Get amount of lpToken for a one wlpToken
-     * @return Amount of lpToken for 1 wstETH
+     * @dev Withdraws lpToken from the vault in exchange for burning shares.
+     * @param assets Amount of lpToken to withdraw.
+     * @param receiver Address to receive the lpToken.
+     * @param owner Address whose shares will be burned.
+     * @return shares Burned shares corresponding to the assets withdrawn.
      */
-    function lpTokenPerToken() external view returns (uint256) {
-        return lpToken.getPooledEthByShares(1 ether);
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) public override returns (uint256 shares) {
+        require(assets > 0, "ERC4626: cannot withdraw zero assets");
+        shares = convertToShares(assets);
+        if (msg.sender != owner) {
+            uint256 allowed = allowance(owner, msg.sender);
+            require(allowed >= shares, "ERC4626: insufficient allowance");
+            _approve(owner, msg.sender, allowed - shares);
+        }
+        _burn(owner, shares);
+        lpToken.transfer(receiver, assets);
     }
 
     /**
-     * @notice Get amount of wlpToken for a one lpToken
-     * @return Amount of wlpToken for a 1 lpToken
+     * @dev Redeems shares for lpToken.
+     * @param shares Amount of shares to redeem.
+     * @param receiver Address to receive the lpToken.
+     * @param owner Address whose shares will be burned.
+     * @return assets Amount of lpToken withdrawn.
      */
-    function tokensPerLPToken() external view returns (uint256) {
-        return lpToken.getSharesByPooledEth(1 ether);
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) public override returns (uint256 assets) {
+        require(shares > 0, "ERC4626: cannot redeem zero shares");
+        assets = convertToAssets(shares);
+        if (msg.sender != owner) {
+            uint256 allowed = allowance(owner, msg.sender);
+            require(allowed >= shares, "ERC4626: insufficient allowance");
+            _approve(owner, msg.sender, allowed - shares);
+        }
+        _burn(owner, shares);
+        lpToken.transfer(receiver, assets);
     }
 }
