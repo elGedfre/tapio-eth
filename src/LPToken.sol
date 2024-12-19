@@ -61,14 +61,14 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
         __Ownable_init();
     }
 
-    function addPool(address _pool) public onlyOwner() {
+    function addPool(address _pool) public onlyOwner {
         require(_pool != address(0), "LPToken: zero address");
         require(!pools[_pool], "LPToken: pool is already added");
         pools[_pool] = true;
         emit PoolAdded(_pool);
     }
 
-    function removePool(address _pool) public onlyOwner() {
+    function removePool(address _pool) public onlyOwner {
         require(pools[_pool], "LPToken: pool doesn't exist");
         pools[_pool] = false;
         emit PoolRemoved(_pool);
@@ -194,13 +194,13 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     /**
      * @notice This function is called by the owner to set the buffer rate.
      */
-    function setBuffer(uint256 _buffer) external onlyOwner() {
+    function setBuffer(uint256 _buffer) external onlyOwner {
         require(_buffer < BUFFER_DENOMINATOR, "LPToken: out of range");
         bufferPercent = _buffer;
         emit SetBufferPercent(_buffer);
     }
 
-    function setSymbol(string memory _symbol) external onlyOwner() {
+    function setSymbol(string memory _symbol) external onlyOwner {
         tokenSymbol = _symbol;
         emit SymbolModified(_symbol);
     }

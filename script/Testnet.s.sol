@@ -11,7 +11,7 @@ contract Testnet is Deploy, Setup {
     function init() internal {
         if (vm.envUint("HEX_PRIV_KEY") == 0) revert("No private key found");
         deployerPrivateKey = vm.envUint("HEX_PRIV_KEY");
-        GOVERNANCE = vm.addr(deployerPrivateKey);
+        GOVERNOR = vm.addr(deployerPrivateKey);
         DEPLOYER = vm.addr(deployerPrivateKey);
     }
 
@@ -22,7 +22,7 @@ contract Testnet is Deploy, Setup {
         vm.startBroadcast(deployerPrivateKey);
 
         deployMocks();
-        deployBeacons();
+        deployBeaconsAndFactoryTimelock();
         deployFactory();
 
         vm.writeJson(vm.serializeAddress("contracts", "USDC", usdc), "./broadcast/testnet.json");
@@ -38,6 +38,8 @@ contract Testnet is Deploy, Setup {
         vm.writeJson(vm.serializeAddress("contracts", "LPTokenBeacon", lpTokenBeacon), "./broadcast/testnet.json");
 
         vm.writeJson(vm.serializeAddress("contracts", "WLPTokenBeacon", wlpTokenBeacon), "./broadcast/testnet.json");
+
+        vm.writeJson(vm.serializeAddress("contracts", "TimelockBeacon", timelockBeacon), "./broadcast/testnet.json");
 
         vm.stopBroadcast();
     }

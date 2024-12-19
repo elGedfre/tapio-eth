@@ -14,15 +14,15 @@ import { MockToken } from "../src/mock/MockToken.sol";
 contract Testnet is Deploy, Setup, Pool {
     function init() internal {
         if (vm.envUint("HEX_PRIV_KEY") == 0) revert("No private key found");
-        initialMinterPrivateKey = vm.envUint("HEX_PRIV_KEY");
-        INITIAL_MINTER = vm.addr(initialMinterPrivateKey);
+        deployerPrivateKey = vm.envUint("HEX_PRIV_KEY");
+        DEPLOYER = vm.addr(deployerPrivateKey);
     }
 
     function run() public payable {
         init();
         loadConfig();
 
-        vm.startBroadcast(initialMinterPrivateKey);
+        vm.startBroadcast(deployerPrivateKey);
 
         string memory root = vm.projectRoot();
         string memory path;
@@ -41,13 +41,14 @@ contract Testnet is Deploy, Setup, Pool {
         stableAssetBeacon = jsonData.StableAssetBeacon;
         lpTokenBeacon = jsonData.LPTokenBeacon;
         wlpTokenBeacon = jsonData.WLPTokenBeacon;
+        timelockBeacon = jsonData.TimelockBeacon;
         usdc = jsonData.USDC;
         usdt = jsonData.USDT;
 
         (, address stableAsset,) = createStandardPool();
 
-        MockToken(usdc).mint(INITIAL_MINTER, 100e18);
-        MockToken(usdt).mint(INITIAL_MINTER, 100e18);
+        MockToken(usdc).mint(DEPLOYER, 100e18);
+        MockToken(usdt).mint(DEPLOYER, 100e18);
 
         initialMintAndUnpause(100e18, 100e18, StableAsset(stableAsset));
 

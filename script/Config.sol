@@ -9,11 +9,9 @@ contract Config is Script {
     bool testnet = vm.envBool("TESTNET");
 
     uint256 deployerPrivateKey;
-    uint256 initialMinterPrivateKey;
 
-    address GOVERNANCE;
+    address GOVERNOR;
     address DEPLOYER;
-    address INITIAL_MINTER;
 
     address usdc;
     address usdt;
@@ -22,6 +20,8 @@ contract Config is Script {
     address stableAssetBeacon;
     address lpTokenBeacon;
     address wlpTokenBeacon;
+    address timelockBeacon;
+    address factoryTimelock;
 
     struct JSONData {
         address Factory;
@@ -30,6 +30,7 @@ contract Config is Script {
         address USDC;
         address USDT;
         address WLPTokenBeacon;
+        address TimelockBeacon;
     }
 
     function loadConfig() internal {

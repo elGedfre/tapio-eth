@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {TimelockControllerUpgradeable} from
+import { TimelockControllerUpgradeable } from
     "@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol";
 
 /**
@@ -27,7 +27,10 @@ contract Timelock is TimelockControllerUpgradeable {
         uint256 minDelay,
         address[] memory proposers,
         address[] memory executors
-    ) public initializer {
+    )
+        public
+        initializer
+    {
         __TimelockController_init(minDelay, proposers, executors, admin);
         _grantRole(EMERGENCY_GUARDIAN_ROLE, admin);
     }
@@ -38,7 +41,11 @@ contract Timelock is TimelockControllerUpgradeable {
      * @dev Does not store operation id
      * @dev Emits a {CallExecuted} event.
      */
-    function emergencyExecute(address target, uint256 value, bytes calldata payload)
+    function emergencyExecute(
+        address target,
+        uint256 value,
+        bytes calldata payload
+    )
         public
         payable
         onlyRole(EMERGENCY_GUARDIAN_ROLE)
@@ -57,7 +64,11 @@ contract Timelock is TimelockControllerUpgradeable {
         address[] calldata targets,
         uint256[] calldata values,
         bytes[] calldata payloads
-    ) public payable onlyRole(EMERGENCY_GUARDIAN_ROLE) {
+    )
+        public
+        payable
+        onlyRole(EMERGENCY_GUARDIAN_ROLE)
+    {
         require(targets.length == values.length, "TimelockController: length mismatch");
         require(targets.length == payloads.length, "TimelockController: length mismatch");
 

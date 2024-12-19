@@ -18,7 +18,6 @@ contract Pool is Config {
         StableAssetFactory.CreatePoolArgument memory arg = StableAssetFactory.CreatePoolArgument({
             tokenA: usdc,
             tokenB: usdt,
-            initialMinter: INITIAL_MINTER,
             tokenAType: StableAssetFactory.TokenType.Standard,
             tokenAOracle: address(0),
             tokenAFunctionSig: "",
@@ -61,6 +60,5 @@ contract Pool is Config {
         amounts[1] = usdtAmount;
 
         stableAsset.mint(amounts, 0);
-        stableAsset.unpause();
     }
 }

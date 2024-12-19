@@ -175,7 +175,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
      * It might be different from the pool token supply as the pool token can have multiple minters.
      */
     uint256 public totalSupply;
-    
+
     /**
      * @dev This is a mapping of accounts that have administrative privileges over the StableAsset contract.
      */
@@ -956,12 +956,11 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
         return feeAmount;
     }
 
-
     /**
      * @dev Updates the mint fee.
      * @param _mintFee The new mint fee.
      */
-    function setMintFee(uint256 _mintFee) external  onlyOwner(){
+    function setMintFee(uint256 _mintFee) external onlyOwner {
         require(_mintFee < FEE_DENOMINATOR, "exceed limit");
         mintFee = _mintFee;
         emit MintFeeModified(_mintFee);
@@ -971,7 +970,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
      * @dev Updates the swap fee.
      * @param _swapFee The new swap fee.
      */
-    function setSwapFee(uint256 _swapFee) external onlyOwner(){
+    function setSwapFee(uint256 _swapFee) external onlyOwner {
         require(_swapFee < FEE_DENOMINATOR, "exceed limit");
         swapFee = _swapFee;
         emit SwapFeeModified(_swapFee);
@@ -981,7 +980,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
      * @dev Updates the redeem fee.
      * @param _redeemFee The new redeem fee.
      */
-    function setRedeemFee(uint256 _redeemFee) external onlyOwner() {
+    function setRedeemFee(uint256 _redeemFee) external onlyOwner {
         require(_redeemFee < FEE_DENOMINATOR, "exceed limit");
         redeemFee = _redeemFee;
         emit RedeemFeeModified(_redeemFee);
@@ -990,7 +989,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
     /**
      * @dev Pause mint/swap/redeem actions. Can unpause later.
      */
-    function pause() external onlyOwner() {
+    function pause() external onlyOwner {
         require(!paused, "paused");
 
         paused = true;
@@ -999,7 +998,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
     /**
      * @dev Unpause mint/swap/redeem actions.
      */
-    function unpause() external onlyOwner() {
+    function unpause() external onlyOwner {
         require(paused, "not paused");
 
         paused = false;
@@ -1010,7 +1009,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
      * @param _account Address to update admin role.
      * @param _allowed Whether the address is granted the admin role.
      */
-    function setAdmin(address _account, bool _allowed) external onlyOwner() {
+    function setAdmin(address _account, bool _allowed) external onlyOwner {
         require(_account != address(0x0), "account not set");
 
         admins[_account] = _allowed;
@@ -1021,7 +1020,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
      * @param _futureA The new A value.
      * @param _futureABlock The block number to update A value.
      */
-    function updateA(uint256 _futureA, uint256 _futureABlock) external onlyOwner() {
+    function updateA(uint256 _futureA, uint256 _futureABlock) external onlyOwner {
         require(_futureA > 0 && _futureA < MAX_A, "A not set");
         require(_futureABlock > block.number, "block in the past");
 
@@ -1041,7 +1040,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
     /**
      * @dev update fee error margin.
      */
-    function updateFeeErrorMargin(uint256 newValue) external onlyOwner() {
+    function updateFeeErrorMargin(uint256 newValue) external onlyOwner {
         feeErrorMargin = newValue;
         emit FeeMarginModified(newValue);
     }
@@ -1049,7 +1048,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
     /**
      * @dev update yield error margin.
      */
-    function updateYieldErrorMargin(uint256 newValue) external onlyOwner() {
+    function updateYieldErrorMargin(uint256 newValue) external onlyOwner {
         yieldErrorMargin = newValue;
         emit YieldMarginModified(newValue);
     }
@@ -1057,7 +1056,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
     /**
      * @dev update yield error margin.
      */
-    function updateMaxDeltaDMargin(uint256 newValue) external onlyOwner() {
+    function updateMaxDeltaDMargin(uint256 newValue) external onlyOwner {
         maxDeltaD = newValue;
         emit MaxDeltaDModified(newValue);
     }
@@ -1065,7 +1064,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
     /**
      * @dev Distribute losses
      */
-    function distributeLoss() external onlyOwner() {
+    function distributeLoss() external onlyOwner {
         require(paused, "not paused");
 
         uint256[] memory _balances = balances;

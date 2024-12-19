@@ -187,7 +187,7 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, Owna
     /**
      * @dev Set the govenance address.
      */
-    function setGovernor(address _governor) public onlyOwner() {
+    function setGovernor(address _governor) public onlyOwner {
         governor = _governor;
         emit GovernorModified(governor);
     }
@@ -229,11 +229,9 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, Owna
         address[] memory executors = new address[](1);
         proposers[0] = governor;
         executors[0] = governor;
-        bytes memory timelockInit = abi.encodeCall(
-            Timelock.initialize, (governor, timelockMinimumDelay, proposers, executors)
-        );
-        address timelock =
-            payable(address(new BeaconProxy(timelockBeacon, timelockInit)));
+        bytes memory timelockInit =
+            abi.encodeCall(Timelock.initialize, (governor, timelockMinimumDelay, proposers, executors));
+        address timelock = payable(address(new BeaconProxy(timelockBeacon, timelockInit)));
 
         address[] memory tokens = new address[](2);
         uint256[] memory precisions = new uint256[](2);
@@ -287,5 +285,5 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, Owna
         emit PoolCreated(address(lpTokenProxy), address(stableAssetProxy), address(wlpTokenProxy));
     }
 
-    function _authorizeUpgrade(address) internal override onlyOwner() { }
+    function _authorizeUpgrade(address) internal override onlyOwner { }
 }

@@ -15,7 +15,7 @@ import "../src/misc/ConstantExchangeRateProvider.sol";
 
 contract FactoryTest is Test {
     StableAssetFactory internal factory;
-    address governance = address(0x01);
+    address governor = address(0x01);
     address initialMinter = address(0x02);
 
     function setUp() public virtual {
@@ -27,23 +27,23 @@ contract FactoryTest is Test {
         address timelockImplentation = address(new Timelock());
 
         UpgradeableBeacon beacon = new UpgradeableBeacon(stableAssetImplentation);
-        beacon.transferOwnership(governance);
+        beacon.transferOwnership(governor);
         address stableAssetBeacon = address(beacon);
 
         beacon = new UpgradeableBeacon(lpTokenImplentation);
-        beacon.transferOwnership(governance);
+        beacon.transferOwnership(governor);
         address lpTokenBeacon = address(beacon);
 
         beacon = new UpgradeableBeacon(wlpTokenImplentation);
-        beacon.transferOwnership(governance);
+        beacon.transferOwnership(governor);
         address wlpTokenBeacon = address(beacon);
 
         beacon = new UpgradeableBeacon(timelockImplentation);
-        beacon.transferOwnership(governance);
+        beacon.transferOwnership(governor);
         address timelockBeacon = address(beacon);
 
         factory.initialize(
-            governance,
+            governor,
             0,
             0,
             0,

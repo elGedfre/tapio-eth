@@ -334,7 +334,7 @@ contract StableAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradeable, 
      * @param _swap The swap address.
      * @param _enabled Enable or disable swap.
      */
-    function updatePool(address _swap, bool _enabled) external onlyOwner() {
+    function updatePool(address _swap, bool _enabled) external onlyOwner {
         if (_enabled && !allowedPoolAddress[_swap]) {
             pools.push(_swap);
         } else {
@@ -370,6 +370,5 @@ contract StableAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradeable, 
      * @dev Upgrade the contract.
      * @param newImplementation New implementation address.
      */
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner() {
-    }
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner { }
 }
