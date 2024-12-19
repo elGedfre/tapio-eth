@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "./StableAsset.sol";
 import "./LPToken.sol";
@@ -19,6 +20,7 @@ import "./WLPToken.sol";
 import "./misc/ConstantExchangeRateProvider.sol";
 import "./misc/ERC4626ExchangeRate.sol";
 import "./misc/OracleExchangeRate.sol";
+import "./governance/Timelock.sol";
 import "./interfaces/IExchangeRateProvider.sol";
 
 /**
@@ -29,7 +31,7 @@ import "./interfaces/IExchangeRateProvider.sol";
  * pool tokens to underlying tokens.
  * This contract should never store assets.
  */
-contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
+contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
     using SafeMathUpgradeable for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -43,7 +45,6 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
     struct CreatePoolArgument {
         address tokenA;
         address tokenB;
-        address initialMinter;
         TokenType tokenAType;
         address tokenAOracle;
         string tokenAFunctionSig;
@@ -53,14 +54,9 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
     }
 
     /**
-     * @dev This is the account that has governance control over the protocol.
+     * @dev This is the account that has governor control over the protocol.
      */
-    address public governance;
-
-    /**
-     * @dev Pending governance address,
-     */
-    address public pendingGovernance;
+    address public governor;
 
     /**
      * @dev Default mint fee for the pool.
@@ -98,21 +94,25 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
     address public wlpTokenBeacon;
 
     /**
+     * @dev Beacon for the Timelock implementation.
+     */
+    address public timelockBeacon;
+
+    /**
+     * @dev Minimum delay for timelock
+     */
+    uint256 public timelockMinimumDelay;
+
+    /**
      * @dev Constant exchange rate provider.
      */
     ConstantExchangeRateProvider public constantExchangeRateProvider;
 
     /**
-     * @dev This event is emitted when the governance is modified.
-     * @param governance is the new value of the governance.
+     * @dev This event is emitted when the governor is modified.
+     * @param governor is the new value of the governor.
      */
-    event GovernanceModified(address governance);
-
-    /**
-     * @dev This event is emitted when the governance is modified.
-     * @param governance is the new value of the governance.
-     */
-    event GovernanceProposed(address governance);
+    event GovernorModified(address governor);
 
     /**
      * @dev This event is emitted when a new pool is created.
@@ -144,11 +144,13 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
      */
     event AModified(uint256 A);
 
+    event TimelockMinimumDelayModified(uint256 timelockMinimumDelay);
+
     /**
      * @dev Initializes the StableSwap Application contract.
      */
     function initialize(
-        address _governance,
+        address _governor,
         uint256 _mintFee,
         uint256 _swapFee,
         uint256 _redeemFee,
@@ -156,18 +158,24 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
         address _stableAssetBeacon,
         address _lpTokenBeacon,
         address _wlpTokenBeacon,
+        address _timelockBeacon,
+        uint256 _timelockMinimumDelay,
         ConstantExchangeRateProvider _constantExchangeRateProvider
     )
         public
         initializer
     {
         __ReentrancyGuard_init();
-        governance = _governance;
+        __Ownable_init();
+
+        governor = _governor;
 
         stableAssetBeacon = _stableAssetBeacon;
         lpTokenBeacon = _lpTokenBeacon;
         wlpTokenBeacon = _wlpTokenBeacon;
+        timelockBeacon = _timelockBeacon;
 
+        timelockMinimumDelay = _timelockMinimumDelay;
         constantExchangeRateProvider = _constantExchangeRateProvider;
 
         mintFee = _mintFee;
@@ -177,46 +185,34 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
     }
 
     /**
-     * @dev Propose the govenance address.
-     * @param _governance Address of the new governance.
+     * @dev Set the govenance address.
      */
-    function proposeGovernance(address _governance) public {
-        require(msg.sender == governance, "not governance");
-        pendingGovernance = _governance;
-        emit GovernanceProposed(_governance);
+    function setGovernor(address _governor) public onlyOwner() {
+        governor = _governor;
+        emit GovernorModified(governor);
     }
 
-    /**
-     * @dev Accept the govenance address.
-     */
-    function acceptGovernance() public {
-        require(msg.sender == pendingGovernance, "not pending governance");
-        governance = pendingGovernance;
-        pendingGovernance = address(0);
-        emit GovernanceModified(governance);
+    function setTimelockMinimumDelay(uint256 _timelockMinimumDelay) external onlyOwner {
+        timelockMinimumDelay = _timelockMinimumDelay;
+        emit TimelockMinimumDelayModified(_timelockMinimumDelay);
     }
 
-    modifier onlyGovernance() {
-        require(msg.sender == governance, "not governance");
-        _;
-    }
-
-    function setMintFee(uint256 _mintFee) external onlyGovernance {
+    function setMintFee(uint256 _mintFee) external onlyOwner {
         mintFee = _mintFee;
         emit MintFeeModified(_mintFee);
     }
 
-    function setSwapFee(uint256 _swapFee) external onlyGovernance {
+    function setSwapFee(uint256 _swapFee) external onlyOwner {
         swapFee = _swapFee;
         emit SwapFeeModified(_swapFee);
     }
 
-    function setRedeemFee(uint256 _redeemFee) external onlyGovernance {
+    function setRedeemFee(uint256 _redeemFee) external onlyOwner {
         redeemFee = _redeemFee;
         emit RedeemFeeModified(_redeemFee);
     }
 
-    function setA(uint256 _A) external onlyGovernance {
+    function setA(uint256 _A) external onlyOwner {
         A = _A;
         emit AModified(_A);
     }
@@ -226,8 +222,18 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
         string memory symbolB = ERC20Upgradeable(argument.tokenB).symbol();
         string memory symbol = string.concat(string.concat(string.concat("SA-", symbolA), "-"), symbolB);
         string memory name = string.concat(string.concat(string.concat("Stable Asset ", symbolA), " "), symbolB);
-        bytes memory lpTokenInit = abi.encodeCall(LPToken.initialize, (address(this), name, symbol));
+        bytes memory lpTokenInit = abi.encodeCall(LPToken.initialize, (name, symbol));
         BeaconProxy lpTokenProxy = new BeaconProxy(lpTokenBeacon, lpTokenInit);
+
+        address[] memory proposers = new address[](1);
+        address[] memory executors = new address[](1);
+        proposers[0] = governor;
+        executors[0] = governor;
+        bytes memory timelockInit = abi.encodeCall(
+            Timelock.initialize, (governor, timelockMinimumDelay, proposers, executors)
+        );
+        address timelock =
+            payable(address(new BeaconProxy(timelockBeacon, timelockInit)));
 
         address[] memory tokens = new address[](2);
         uint256[] memory precisions = new uint256[](2);
@@ -271,11 +277,9 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
         StableAsset stableAsset = StableAsset(address(stableAssetProxy));
         LPToken lpToken = LPToken(address(lpTokenProxy));
 
-        stableAsset.setAdmin(argument.initialMinter, true);
-
-        stableAsset.proposeGovernance(governance);
+        stableAsset.transferOwnership(timelock);
         lpToken.addPool(address(stableAsset));
-        lpToken.proposeGovernance(governance);
+        lpToken.transferOwnership(timelock);
 
         bytes memory wlpTokenInit = abi.encodeCall(WLPToken.initialize, (ILPToken(lpToken)));
         BeaconProxy wlpTokenProxy = new BeaconProxy(wlpTokenBeacon, wlpTokenInit);
@@ -283,5 +287,5 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
         emit PoolCreated(address(lpTokenProxy), address(stableAssetProxy), address(wlpTokenProxy));
     }
 
-    function _authorizeUpgrade(address) internal override onlyGovernance { }
+    function _authorizeUpgrade(address) internal override onlyOwner() { }
 }

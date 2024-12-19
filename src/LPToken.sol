@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./interfaces/ILPToken.sol";
 
 error InsufficientAllowance(uint256 currentAllowance, uint256 amount);
@@ -21,7 +22,7 @@ error InsufficientBalance(uint256 currentBalance, uint256 amount);
  *   shares[account] * _totalSupply / _totalShares
  * where the _totalSupply is the total supply of lpToken controlled by the protocol.
  */
-contract LPToken is Initializable, ILPToken {
+contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     using Math for uint256;
 
     uint256 internal constant INFINITE_ALLOWANCE = ~uint256(0);
@@ -30,8 +31,6 @@ contract LPToken is Initializable, ILPToken {
     uint256 public totalShares;
     uint256 public totalSupply;
     uint256 public totalRewards;
-    address public governance;
-    address public pendingGovernance;
     mapping(address => uint256) public shares;
     mapping(address => mapping(address => uint256)) public allowances;
     mapping(address => bool) public pools;
@@ -48,8 +47,6 @@ contract LPToken is Initializable, ILPToken {
 
     event RewardsMinted(uint256 amount, uint256 actualAmount);
 
-    event GovernanceModified(address indexed governance);
-    event GovernanceProposed(address indexed governance);
     event PoolAdded(address indexed pool);
     event PoolRemoved(address indexed pool);
     event SetBufferPercent(uint256);
@@ -57,36 +54,21 @@ contract LPToken is Initializable, ILPToken {
     event BufferDecreased(uint256, uint256);
     event SymbolModified(string);
 
-    function initialize(address _governance, string memory _name, string memory _symbol) public initializer {
-        require(_governance != address(0), "LPToken: zero address");
-        governance = _governance;
+    function initialize(string memory _name, string memory _symbol) public initializer {
         tokenName = _name;
         tokenSymbol = _symbol;
+
+        __Ownable_init();
     }
 
-    function proposeGovernance(address _governance) public {
-        require(msg.sender == governance, "LPToken: no governance");
-        pendingGovernance = _governance;
-        emit GovernanceProposed(_governance);
-    }
-
-    function acceptGovernance() public {
-        require(msg.sender == pendingGovernance, "LPToken: no pending governance");
-        governance = pendingGovernance;
-        pendingGovernance = address(0);
-        emit GovernanceModified(governance);
-    }
-
-    function addPool(address _pool) public {
-        require(msg.sender == governance, "LPToken: no governance");
+    function addPool(address _pool) public onlyOwner() {
         require(_pool != address(0), "LPToken: zero address");
         require(!pools[_pool], "LPToken: pool is already added");
         pools[_pool] = true;
         emit PoolAdded(_pool);
     }
 
-    function removePool(address _pool) public {
-        require(msg.sender == governance, "LPToken: no governance");
+    function removePool(address _pool) public onlyOwner() {
         require(pools[_pool], "LPToken: pool doesn't exist");
         pools[_pool] = false;
         emit PoolRemoved(_pool);
@@ -210,17 +192,15 @@ contract LPToken is Initializable, ILPToken {
     // solhint-enable max-line-length
 
     /**
-     * @notice This function is called by the governance to set the buffer rate.
+     * @notice This function is called by the owner to set the buffer rate.
      */
-    function setBuffer(uint256 _buffer) external {
-        require(msg.sender == governance, "LPToken: no governance");
+    function setBuffer(uint256 _buffer) external onlyOwner() {
         require(_buffer < BUFFER_DENOMINATOR, "LPToken: out of range");
         bufferPercent = _buffer;
         emit SetBufferPercent(_buffer);
     }
 
-    function setSymbol(string memory _symbol) external {
-        require(msg.sender == governance, "LPToken: no governance");
+    function setSymbol(string memory _symbol) external onlyOwner() {
         tokenSymbol = _symbol;
         emit SymbolModified(_symbol);
     }

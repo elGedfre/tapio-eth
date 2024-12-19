@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./interfaces/IWETH.sol";
 import "./interfaces/Ipool.sol";
 import "./StableAsset.sol";
@@ -24,7 +25,7 @@ error FailedEtherTransfer();
  * pool tokens to underlying tokens.
  * This contract should never store assets.
  */
-contract StableAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradeable {
+contract StableAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
     using SafeMathUpgradeable for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -34,27 +35,11 @@ contract StableAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradeable {
     IWETH public wETH;
 
     /**
-     * @dev This is the account that has governance control over the StableAssetApplication contract.
-     */
-    address public governance;
-
-    /**
      * @dev Allowed pool address.
      */
     mapping(address => bool) public allowedPoolAddress;
 
     address[] public pools;
-
-    /**
-     * @dev Pending governance address,
-     */
-    address public pendingGovernance;
-
-    /**
-     * @dev This event is emitted when the governance is modified.
-     * @param governance is the new value of the governance.
-     */
-    event GovernanceModified(address governance);
 
     /**
      * @dev This event is emitted when the pool is modified.
@@ -64,12 +49,6 @@ contract StableAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradeable {
     event PoolModified(address swap, bool enabled);
 
     /**
-     * @dev This event is emitted when the governance is modified.
-     * @param governance is the new value of the governance.
-     */
-    event GovernanceProposed(address governance);
-
-    /**
      * @dev Initializes the StableSwap Application contract.
      * @param _wETH Wrapped ETH address.
      */
@@ -77,7 +56,7 @@ contract StableAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradeable {
         require(address(_wETH) != address(0x0), "wETH not set");
         __ReentrancyGuard_init();
         wETH = _wETH;
-        governance = msg.sender;
+        __Ownable_init();
     }
 
     /**
@@ -351,32 +330,11 @@ contract StableAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradeable {
     }
 
     /**
-     * @dev Propose the govenance address.
-     * @param _governance Address of the new governance.
-     */
-    function proposeGovernance(address _governance) public {
-        require(msg.sender == governance, "not governance");
-        pendingGovernance = _governance;
-        emit GovernanceProposed(_governance);
-    }
-
-    /**
-     * @dev Accept the govenance address.
-     */
-    function acceptGovernance() public {
-        require(msg.sender == pendingGovernance, "not pending governance");
-        governance = pendingGovernance;
-        pendingGovernance = address(0);
-        emit GovernanceModified(governance);
-    }
-
-    /**
      * @dev Enable/Disable the pool address.
      * @param _swap The swap address.
      * @param _enabled Enable or disable swap.
      */
-    function updatePool(address _swap, bool _enabled) external {
-        require(msg.sender == governance, "not governance");
+    function updatePool(address _swap, bool _enabled) external onlyOwner() {
         if (_enabled && !allowedPoolAddress[_swap]) {
             pools.push(_swap);
         } else {
@@ -412,7 +370,6 @@ contract StableAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradeable {
      * @dev Upgrade the contract.
      * @param newImplementation New implementation address.
      */
-    function _authorizeUpgrade(address newImplementation) internal override {
-        require(msg.sender == governance, "not governance");
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner() {
     }
 }
