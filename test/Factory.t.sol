@@ -9,6 +9,7 @@ import { MockToken } from "../src/mock/MockToken.sol";
 import { StableAsset } from "../src/StableAsset.sol";
 import { LPToken } from "../src/LPToken.sol";
 import { WLPToken } from "../src/WLPToken.sol";
+import { Timelock } from "../src/governance/Timelock.sol";
 import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import "../src/misc/ConstantExchangeRateProvider.sol";
 
@@ -23,6 +24,7 @@ contract FactoryTest is Test {
         address stableAssetImplentation = address(new StableAsset());
         address lpTokenImplentation = address(new LPToken());
         address wlpTokenImplentation = address(new WLPToken());
+        address timelockImplentation = address(new Timelock());
 
         UpgradeableBeacon beacon = new UpgradeableBeacon(stableAssetImplentation);
         beacon.transferOwnership(governance);
@@ -36,6 +38,10 @@ contract FactoryTest is Test {
         beacon.transferOwnership(governance);
         address wlpTokenBeacon = address(beacon);
 
+        beacon = new UpgradeableBeacon(timelockImplentation);
+        beacon.transferOwnership(governance);
+        address timelockBeacon = address(beacon);
+
         factory.initialize(
             governance,
             0,
@@ -45,6 +51,8 @@ contract FactoryTest is Test {
             stableAssetBeacon,
             lpTokenBeacon,
             wlpTokenBeacon,
+            timelockBeacon,
+            0,
             new ConstantExchangeRateProvider()
         );
     }
@@ -56,7 +64,6 @@ contract FactoryTest is Test {
         StableAssetFactory.CreatePoolArgument memory arg = StableAssetFactory.CreatePoolArgument({
             tokenA: address(tokenA),
             tokenB: address(tokenB),
-            initialMinter: address(initialMinter),
             tokenAType: StableAssetFactory.TokenType.Standard,
             tokenAOracle: address(0),
             tokenAFunctionSig: "",

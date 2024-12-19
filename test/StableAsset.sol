@@ -14,7 +14,7 @@ import "../src/misc/ConstantExchangeRateProvider.sol";
 import "../src/mock/MockExchangeRateProvider.sol";
 
 contract StableAssetTest is Test {
-    address governance = address(0x01);
+    address owner = address(0x01);
     uint256 A = 100;
     LPToken lpToken1;
     StableAsset ethPool1;
@@ -34,7 +34,8 @@ contract StableAssetTest is Test {
         stETH = new MockToken("stETH", "stETH", 18);
 
         lpToken1 = new LPToken();
-        lpToken1.initialize(governance, "LP Token", "LPT");
+        lpToken1.initialize("LP Token", "LPT");
+        lpToken1.transferOwnership(owner);
 
         ConstantExchangeRateProvider exchangeRateProvider = new ConstantExchangeRateProvider();
 
@@ -59,7 +60,7 @@ contract StableAssetTest is Test {
 
         ethPool1.initialize(tokens, precisions, fees, lpToken1, A, exchangeRateProviders);
 
-        vm.prank(governance);
+        vm.prank(owner);
         lpToken1.addPool(address(ethPool1));
 
         MockExchangeRateProvider rETHExchangeRateProvider = new MockExchangeRateProvider(1.1e18, 18);
@@ -79,11 +80,12 @@ contract StableAssetTest is Test {
         ethPool2 = new StableAsset();
 
         lpToken2 = new LPToken();
-        lpToken2.initialize(governance, "LP Token", "LPT");
+        lpToken2.initialize("LP Token", "LPT");
+        lpToken2.transferOwnership(owner);
 
         ethPool2.initialize(tokens, precisions, fees, lpToken2, A, exchangeRateProviders);
 
-        vm.prank(governance);
+        vm.prank(owner);
         lpToken2.addPool(address(ethPool2));
     }
 
