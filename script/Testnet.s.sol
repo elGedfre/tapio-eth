@@ -22,7 +22,7 @@ contract Testnet is Deploy, Setup {
         vm.startBroadcast(deployerPrivateKey);
 
         deployMocks();
-        deployBeaconsAndFactoryTimelock();
+        deployBeacons();
         deployFactory();
 
         vm.writeJson(vm.serializeAddress("contracts", "USDC", usdc), "./broadcast/testnet.json");
@@ -38,8 +38,6 @@ contract Testnet is Deploy, Setup {
         vm.writeJson(vm.serializeAddress("contracts", "LPTokenBeacon", lpTokenBeacon), "./broadcast/testnet.json");
 
         vm.writeJson(vm.serializeAddress("contracts", "WLPTokenBeacon", wlpTokenBeacon), "./broadcast/testnet.json");
-
-        vm.writeJson(vm.serializeAddress("contracts", "TimelockBeacon", timelockBeacon), "./broadcast/testnet.json");
 
         vm.stopBroadcast();
     }

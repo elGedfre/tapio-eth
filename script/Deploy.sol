@@ -15,15 +15,14 @@ import "../src/misc/ConstantExchangeRateProvider.sol";
 import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 
 contract Deploy is Config {
-    function deployBeaconsAndFactoryTimelock() internal {
+    function deployBeacons() internal {
         console.log("---------------");
-        console.log("deploy-beacon-and-factory-timelock-logs");
+        console.log("deploy-beacon-logs");
         console.log("---------------");
 
         address stableAssetImplentation = address(new StableAsset());
         address lpTokenImplentation = address(new LPToken());
         address wlpTokenImplentation = address(new WLPToken());
-        address timelockImplentation = address(new Timelock());
 
         UpgradeableBeacon beacon = new UpgradeableBeacon(stableAssetImplentation);
         stableAssetBeacon = address(beacon);
@@ -34,21 +33,9 @@ contract Deploy is Config {
         beacon = new UpgradeableBeacon(wlpTokenImplentation);
         wlpTokenBeacon = address(beacon);
 
-        beacon = new UpgradeableBeacon(timelockImplentation);
-        timelockBeacon = address(beacon);
-
-        address[] memory proposers = new address[](1);
-        address[] memory executors = new address[](1);
-        proposers[0] = GOVERNOR;
-        executors[0] = GOVERNOR;
-        bytes memory timelockInit = abi.encodeCall(Timelock.initialize, (GOVERNOR, 0, proposers, executors));
-
-        factoryTimelock = address(new BeaconProxy(timelockBeacon, timelockInit));
-
-        UpgradeableBeacon(stableAssetBeacon).transferOwnership(factoryTimelock);
-        UpgradeableBeacon(lpTokenBeacon).transferOwnership(factoryTimelock);
-        UpgradeableBeacon(wlpTokenBeacon).transferOwnership(factoryTimelock);
-        UpgradeableBeacon(timelockBeacon).transferOwnership(factoryTimelock);
+        UpgradeableBeacon(stableAssetBeacon).transferOwnership(GOVERNOR);
+        UpgradeableBeacon(lpTokenBeacon).transferOwnership(GOVERNOR);
+        UpgradeableBeacon(wlpTokenBeacon).transferOwnership(GOVERNOR);
     }
 
     function deployFactory() internal {
@@ -67,14 +54,12 @@ contract Deploy is Config {
                 stableAssetBeacon,
                 lpTokenBeacon,
                 wlpTokenBeacon,
-                timelockBeacon,
-                0,
                 new ConstantExchangeRateProvider()
             )
         );
         ERC1967Proxy proxy = new ERC1967Proxy(address(new StableAssetFactory()), data);
 
         factory = StableAssetFactory(address(proxy));
-        factory.transferOwnership(factoryTimelock);
+        factory.transferOwnership(GOVERNOR);
     }
 }

@@ -20,8 +20,6 @@ contract Config is Script {
     address stableAssetBeacon;
     address lpTokenBeacon;
     address wlpTokenBeacon;
-    address timelockBeacon;
-    address factoryTimelock;
 
     struct JSONData {
         address Factory;
@@ -30,7 +28,6 @@ contract Config is Script {
         address USDC;
         address USDT;
         address WLPTokenBeacon;
-        address TimelockBeacon;
     }
 
     function loadConfig() internal {

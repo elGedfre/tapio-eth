@@ -94,16 +94,6 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, Owna
     address public wlpTokenBeacon;
 
     /**
-     * @dev Beacon for the Timelock implementation.
-     */
-    address public timelockBeacon;
-
-    /**
-     * @dev Minimum delay for timelock
-     */
-    uint256 public timelockMinimumDelay;
-
-    /**
      * @dev Constant exchange rate provider.
      */
     ConstantExchangeRateProvider public constantExchangeRateProvider;
@@ -144,8 +134,6 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, Owna
      */
     event AModified(uint256 A);
 
-    event TimelockMinimumDelayModified(uint256 timelockMinimumDelay);
-
     /**
      * @dev Initializes the StableSwap Application contract.
      */
@@ -158,8 +146,6 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, Owna
         address _stableAssetBeacon,
         address _lpTokenBeacon,
         address _wlpTokenBeacon,
-        address _timelockBeacon,
-        uint256 _timelockMinimumDelay,
         ConstantExchangeRateProvider _constantExchangeRateProvider
     )
         public
@@ -173,9 +159,6 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, Owna
         stableAssetBeacon = _stableAssetBeacon;
         lpTokenBeacon = _lpTokenBeacon;
         wlpTokenBeacon = _wlpTokenBeacon;
-        timelockBeacon = _timelockBeacon;
-
-        timelockMinimumDelay = _timelockMinimumDelay;
         constantExchangeRateProvider = _constantExchangeRateProvider;
 
         mintFee = _mintFee;
@@ -190,11 +173,6 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, Owna
     function setGovernor(address _governor) public onlyOwner {
         governor = _governor;
         emit GovernorModified(governor);
-    }
-
-    function setTimelockMinimumDelay(uint256 _timelockMinimumDelay) external onlyOwner {
-        timelockMinimumDelay = _timelockMinimumDelay;
-        emit TimelockMinimumDelayModified(_timelockMinimumDelay);
     }
 
     function setMintFee(uint256 _mintFee) external onlyOwner {
@@ -229,9 +207,6 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, Owna
         address[] memory executors = new address[](1);
         proposers[0] = governor;
         executors[0] = governor;
-        bytes memory timelockInit =
-            abi.encodeCall(Timelock.initialize, (governor, timelockMinimumDelay, proposers, executors));
-        address timelock = payable(address(new BeaconProxy(timelockBeacon, timelockInit)));
 
         address[] memory tokens = new address[](2);
         uint256[] memory precisions = new uint256[](2);
@@ -275,9 +250,9 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, Owna
         StableAsset stableAsset = StableAsset(address(stableAssetProxy));
         LPToken lpToken = LPToken(address(lpTokenProxy));
 
-        stableAsset.transferOwnership(timelock);
+        stableAsset.transferOwnership(governor);
         lpToken.addPool(address(stableAsset));
-        lpToken.transferOwnership(timelock);
+        lpToken.transferOwnership(governor);
 
         bytes memory wlpTokenInit = abi.encodeCall(WLPToken.initialize, (ILPToken(lpToken)));
         BeaconProxy wlpTokenProxy = new BeaconProxy(wlpTokenBeacon, wlpTokenInit);

@@ -41,7 +41,6 @@ contract Testnet is Deploy, Setup, Pool {
         stableAssetBeacon = jsonData.StableAssetBeacon;
         lpTokenBeacon = jsonData.LPTokenBeacon;
         wlpTokenBeacon = jsonData.WLPTokenBeacon;
-        timelockBeacon = jsonData.TimelockBeacon;
         usdc = jsonData.USDC;
         usdt = jsonData.USDT;
 

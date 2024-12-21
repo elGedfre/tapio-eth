@@ -24,7 +24,6 @@ contract FactoryTest is Test {
         address stableAssetImplentation = address(new StableAsset());
         address lpTokenImplentation = address(new LPToken());
         address wlpTokenImplentation = address(new WLPToken());
-        address timelockImplentation = address(new Timelock());
 
         UpgradeableBeacon beacon = new UpgradeableBeacon(stableAssetImplentation);
         beacon.transferOwnership(governor);
@@ -38,22 +37,8 @@ contract FactoryTest is Test {
         beacon.transferOwnership(governor);
         address wlpTokenBeacon = address(beacon);
 
-        beacon = new UpgradeableBeacon(timelockImplentation);
-        beacon.transferOwnership(governor);
-        address timelockBeacon = address(beacon);
-
         factory.initialize(
-            governor,
-            0,
-            0,
-            0,
-            100,
-            stableAssetBeacon,
-            lpTokenBeacon,
-            wlpTokenBeacon,
-            timelockBeacon,
-            0,
-            new ConstantExchangeRateProvider()
+            governor, 0, 0, 0, 100, stableAssetBeacon, lpTokenBeacon, wlpTokenBeacon, new ConstantExchangeRateProvider()
         );
     }
 
