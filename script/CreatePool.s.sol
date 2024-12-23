@@ -7,8 +7,8 @@ import { console } from "forge-std/console.sol";
 import { Deploy } from "script/Deploy.sol";
 import { Setup } from "script/Setup.sol";
 import { Pool } from "script/Pool.sol";
-import { StableAssetFactory } from "../src/StableAssetFactory.sol";
-import { StableAsset } from "../src/StableAsset.sol";
+import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
+import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
 import { MockToken } from "../src/mock/MockToken.sol";
 
 contract Testnet is Deploy, Setup, Pool {
@@ -37,19 +37,19 @@ contract Testnet is Deploy, Setup, Pool {
 
         JSONData memory jsonData = abi.decode(data, (JSONData));
 
-        factory = StableAssetFactory(jsonData.Factory);
-        stableAssetBeacon = jsonData.StableAssetBeacon;
+        factory = SelfPeggingAssetFactory(jsonData.Factory);
+        selfPeggingAssetBeacon = jsonData.SelfPeggingAssetBeacon;
         lpTokenBeacon = jsonData.LPTokenBeacon;
         wlpTokenBeacon = jsonData.WLPTokenBeacon;
         usdc = jsonData.USDC;
         usdt = jsonData.USDT;
 
-        (, address stableAsset,) = createStandardPool();
+        (, address selfPeggingAsset,) = createStandardPool();
 
         MockToken(usdc).mint(DEPLOYER, 100e18);
         MockToken(usdt).mint(DEPLOYER, 100e18);
 
-        initialMintAndUnpause(100e18, 100e18, StableAsset(stableAsset));
+        initialMintAndUnpause(100e18, 100e18, SelfPeggingAsset(selfPeggingAsset));
 
         vm.stopBroadcast();
     }

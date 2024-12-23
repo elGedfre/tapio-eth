@@ -11,21 +11,21 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./interfaces/IWETH.sol";
 import "./interfaces/Ipool.sol";
-import "./StableAsset.sol";
+import "./SelfPeggingAsset.sol";
 
 error NotAllowedPool(address pool);
 error EthAmount(uint256 requiredAmount, uint256 sentAmount);
 error FailedEtherTransfer();
 
 /**
- * @title StableAsset Application
+ * @title SelfPeggingAsset Application
  * @author Nuts Finance Developer
  * @notice The StableSwap Application provides an interface for users to interact with StableSwap pool contracts
  * @dev The StableSwap Application contract allows users to mint pool tokens, swap between different tokens, and redeem
  * pool tokens to underlying tokens.
  * This contract should never store assets.
  */
-contract StableAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
+contract SelfPeggingAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
     using SafeMathUpgradeable for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -73,7 +73,7 @@ contract StableAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradeable, 
      * @param _minMintAmount Minimum amount of pool token to mint.
      */
     function mint(
-        StableAsset _swap,
+        SelfPeggingAsset _swap,
         uint256[] calldata _amounts,
         uint256 _minMintAmount
     )
@@ -113,7 +113,7 @@ contract StableAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradeable, 
      * @param _minDy Minimum token _j to swap out in converted balance.
      */
     function swap(
-        StableAsset _swap,
+        SelfPeggingAsset _swap,
         uint256 _i,
         uint256 _j,
         uint256 _dx,
@@ -162,7 +162,7 @@ contract StableAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradeable, 
      * @param _minRedeemAmounts Minimum amount of underlying tokens to get.
      */
     function redeemProportion(
-        StableAsset _swap,
+        SelfPeggingAsset _swap,
         uint256 _amount,
         uint256[] calldata _minRedeemAmounts
     )
@@ -201,7 +201,7 @@ contract StableAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradeable, 
      * @param _minRedeemAmount Minimum amount of the underlying token to redeem to.
      */
     function redeemSingle(
-        StableAsset _swap,
+        SelfPeggingAsset _swap,
         uint256 _amount,
         uint256 _i,
         uint256 _minRedeemAmount
@@ -242,8 +242,8 @@ contract StableAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradeable, 
      * @return The amount of fee to charge.
      */
     function getSwapAmountCrossPool(
-        StableAsset _sourceSwap,
-        StableAsset _destSwap,
+        SelfPeggingAsset _sourceSwap,
+        SelfPeggingAsset _destSwap,
         address _sourceToken,
         address _destToken,
         uint256 _amount
@@ -279,8 +279,8 @@ contract StableAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradeable, 
      * @param _minSwapAmount Minimum amount of the dest token to receive.
      */
     function swapCrossPool(
-        StableAsset _sourceSwap,
-        StableAsset _destSwap,
+        SelfPeggingAsset _sourceSwap,
+        SelfPeggingAsset _destSwap,
         address _sourceToken,
         address _destToken,
         uint256 _amount,

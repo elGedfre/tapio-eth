@@ -32,7 +32,7 @@ contract Testnet is Deploy, Setup {
         vm.writeJson(vm.serializeAddress("contracts", "Factory", address(factory)), "./broadcast/testnet.json");
 
         vm.writeJson(
-            vm.serializeAddress("contracts", "StableAssetBeacon", stableAssetBeacon), "./broadcast/testnet.json"
+            vm.serializeAddress("contracts", "SelfPeggingAssetBeacon", selfPeggingAssetBeacon), "./broadcast/testnet.json"
         );
 
         vm.writeJson(vm.serializeAddress("contracts", "LPTokenBeacon", lpTokenBeacon), "./broadcast/testnet.json");

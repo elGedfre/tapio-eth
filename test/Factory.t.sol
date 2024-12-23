@@ -4,9 +4,9 @@ import { Test } from "forge-std/Test.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { console } from "forge-std/console.sol";
 
-import { StableAssetFactory } from "../src/StableAssetFactory.sol";
+import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
 import { MockToken } from "../src/mock/MockToken.sol";
-import { StableAsset } from "../src/StableAsset.sol";
+import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
 import { LPToken } from "../src/LPToken.sol";
 import { WLPToken } from "../src/WLPToken.sol";
 import { Timelock } from "../src/governance/Timelock.sol";
@@ -14,20 +14,20 @@ import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import "../src/misc/ConstantExchangeRateProvider.sol";
 
 contract FactoryTest is Test {
-    StableAssetFactory internal factory;
+    SelfPeggingAssetFactory internal factory;
     address governor = address(0x01);
     address initialMinter = address(0x02);
 
     function setUp() public virtual {
-        factory = new StableAssetFactory();
+        factory = new SelfPeggingAssetFactory();
 
-        address stableAssetImplentation = address(new StableAsset());
+        address selfPeggingAssetImplentation = address(new SelfPeggingAsset());
         address lpTokenImplentation = address(new LPToken());
         address wlpTokenImplentation = address(new WLPToken());
 
-        UpgradeableBeacon beacon = new UpgradeableBeacon(stableAssetImplentation);
+        UpgradeableBeacon beacon = new UpgradeableBeacon(selfPeggingAssetImplentation);
         beacon.transferOwnership(governor);
-        address stableAssetBeacon = address(beacon);
+        address selfPeggingAssetBeacon = address(beacon);
 
         beacon = new UpgradeableBeacon(lpTokenImplentation);
         beacon.transferOwnership(governor);
@@ -38,7 +38,7 @@ contract FactoryTest is Test {
         address wlpTokenBeacon = address(beacon);
 
         factory.initialize(
-            governor, 0, 0, 0, 100, stableAssetBeacon, lpTokenBeacon, wlpTokenBeacon, new ConstantExchangeRateProvider()
+            governor, 0, 0, 0, 100, selfPeggingAssetBeacon, lpTokenBeacon, wlpTokenBeacon, new ConstantExchangeRateProvider()
         );
     }
 
@@ -46,13 +46,13 @@ contract FactoryTest is Test {
         MockToken tokenA = new MockToken("test 1", "T1", 18);
         MockToken tokenB = new MockToken("test 2", "T2", 18);
 
-        StableAssetFactory.CreatePoolArgument memory arg = StableAssetFactory.CreatePoolArgument({
+        SelfPeggingAssetFactory.CreatePoolArgument memory arg = SelfPeggingAssetFactory.CreatePoolArgument({
             tokenA: address(tokenA),
             tokenB: address(tokenB),
-            tokenAType: StableAssetFactory.TokenType.Standard,
+            tokenAType: SelfPeggingAssetFactory.TokenType.Standard,
             tokenAOracle: address(0),
             tokenAFunctionSig: "",
-            tokenBType: StableAssetFactory.TokenType.Standard,
+            tokenBType: SelfPeggingAssetFactory.TokenType.Standard,
             tokenBOracle: address(0),
             tokenBFunctionSig: ""
         });
@@ -63,19 +63,19 @@ contract FactoryTest is Test {
         bytes32 eventSig = keccak256("PoolCreated(address,address,address)");
 
         address decodedPoolToken;
-        address decodedStableAsset;
+        address decodedSelfPeggingAsset;
         address decodedWrappedPoolToken;
 
         for (uint256 i = 0; i < entries.length; i++) {
             Vm.Log memory log = entries[i];
 
             if (log.topics[0] == eventSig) {
-                (decodedPoolToken, decodedStableAsset, decodedWrappedPoolToken) =
+                (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken) =
                     abi.decode(log.data, (address, address, address));
             }
         }
 
-        StableAsset stableAsset = StableAsset(decodedStableAsset);
+        SelfPeggingAsset selfPeggingAsset = SelfPeggingAsset(decodedSelfPeggingAsset);
         LPToken poolToken = LPToken(decodedPoolToken);
         WLPToken wrappedPoolToken = WLPToken(decodedWrappedPoolToken);
 
@@ -83,8 +83,8 @@ contract FactoryTest is Test {
         tokenA.mint(initialMinter, 100e18);
         tokenB.mint(initialMinter, 100e18);
 
-        tokenA.approve(address(stableAsset), 100e18);
-        tokenB.approve(address(stableAsset), 100e18);
+        tokenA.approve(address(selfPeggingAsset), 100e18);
+        tokenB.approve(address(selfPeggingAsset), 100e18);
 
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = 100e18;
@@ -92,7 +92,7 @@ contract FactoryTest is Test {
 
         vm.warp(block.timestamp + 1000);
 
-        stableAsset.mint(amounts, 0);
+        selfPeggingAsset.mint(amounts, 0);
 
         assertEq(poolToken.balanceOf(initialMinter), 200e18);
         assertNotEq(address(wrappedPoolToken), address(0));

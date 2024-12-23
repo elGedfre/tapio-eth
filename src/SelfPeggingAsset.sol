@@ -20,13 +20,13 @@ error SameTokenInTokenOut(uint256 tokenInIndex, uint256 tokenOutIndex);
 error ImbalancedPool(uint256 oldD, uint256 newD);
 
 /**
- * @title StableAsset swap
+ * @title SelfPeggingAsset swap
  * @author Nuts Finance Developer
- * @notice The StableAsset pool provides a way to swap between different tokens
- * @dev The StableAsset contract allows users to trade between different tokens, with prices determined algorithmically
+ * @notice The SelfPeggingAsset pool provides a way to swap between different tokens
+ * @dev The SelfPeggingAsset contract allows users to trade between different tokens, with prices determined algorithmically
  * based on the current supply and demand of each token
  */
-contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
+contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /**
@@ -39,7 +39,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
         address indexed buyer, uint256 swapAmount, uint256[] amounts, bool[] amountPositive, uint256 feeAmount
     );
     /**
-     * @notice This event is emitted when liquidity is added to the StableAsset contract.
+     * @notice This event is emitted when liquidity is added to the SelfPeggingAsset contract.
      * @param provider is the address of the liquidity provider.
      * @param mintAmount is the amount of liquidity tokens minted to the provider in exchange for their contribution.
      * @param amounts is an array containing the amounts of each token contributed by the provider.
@@ -47,7 +47,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
      */
     event Minted(address indexed provider, uint256 mintAmount, uint256[] amounts, uint256 feeAmount);
     /**
-     * @dev This event is emitted when liquidity is removed from the StableAsset contract.
+     * @dev This event is emitted when liquidity is removed from the SelfPeggingAsset contract.
      * @param provider is the address of the liquidity provider.
      * @param redeemAmount is the amount of liquidity tokens redeemed by the provider.
      * @param amounts is an array containing the amounts of each token received by the provider.
@@ -55,13 +55,13 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
      */
     event Redeemed(address indexed provider, uint256 redeemAmount, uint256[] amounts, uint256 feeAmount);
     /**
-     * @dev This event is emitted when transaction fees are collected by the StableAsset contract.
+     * @dev This event is emitted when transaction fees are collected by the SelfPeggingAsset contract.
      * @param feeAmount is the amount of fee collected.
      * @param totalSupply is the total supply of LP token.
      */
     event FeeCollected(uint256 feeAmount, uint256 totalSupply);
     /**
-     * @dev This event is emitted when yield is collected by the StableAsset contract.
+     * @dev This event is emitted when yield is collected by the SelfPeggingAsset contract.
      * @param amounts is an array containing the amounts of each token the yield receives.
      * @param feeAmount is the amount of yield collected.
      * @param totalSupply is the total supply of LP token.
@@ -111,21 +111,21 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
     event MaxDeltaDModified(uint256 delta);
 
     /**
-     * @dev This is the denominator used for calculating transaction fees in the StableAsset contract.
+     * @dev This is the denominator used for calculating transaction fees in the SelfPeggingAsset contract.
      */
     uint256 private constant FEE_DENOMINATOR = 10 ** 10;
     /**
-     *  @dev This is the maximum error margin for calculating transaction fees in the StableAsset contract.
+     *  @dev This is the maximum error margin for calculating transaction fees in the SelfPeggingAsset contract.
      */
     uint256 private constant DEFAULT_FEE_ERROR_MARGIN = 100_000;
 
     /**
-     *  @dev This is the maximum error margin for calculating transaction yield in the StableAsset contract.
+     *  @dev This is the maximum error margin for calculating transaction yield in the SelfPeggingAsset contract.
      */
     uint256 private constant DEFAULT_YIELD_ERROR_MARGIN = 10_000;
 
     /**
-     *  @dev This is the maximum error margin for updating A in the StableAsset contract.
+     *  @dev This is the maximum error margin for updating A in the SelfPeggingAsset contract.
      */
     uint256 private constant DEFAULT_MAX_DELTA_D = 100_000;
     /**
@@ -138,36 +138,36 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
     uint256 private constant INITIAL_MINT_MIN = 100_000;
 
     /**
-     * @dev This is an array of addresses representing the tokens currently supported by the StableAsset contract.
+     * @dev This is an array of addresses representing the tokens currently supported by the SelfPeggingAsset contract.
      */
     address[] public tokens;
     /**
-     * @dev This is an array of uint256 values representing the precisions of each token in the StableAsset contract.
+     * @dev This is an array of uint256 values representing the precisions of each token in the SelfPeggingAsset contract.
      * The precision of each token is calculated as 10 ** (18 - token decimals).
      */
     uint256[] public precisions;
     /**
-     * @dev This is an array of uint256 values representing the current balances of each token in the StableAsset
+     * @dev This is an array of uint256 values representing the current balances of each token in the SelfPeggingAsset
      * contract.
      * The balances are converted to the standard token unit (10 ** 18).
      */
     uint256[] public balances;
     /**
-     * @dev This is the fee charged for adding liquidity to the StableAsset contract.
+     * @dev This is the fee charged for adding liquidity to the SelfPeggingAsset contract.
      */
     uint256 public mintFee;
     /**
-     * @dev This is the fee charged for trading assets in the StableAsset contract.
+     * @dev This is the fee charged for trading assets in the SelfPeggingAsset contract.
      * swapFee = swapFee * FEE_DENOMINATOR
      */
     uint256 public swapFee;
     /**
-     * @dev This is the fee charged for removing liquidity from the StableAsset contract.
+     * @dev This is the fee charged for removing liquidity from the SelfPeggingAsset contract.
      * redeemFee = redeemFee * FEE_DENOMINATOR
      */
     uint256 public redeemFee;
     /**
-     * @dev This is the address of the ERC20 token contract that represents the StableAsset pool token.
+     * @dev This is the address of the ERC20 token contract that represents the SelfPeggingAsset pool token.
      */
     ILPToken public poolToken;
     /**
@@ -177,11 +177,11 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
     uint256 public totalSupply;
 
     /**
-     * @dev This is a mapping of accounts that have administrative privileges over the StableAsset contract.
+     * @dev This is a mapping of accounts that have administrative privileges over the SelfPeggingAsset contract.
      */
     mapping(address => bool) public admins;
     /**
-     * @dev This is a state variable that represents whether or not the StableAsset contract is currently paused.
+     * @dev This is a state variable that represents whether or not the SelfPeggingAsset contract is currently paused.
      */
     bool public paused;
 
@@ -222,7 +222,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
     uint256 public maxDeltaD;
 
     /**
-     * @dev Initializes the StableAsset contract with the given parameters.
+     * @dev Initializes the SelfPeggingAsset contract with the given parameters.
      * @param _tokens The tokens in the pool.
      * @param _precisions The precisions of each token (10 ** (18 - token decimals)).
      * @param _fees The fees for minting, swapping, and redeeming.
@@ -313,7 +313,7 @@ contract StableAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgrad
      * @dev Computes D given token balances.
      * @param _balances Normalized balance of each token.
      * @param _A Amplification coefficient from getA().
-     * @return D The StableAsset invariant.
+     * @return D The SelfPeggingAsset invariant.
      */
     function _getD(uint256[] memory _balances, uint256 _A) internal pure returns (uint256) {
         uint256 sum = 0;

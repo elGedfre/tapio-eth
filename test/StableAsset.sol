@@ -4,20 +4,20 @@ import { Test } from "forge-std/Test.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { console } from "forge-std/console.sol";
 
-import { StableAssetFactory } from "../src/StableAssetFactory.sol";
+import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
 import { MockToken } from "../src/mock/MockToken.sol";
-import { StableAsset } from "../src/StableAsset.sol";
+import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
 import { LPToken } from "../src/LPToken.sol";
 import { WLPToken } from "../src/WLPToken.sol";
 import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import "../src/misc/ConstantExchangeRateProvider.sol";
 import "../src/mock/MockExchangeRateProvider.sol";
 
-contract StableAssetTest is Test {
+contract SelfPeggingAssetTest is Test {
     address owner = address(0x01);
     uint256 A = 100;
     LPToken lpToken1;
-    StableAsset ethPool1;
+    SelfPeggingAsset ethPool1;
     uint256 feeDenominator = 10_000_000_000;
     uint256 mintFee = 10_000_000;
     uint256 swapFee = 20_000_000;
@@ -26,7 +26,7 @@ contract StableAssetTest is Test {
     MockToken stETH;
     MockToken rETH;
     MockToken wstETH;
-    StableAsset ethPool2;
+    SelfPeggingAsset ethPool2;
     LPToken lpToken2;
 
     function setUp() public {
@@ -39,7 +39,7 @@ contract StableAssetTest is Test {
 
         ConstantExchangeRateProvider exchangeRateProvider = new ConstantExchangeRateProvider();
 
-        ethPool1 = new StableAsset();
+        ethPool1 = new SelfPeggingAsset();
 
         address[] memory tokens = new address[](2);
         tokens[0] = address(WETH);
@@ -77,7 +77,7 @@ contract StableAssetTest is Test {
         exchangeRateProviders[0] = IExchangeRateProvider(rETHExchangeRateProvider);
         exchangeRateProviders[1] = IExchangeRateProvider(wstETHExchangeRateProvider);
 
-        ethPool2 = new StableAsset();
+        ethPool2 = new SelfPeggingAsset();
 
         lpToken2 = new LPToken();
         lpToken2.initialize("LP Token", "LPT");

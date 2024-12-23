@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import "./StableAsset.sol";
+import "./SelfPeggingAsset.sol";
 import "./LPToken.sol";
 import "./WLPToken.sol";
 import "./misc/ConstantExchangeRateProvider.sol";
@@ -24,14 +24,14 @@ import "./governance/Timelock.sol";
 import "./interfaces/IExchangeRateProvider.sol";
 
 /**
- * @title StableAsset Application
+ * @title SelfPeggingAsset Application
  * @author Nuts Finance Developer
  * @notice The StableSwap Application provides an interface for users to interact with StableSwap pool contracts
  * @dev The StableSwap Application contract allows users to mint pool tokens, swap between different tokens, and redeem
  * pool tokens to underlying tokens.
  * This contract should never store assets.
  */
-contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
+contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
     using SafeMathUpgradeable for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -79,9 +79,9 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, Owna
     uint256 public A;
 
     /**
-     * @dev Beacon for the StableAsset implementation.
+     * @dev Beacon for the SelfPeggingAsset implementation.
      */
-    address public stableAssetBeacon;
+    address public selfPeggingAssetBeacon;
 
     /**
      * @dev Beacon for the LPToken implementation.
@@ -108,7 +108,7 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, Owna
      * @dev This event is emitted when a new pool is created.
      * @param poolToken is the pool token created.
      */
-    event PoolCreated(address poolToken, address stableAsset, address wrappedPoolToken);
+    event PoolCreated(address poolToken, address selfPeggingAsset, address wrappedPoolToken);
 
     /**
      * @dev This event is emitted when the mint fee is updated.
@@ -143,7 +143,7 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, Owna
         uint256 _swapFee,
         uint256 _redeemFee,
         uint256 _A,
-        address _stableAssetBeacon,
+        address _selfPeggingAssetBeacon,
         address _lpTokenBeacon,
         address _wlpTokenBeacon,
         ConstantExchangeRateProvider _constantExchangeRateProvider
@@ -156,7 +156,7 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, Owna
 
         governor = _governor;
 
-        stableAssetBeacon = _stableAssetBeacon;
+        selfPeggingAssetBeacon = _selfPeggingAssetBeacon;
         lpTokenBeacon = _lpTokenBeacon;
         wlpTokenBeacon = _wlpTokenBeacon;
         constantExchangeRateProvider = _constantExchangeRateProvider;
@@ -198,8 +198,8 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, Owna
     function createPool(CreatePoolArgument memory argument) external {
         string memory symbolA = ERC20Upgradeable(argument.tokenA).symbol();
         string memory symbolB = ERC20Upgradeable(argument.tokenB).symbol();
-        string memory symbol = string.concat(string.concat(string.concat("SA-", symbolA), "-"), symbolB);
-        string memory name = string.concat(string.concat(string.concat("Stable Asset ", symbolA), " "), symbolB);
+        string memory symbol = string.concat(string.concat(string.concat("SPA-", symbolA), "-"), symbolB);
+        string memory name = string.concat(string.concat(string.concat("Self Pegging Asset ", symbolA), " "), symbolB);
         bytes memory lpTokenInit = abi.encodeCall(LPToken.initialize, (name, symbol));
         BeaconProxy lpTokenProxy = new BeaconProxy(lpTokenBeacon, lpTokenInit);
 
@@ -243,21 +243,21 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, Owna
             exchangeRateProviders[1] = IExchangeRateProvider(erc4626ExchangeRate);
         }
 
-        bytes memory stableAssetInit = abi.encodeCall(
-            StableAsset.initialize, (tokens, precisions, fees, LPToken(address(lpTokenProxy)), A, exchangeRateProviders)
+        bytes memory selfPeggingAssetInit = abi.encodeCall(
+            SelfPeggingAsset.initialize, (tokens, precisions, fees, LPToken(address(lpTokenProxy)), A, exchangeRateProviders)
         );
-        BeaconProxy stableAssetProxy = new BeaconProxy(stableAssetBeacon, stableAssetInit);
-        StableAsset stableAsset = StableAsset(address(stableAssetProxy));
+        BeaconProxy selfPeggingAssetProxy = new BeaconProxy(selfPeggingAssetBeacon, selfPeggingAssetInit);
+        SelfPeggingAsset selfPeggingAsset = SelfPeggingAsset(address(selfPeggingAssetProxy));
         LPToken lpToken = LPToken(address(lpTokenProxy));
 
-        stableAsset.transferOwnership(governor);
-        lpToken.addPool(address(stableAsset));
+        selfPeggingAsset.transferOwnership(governor);
+        lpToken.addPool(address(selfPeggingAsset));
         lpToken.transferOwnership(governor);
 
         bytes memory wlpTokenInit = abi.encodeCall(WLPToken.initialize, (ILPToken(lpToken)));
         BeaconProxy wlpTokenProxy = new BeaconProxy(wlpTokenBeacon, wlpTokenInit);
 
-        emit PoolCreated(address(lpTokenProxy), address(stableAssetProxy), address(wlpTokenProxy));
+        emit PoolCreated(address(lpTokenProxy), address(selfPeggingAssetProxy), address(wlpTokenProxy));
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner { }

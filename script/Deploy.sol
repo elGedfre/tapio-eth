@@ -4,10 +4,10 @@ pragma solidity 0.8.28;
 import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import { stdJson } from "forge-std/StdJson.sol";
 import { console } from "forge-std/console.sol";
-import { StableAsset } from "../src/StableAsset.sol";
+import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
 import { LPToken } from "../src/LPToken.sol";
 import { WLPToken } from "../src/WLPToken.sol";
-import { StableAssetFactory } from "../src/StableAssetFactory.sol";
+import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
 import { Timelock } from "../src/governance/Timelock.sol";
 import { Config } from "script/Config.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -20,12 +20,12 @@ contract Deploy is Config {
         console.log("deploy-beacon-logs");
         console.log("---------------");
 
-        address stableAssetImplentation = address(new StableAsset());
+        address selfPeggingAssetImplentation = address(new SelfPeggingAsset());
         address lpTokenImplentation = address(new LPToken());
         address wlpTokenImplentation = address(new WLPToken());
 
-        UpgradeableBeacon beacon = new UpgradeableBeacon(stableAssetImplentation);
-        stableAssetBeacon = address(beacon);
+        UpgradeableBeacon beacon = new UpgradeableBeacon(selfPeggingAssetImplentation);
+        selfPeggingAssetBeacon = address(beacon);
 
         beacon = new UpgradeableBeacon(lpTokenImplentation);
         lpTokenBeacon = address(beacon);
@@ -33,7 +33,7 @@ contract Deploy is Config {
         beacon = new UpgradeableBeacon(wlpTokenImplentation);
         wlpTokenBeacon = address(beacon);
 
-        UpgradeableBeacon(stableAssetBeacon).transferOwnership(GOVERNOR);
+        UpgradeableBeacon(selfPeggingAssetBeacon).transferOwnership(GOVERNOR);
         UpgradeableBeacon(lpTokenBeacon).transferOwnership(GOVERNOR);
         UpgradeableBeacon(wlpTokenBeacon).transferOwnership(GOVERNOR);
     }
@@ -44,22 +44,22 @@ contract Deploy is Config {
         console.log("---------------");
 
         bytes memory data = abi.encodeCall(
-            StableAssetFactory.initialize,
+            SelfPeggingAssetFactory.initialize,
             (
                 GOVERNOR,
                 0,
                 0,
                 0,
                 100,
-                stableAssetBeacon,
+                selfPeggingAssetBeacon,
                 lpTokenBeacon,
                 wlpTokenBeacon,
                 new ConstantExchangeRateProvider()
             )
         );
-        ERC1967Proxy proxy = new ERC1967Proxy(address(new StableAssetFactory()), data);
+        ERC1967Proxy proxy = new ERC1967Proxy(address(new SelfPeggingAssetFactory()), data);
 
-        factory = StableAssetFactory(address(proxy));
+        factory = SelfPeggingAssetFactory(address(proxy));
         factory.transferOwnership(GOVERNOR);
     }
 }
