@@ -272,6 +272,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
         SelfPeggingAsset selfPeggingAsset = SelfPeggingAsset(address(selfPeggingAssetProxy));
         LPToken lpToken = LPToken(address(lpTokenProxy));
 
+        selfPeggingAsset.setAdmin(governor, true);
         selfPeggingAsset.transferOwnership(governor);
         lpToken.addPool(address(selfPeggingAsset));
         lpToken.transferOwnership(governor);

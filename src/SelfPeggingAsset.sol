@@ -246,6 +246,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     error PastBlock();
     error PoolImbalanced();
     error NoLosses();
+    error NotAdmin();
 
     /**
      * @dev Initializes the SelfPeggingAsset contract with the given parameters.
@@ -570,7 +571,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      */
     function swap(uint256 _i, uint256 _j, uint256 _dx, uint256 _minDy) external nonReentrant returns (uint256) {
         // If swap is paused, only admins can swap.
-        require(!paused || admins[msg.sender], "paused");
+        require(!paused || admins[msg.sender], Paused());
         if (_i == _j) {
             revert SameToken();
         }
@@ -1015,8 +1016,9 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /**
      * @dev Pause mint/swap/redeem actions. Can unpause later.
      */
-    function pause() external onlyOwner {
+    function pause() external {
         require(!paused, Paused());
+        require(admins[msg.sender], NotAdmin());
 
         paused = true;
     }
@@ -1024,8 +1026,9 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /**
      * @dev Unpause mint/swap/redeem actions.
      */
-    function unpause() external onlyOwner {
+    function unpause() external {
         require(paused, NotPaused());
+        require(admins[msg.sender], NotAdmin());
 
         paused = false;
     }
