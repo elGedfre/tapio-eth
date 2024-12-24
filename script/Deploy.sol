@@ -8,7 +8,6 @@ import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
 import { LPToken } from "../src/LPToken.sol";
 import { WLPToken } from "../src/WLPToken.sol";
 import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
-import { Timelock } from "../src/governance/Timelock.sol";
 import { Config } from "script/Config.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "../src/misc/ConstantExchangeRateProvider.sol";

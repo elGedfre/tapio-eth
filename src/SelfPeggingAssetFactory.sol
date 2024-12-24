@@ -20,7 +20,6 @@ import "./WLPToken.sol";
 import "./misc/ConstantExchangeRateProvider.sol";
 import "./misc/ERC4626ExchangeRate.sol";
 import "./misc/OracleExchangeRate.sol";
-import "./governance/Timelock.sol";
 import "./interfaces/IExchangeRateProvider.sol";
 
 /**
@@ -134,6 +133,11 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
      */
     event AModified(uint256 A);
 
+    error InvalidAddress();
+    error InvalidValue();
+    error InvalidOracle();
+    error InvalidFunctionSig();
+
     /**
      * @dev Initializes the StableSwap Application contract.
      */
@@ -151,6 +155,13 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
         public
         initializer
     {
+        require(_governor != address(0), InvalidAddress());
+        require(_A > 0, InvalidValue());
+        require(_selfPeggingAssetBeacon != address(0), InvalidAddress());
+        require(_lpTokenBeacon != address(0), InvalidAddress());
+        require(_wlpTokenBeacon != address(0), InvalidAddress());
+        require(address(_constantExchangeRateProvider) != address(0), InvalidAddress());
+
         __ReentrancyGuard_init();
         __Ownable_init();
 
@@ -171,6 +182,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
      * @dev Set the govenance address.
      */
     function setGovernor(address _governor) public onlyOwner {
+        require(_governor != address(0), InvalidAddress());
         governor = _governor;
         emit GovernorModified(governor);
     }
@@ -191,11 +203,16 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
     }
 
     function setA(uint256 _A) external onlyOwner {
+        require(_A > 0, InvalidValue());
         A = _A;
         emit AModified(_A);
     }
 
     function createPool(CreatePoolArgument memory argument) external {
+        require(argument.tokenA != address(0), InvalidAddress());
+        require(argument.tokenB != address(0), InvalidAddress());
+        require(argument.tokenA != argument.tokenB, InvalidValue());
+
         string memory symbolA = ERC20Upgradeable(argument.tokenA).symbol();
         string memory symbolB = ERC20Upgradeable(argument.tokenB).symbol();
         string memory symbol = string.concat(string.concat(string.concat("SPA-", symbolA), "-"), symbolB);
@@ -224,6 +241,8 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
         if (argument.tokenAType == TokenType.Standard || argument.tokenAType == TokenType.Rebasing) {
             exchangeRateProviders[0] = IExchangeRateProvider(constantExchangeRateProvider);
         } else if (argument.tokenAType == TokenType.Oracle) {
+            require(argument.tokenAOracle != address(0), InvalidOracle());
+            require(bytes(argument.tokenAFunctionSig).length > 0, InvalidFunctionSig());
             OracleExchangeRate oracleExchangeRate =
                 new OracleExchangeRate(argument.tokenAOracle, argument.tokenAFunctionSig);
             exchangeRateProviders[0] = IExchangeRateProvider(oracleExchangeRate);
@@ -235,6 +254,8 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
         if (argument.tokenBType == TokenType.Standard || argument.tokenBType == TokenType.Rebasing) {
             exchangeRateProviders[1] = IExchangeRateProvider(constantExchangeRateProvider);
         } else if (argument.tokenBType == TokenType.Oracle) {
+            require(argument.tokenBOracle != address(0), InvalidOracle());
+            require(bytes(argument.tokenBFunctionSig).length > 0, InvalidFunctionSig());
             OracleExchangeRate oracleExchangeRate =
                 new OracleExchangeRate(argument.tokenBOracle, argument.tokenBFunctionSig);
             exchangeRateProviders[1] = IExchangeRateProvider(oracleExchangeRate);
@@ -244,7 +265,8 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
         }
 
         bytes memory selfPeggingAssetInit = abi.encodeCall(
-            SelfPeggingAsset.initialize, (tokens, precisions, fees, LPToken(address(lpTokenProxy)), A, exchangeRateProviders)
+            SelfPeggingAsset.initialize,
+            (tokens, precisions, fees, LPToken(address(lpTokenProxy)), A, exchangeRateProviders)
         );
         BeaconProxy selfPeggingAssetProxy = new BeaconProxy(selfPeggingAssetBeacon, selfPeggingAssetInit);
         SelfPeggingAsset selfPeggingAsset = SelfPeggingAsset(address(selfPeggingAssetProxy));

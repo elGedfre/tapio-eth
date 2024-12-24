@@ -9,7 +9,6 @@ import { MockToken } from "../src/mock/MockToken.sol";
 import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
 import { LPToken } from "../src/LPToken.sol";
 import { WLPToken } from "../src/WLPToken.sol";
-import { Timelock } from "../src/governance/Timelock.sol";
 import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import "../src/misc/ConstantExchangeRateProvider.sol";
 
@@ -38,7 +37,15 @@ contract FactoryTest is Test {
         address wlpTokenBeacon = address(beacon);
 
         factory.initialize(
-            governor, 0, 0, 0, 100, selfPeggingAssetBeacon, lpTokenBeacon, wlpTokenBeacon, new ConstantExchangeRateProvider()
+            governor,
+            0,
+            0,
+            0,
+            100,
+            selfPeggingAssetBeacon,
+            lpTokenBeacon,
+            wlpTokenBeacon,
+            new ConstantExchangeRateProvider()
         );
     }
 

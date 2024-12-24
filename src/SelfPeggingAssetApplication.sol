@@ -16,6 +16,8 @@ import "./SelfPeggingAsset.sol";
 error NotAllowedPool(address pool);
 error EthAmount(uint256 requiredAmount, uint256 sentAmount);
 error FailedEtherTransfer();
+error WETHNotSet();
+error TokenNotFound();
 
 /**
  * @title SelfPeggingAsset Application
@@ -53,7 +55,7 @@ contract SelfPeggingAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradea
      * @param _wETH Wrapped ETH address.
      */
     function initialize(IWETH _wETH) public initializer {
-        require(address(_wETH) != address(0x0), "wETH not set");
+        require(address(_wETH) != address(0x0), WETHNotSet());
         __ReentrancyGuard_init();
         wETH = _wETH;
         __Ownable_init();
@@ -84,12 +86,8 @@ contract SelfPeggingAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradea
         address[] memory tokens = _swap.getTokens();
         address poolToken = address(_swap.poolToken());
         uint256 wETHIndex = findTokenIndex(tokens, address(wETH));
-        if (_amounts[wETHIndex] != msg.value) {
-            revert EthAmount(_amounts[wETHIndex], msg.value);
-        }
-        if (!allowedPoolAddress[address(_swap)]) {
-            revert NotAllowedPool(address(_swap));
-        }
+        require(_amounts[wETHIndex] == msg.value, EthAmount(_amounts[wETHIndex], msg.value));
+        require(allowedPoolAddress[address(_swap)], NotAllowedPool(address(_swap)));
 
         if (_amounts[wETHIndex] > 0) {
             wETH.deposit{ value: _amounts[wETHIndex] }();
@@ -125,20 +123,13 @@ contract SelfPeggingAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradea
     {
         address[] memory tokens = _swap.getTokens();
         uint256 wETHIndex = findTokenIndex(tokens, address(wETH));
-        if (!allowedPoolAddress[address(_swap)]) {
-            revert NotAllowedPool(address(_swap));
-        }
+        require(allowedPoolAddress[address(_swap)], NotAllowedPool(address(_swap)));
 
         if (_i == wETHIndex) {
-            if (_dx != msg.value) {
-                revert EthAmount(_dx, msg.value);
-            }
-
+            require(_dx == msg.value, EthAmount(_dx, msg.value));
             wETH.deposit{ value: _dx }();
         } else {
-            if (msg.value != 0) {
-                revert EthAmount(0, msg.value);
-            }
+            require(msg.value == 0, EthAmount(0, msg.value));
             IERC20Upgradeable(tokens[_i]).safeTransferFrom(msg.sender, address(this), _dx);
         }
         IERC20Upgradeable(tokens[_i]).safeApprove(address(_swap), _dx);
@@ -147,9 +138,7 @@ contract SelfPeggingAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradea
         if (_j == wETHIndex) {
             wETH.withdraw(swapAmount);
             (bool success,) = msg.sender.call{ value: swapAmount }("");
-            if (!success) {
-                revert FailedEtherTransfer();
-            }
+            require(success, FailedEtherTransfer());
         } else {
             IERC20Upgradeable(tokens[_j]).safeTransfer(msg.sender, swapAmount);
         }
@@ -172,9 +161,7 @@ contract SelfPeggingAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradea
         address[] memory tokens = _swap.getTokens();
         address poolToken = address(_swap.poolToken());
         uint256 wETHIndex = findTokenIndex(tokens, address(wETH));
-        if (!allowedPoolAddress[address(_swap)]) {
-            revert NotAllowedPool(address(_swap));
-        }
+        require(allowedPoolAddress[address(_swap)], NotAllowedPool(address(_swap)));
         IERC20Upgradeable(poolToken).safeApprove(address(_swap), _amount);
         IERC20Upgradeable(poolToken).safeTransferFrom(msg.sender, address(this), _amount);
 
@@ -184,9 +171,7 @@ contract SelfPeggingAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradea
             if (i == wETHIndex) {
                 wETH.withdraw(amounts[i]);
                 (bool success,) = msg.sender.call{ value: amounts[i] }("");
-                if (!success) {
-                    revert FailedEtherTransfer();
-                }
+                require(success, FailedEtherTransfer());
             } else {
                 IERC20Upgradeable(tokens[i]).safeTransfer(msg.sender, amounts[i]);
             }
@@ -212,9 +197,7 @@ contract SelfPeggingAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradea
         address[] memory tokens = _swap.getTokens();
         address poolToken = address(_swap.poolToken());
         uint256 wETHIndex = findTokenIndex(tokens, address(wETH));
-        if (!allowedPoolAddress[address(_swap)]) {
-            revert NotAllowedPool(address(_swap));
-        }
+        require(allowedPoolAddress[address(_swap)], NotAllowedPool(address(_swap)));
         IERC20Upgradeable(poolToken).safeApprove(address(_swap), _amount);
         IERC20Upgradeable(poolToken).safeTransferFrom(msg.sender, address(this), _amount);
 
@@ -223,9 +206,7 @@ contract SelfPeggingAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradea
         if (_i == wETHIndex) {
             wETH.withdraw(redeemAmount);
             (bool success,) = msg.sender.call{ value: redeemAmount }("");
-            if (!success) {
-                revert FailedEtherTransfer();
-            }
+            require(success, FailedEtherTransfer());
         } else {
             IERC20Upgradeable(tokens[_i]).safeTransfer(msg.sender, redeemAmount);
         }
@@ -254,12 +235,8 @@ contract SelfPeggingAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradea
     {
         address[] memory sourceTokens = _sourceSwap.getTokens();
         address[] memory destTokens = _destSwap.getTokens();
-        if (!allowedPoolAddress[address(_sourceSwap)]) {
-            revert NotAllowedPool(address(_sourceSwap));
-        }
-        if (!allowedPoolAddress[address(_destSwap)]) {
-            revert NotAllowedPool(address(_destSwap));
-        }
+        require(allowedPoolAddress[address(_sourceSwap)], NotAllowedPool(address(_sourceSwap)));
+        require(allowedPoolAddress[address(_destSwap)], NotAllowedPool(address(_destSwap)));
         uint256 sourceIndex = findTokenIndex(sourceTokens, _sourceToken);
         uint256 destIndex = findTokenIndex(destTokens, _destToken);
         uint256[] memory _mintAmounts = new uint256[](sourceTokens.length);
@@ -291,13 +268,8 @@ contract SelfPeggingAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradea
     {
         address[] memory sourceTokens = _sourceSwap.getTokens();
         address[] memory destTokens = _destSwap.getTokens();
-        if (!allowedPoolAddress[address(_sourceSwap)]) {
-            revert NotAllowedPool(address(_sourceSwap));
-        }
-
-        if (!allowedPoolAddress[address(_destSwap)]) {
-            revert NotAllowedPool(address(_destSwap));
-        }
+        require(allowedPoolAddress[address(_sourceSwap)], NotAllowedPool(address(_sourceSwap)));
+        require(allowedPoolAddress[address(_destSwap)], NotAllowedPool(address(_destSwap)));
 
         uint256 sourceIndex = findTokenIndex(sourceTokens, _sourceToken);
         uint256 destIndex = findTokenIndex(destTokens, _destToken);
@@ -326,7 +298,7 @@ contract SelfPeggingAssetApplication is UUPSUpgradeable, ReentrancyGuardUpgradea
                 return i;
             }
         }
-        revert("token not found");
+        revert TokenNotFound();
     }
 
     /**

@@ -23,6 +23,9 @@ import "./interfaces/ILPToken.sol";
 contract WLPToken is ERC4626Upgradeable {
     ILPToken public lpToken;
 
+    error ZeroAmount();
+    error InsufficientAllowance();
+
     function initialize(ILPToken _lpToken) public initializer {
         __ERC20_init("Wrapped LP Token", "wlpToken");
         __ERC4626_init(IERC20Upgradeable(address(_lpToken)));
@@ -63,7 +66,7 @@ contract WLPToken is ERC4626Upgradeable {
      * @return shares Amount of shares minted.
      */
     function deposit(uint256 assets, address receiver) public override returns (uint256 shares) {
-        require(assets > 0, "ERC4626: cannot deposit zero assets");
+        require(assets > 0, ZeroAmount());
         shares = convertToShares(assets);
         lpToken.transferFrom(msg.sender, address(this), assets);
         _mint(receiver, shares);
@@ -77,7 +80,7 @@ contract WLPToken is ERC4626Upgradeable {
      * @return shares Burned shares corresponding to the assets withdrawn.
      */
     function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256 shares) {
-        require(assets > 0, "ERC4626: cannot withdraw zero assets");
+        require(assets > 0, ZeroAmount());
         shares = convertToShares(assets);
         if (msg.sender != owner) {
             uint256 allowed = allowance(owner, msg.sender);
@@ -96,11 +99,11 @@ contract WLPToken is ERC4626Upgradeable {
      * @return assets Amount of lpToken withdrawn.
      */
     function redeem(uint256 shares, address receiver, address owner) public override returns (uint256 assets) {
-        require(shares > 0, "ERC4626: cannot redeem zero shares");
+        require(shares > 0, ZeroAmount());
         assets = convertToAssets(shares);
         if (msg.sender != owner) {
             uint256 allowed = allowance(owner, msg.sender);
-            require(allowed >= shares, "ERC4626: insufficient allowance");
+            require(allowed >= shares, InsufficientAllowance());
             _approve(owner, msg.sender, allowed - shares);
         }
         _burn(owner, shares);

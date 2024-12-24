@@ -11,8 +11,10 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 contract RocketTokenExchangeRateProvider is IExchangeRateProvider, Initializable, ReentrancyGuardUpgradeable {
     RocketTokenRETHInterface private rocketToken;
 
+    error RocketTokenNotSet();
+
     function initialize(RocketTokenRETHInterface _rocketToken) public initializer {
-        require(address(_rocketToken) != address(0x0), "_rocketToken not set");
+        require(address(_rocketToken) != address(0x0), RocketTokenNotSet());
         rocketToken = _rocketToken;
     }
 

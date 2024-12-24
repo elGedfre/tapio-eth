@@ -23,7 +23,8 @@ error ImbalancedPool(uint256 oldD, uint256 newD);
  * @title SelfPeggingAsset swap
  * @author Nuts Finance Developer
  * @notice The SelfPeggingAsset pool provides a way to swap between different tokens
- * @dev The SelfPeggingAsset contract allows users to trade between different tokens, with prices determined algorithmically
+ * @dev The SelfPeggingAsset contract allows users to trade between different tokens, with prices determined
+ * algorithmically
  * based on the current supply and demand of each token
  */
 contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
@@ -142,7 +143,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      */
     address[] public tokens;
     /**
-     * @dev This is an array of uint256 values representing the precisions of each token in the SelfPeggingAsset contract.
+     * @dev This is an array of uint256 values representing the precisions of each token in the SelfPeggingAsset
+     * contract.
      * The precision of each token is calculated as 10 ** (18 - token decimals).
      */
     uint256[] public precisions;
@@ -221,6 +223,30 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      */
     uint256 public maxDeltaD;
 
+    error InputMismatch();
+    error NoFees();
+    error FeePercentageTooLarge();
+    error TokenNotSet();
+    error ExchangeRateProviderNotSet();
+    error PrecisionNotSet();
+    error DuplicateToken();
+    error PoolTokenNotSet();
+    error ANotSet();
+    error InvalidAmount();
+    error Paused();
+    error ZeroAmount();
+    error SameToken();
+    error InvalidIn();
+    error InvalidOut();
+    error InvalidMins();
+    error InvalidToken();
+    error LimitExceeded();
+    error NotPaused();
+    error AccountIsZero();
+    error PastBlock();
+    error PoolImbalanced();
+    error NoLosses();
+
     /**
      * @dev Initializes the SelfPeggingAsset contract with the given parameters.
      * @param _tokens The tokens in the pool.
@@ -243,27 +269,27 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         require(
             _tokens.length >= 2 && _tokens.length == _precisions.length
                 && _tokens.length == _exchangeRateProviders.length,
-            "input mismatch"
+            InputMismatch()
         );
-        require(_fees.length == 3, "no fees");
+        require(_fees.length == 3, NoFees());
         for (uint256 i = 0; i < 3; i++) {
-            require(_fees[i] < FEE_DENOMINATOR, "fee percentage too large");
+            require(_fees[i] < FEE_DENOMINATOR, FeePercentageTooLarge());
         }
         for (uint256 i = 0; i < _tokens.length; i++) {
-            require(_tokens[i] != address(0x0), "token not set");
-            require(address(_exchangeRateProviders[i]) != address(0x0), "exchange rate provider not set");
+            require(_tokens[i] != address(0x0), TokenNotSet());
+            require(address(_exchangeRateProviders[i]) != address(0x0), ExchangeRateProviderNotSet());
             // query tokens decimals
             uint256 _decimals = ERC20Upgradeable(_tokens[i]).decimals();
-            require(_precisions[i] != 0 && _precisions[i] == 10 ** (18 - _decimals), "precision not set");
+            require(_precisions[i] != 0 && _precisions[i] == 10 ** (18 - _decimals), PrecisionNotSet());
             balances.push(0);
         }
         for (uint256 i = 0; i < _tokens.length; i++) {
             for (uint256 j = i + 1; j < _tokens.length; j++) {
-                require(_tokens[i] != _tokens[j], "duplicate token address");
+                require(_tokens[i] != _tokens[j], DuplicateToken());
             }
         }
-        require(address(_poolToken) != address(0x0), "pool token not set");
-        require(_A > 0 && _A < MAX_A, "A not set");
+        require(address(_poolToken) != address(0x0), PoolTokenNotSet());
+        require(_A > 0 && _A < MAX_A, ANotSet());
         __ReentrancyGuard_init();
         __Ownable_init();
 
@@ -408,7 +434,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256[] memory _balances;
         uint256 _totalSupply;
         (_balances, _totalSupply) = getPendingYieldAmount();
-        require(_amounts.length == _balances.length, "invalid amount");
+        require(_amounts.length == _balances.length, InvalidAmount());
 
         uint256 A = getA();
         uint256 oldD = _totalSupply;
@@ -442,8 +468,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      */
     function mint(uint256[] calldata _amounts, uint256 _minMintAmount) external nonReentrant returns (uint256) {
         // If swap is paused, only admins can mint.
-        require(!paused || admins[msg.sender], "paused");
-        require(balances.length == _amounts.length, "invalid amounts");
+        require(!paused || admins[msg.sender], Paused());
+        require(balances.length == _amounts.length, InvalidAmount());
 
         collectFeeOrYield(false);
         uint256[] memory _balances = balances;
@@ -453,7 +479,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         for (i = 0; i < _balances.length; i++) {
             if (_amounts[i] < INITIAL_MINT_MIN) {
                 // Initial deposit requires all tokens provided!
-                require(oldD > 0, "zero amount");
+                require(oldD > 0, ZeroAmount());
             }
             if (_amounts[i] == 0) {
                 continue;
@@ -502,10 +528,10 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256[] memory _balances;
         uint256 _totalSupply;
         (_balances, _totalSupply) = getPendingYieldAmount();
-        require(_i != _j, "same token");
-        require(_i < _balances.length, "invalid in");
-        require(_j < _balances.length, "invalid out");
-        require(_dx > 0, "invalid amount");
+        require(_i != _j, SameToken());
+        require(_i < _balances.length, InvalidIn());
+        require(_j < _balances.length, InvalidOut());
+        require(_dx > 0, InvalidAmount());
 
         uint256 A = getA();
         uint256 D = _totalSupply;
@@ -546,11 +572,11 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         // If swap is paused, only admins can swap.
         require(!paused || admins[msg.sender], "paused");
         if (_i == _j) {
-            revert SameTokenInTokenOut(_i, _j);
+            revert SameToken();
         }
-        require(_i < balances.length, "invalid in");
-        require(_j < balances.length, "invalid out");
-        require(_dx != 0, "invalid amount");
+        require(_i < balances.length, InvalidIn());
+        require(_j < balances.length, InvalidOut());
+        require(_dx != 0, InvalidAmount());
 
         collectFeeOrYield(false);
         uint256[] memory _balances = balances;
@@ -613,7 +639,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256[] memory _balances;
         uint256 _totalSupply;
         (_balances, _totalSupply) = getPendingYieldAmount();
-        require(_amount != 0, "zero amount");
+        require(_amount != 0, ZeroAmount());
 
         uint256 D = _totalSupply;
         uint256[] memory amounts = new uint256[](_balances.length);
@@ -652,9 +678,9 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         returns (uint256[] memory)
     {
         // If swap is paused, only admins can redeem.
-        require(!paused || admins[msg.sender], "paused");
-        require(_amount != 0, "zero amount");
-        require(balances.length == _minRedeemAmounts.length, "invalid mins");
+        require(!paused || admins[msg.sender], Paused());
+        require(_amount != 0, ZeroAmount());
+        require(balances.length == _minRedeemAmounts.length, InvalidMins());
 
         collectFeeOrYield(false);
         uint256[] memory _balances = balances;
@@ -708,8 +734,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 _totalSupply;
         (_balances, _totalSupply) = getPendingYieldAmount();
 
-        require(_amount > 0, "zero amount");
-        require(_i < _balances.length, "invalid token");
+        require(_amount > 0, ZeroAmount());
+        require(_i < _balances.length, InvalidToken());
 
         uint256 A = getA();
         uint256 D = _totalSupply;
@@ -747,9 +773,9 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         returns (uint256)
     {
         // If swap is paused, only admins can redeem.
-        require(!paused || admins[msg.sender], "paused");
-        require(_amount > 0, "zero amount");
-        require(_i < balances.length, "invalid token");
+        require(!paused || admins[msg.sender], Paused());
+        require(_amount > 0, ZeroAmount());
+        require(_i < balances.length, InvalidToken());
 
         collectFeeOrYield(false);
         uint256[] memory _balances = balances;
@@ -797,7 +823,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256[] memory _balances;
         uint256 _totalSupply;
         (_balances, _totalSupply) = getPendingYieldAmount();
-        require(_amounts.length == balances.length, "length not match");
+        require(_amounts.length == balances.length, InputMismatch());
 
         uint256 A = getA();
         uint256 oldD = _totalSupply;
@@ -836,9 +862,9 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         nonReentrant
         returns (uint256[] memory)
     {
-        require(_amounts.length == balances.length, "length not match");
+        require(_amounts.length == balances.length, InputMismatch());
         // If swap is paused, only admins can redeem.
-        require(!paused || admins[msg.sender], "paused");
+        require(!paused || admins[msg.sender], Paused());
 
         collectFeeOrYield(false);
         uint256[] memory _balances = balances;
@@ -961,7 +987,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @param _mintFee The new mint fee.
      */
     function setMintFee(uint256 _mintFee) external onlyOwner {
-        require(_mintFee < FEE_DENOMINATOR, "exceed limit");
+        require(_mintFee < FEE_DENOMINATOR, LimitExceeded());
         mintFee = _mintFee;
         emit MintFeeModified(_mintFee);
     }
@@ -971,7 +997,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @param _swapFee The new swap fee.
      */
     function setSwapFee(uint256 _swapFee) external onlyOwner {
-        require(_swapFee < FEE_DENOMINATOR, "exceed limit");
+        require(_swapFee < FEE_DENOMINATOR, LimitExceeded());
         swapFee = _swapFee;
         emit SwapFeeModified(_swapFee);
     }
@@ -981,7 +1007,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @param _redeemFee The new redeem fee.
      */
     function setRedeemFee(uint256 _redeemFee) external onlyOwner {
-        require(_redeemFee < FEE_DENOMINATOR, "exceed limit");
+        require(_redeemFee < FEE_DENOMINATOR, LimitExceeded());
         redeemFee = _redeemFee;
         emit RedeemFeeModified(_redeemFee);
     }
@@ -990,7 +1016,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @dev Pause mint/swap/redeem actions. Can unpause later.
      */
     function pause() external onlyOwner {
-        require(!paused, "paused");
+        require(!paused, Paused());
 
         paused = true;
     }
@@ -999,7 +1025,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @dev Unpause mint/swap/redeem actions.
      */
     function unpause() external onlyOwner {
-        require(paused, "not paused");
+        require(paused, NotPaused());
 
         paused = false;
     }
@@ -1010,7 +1036,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @param _allowed Whether the address is granted the admin role.
      */
     function setAdmin(address _account, bool _allowed) external onlyOwner {
-        require(_account != address(0x0), "account not set");
+        require(_account != address(0x0), AccountIsZero());
 
         admins[_account] = _allowed;
     }
@@ -1021,8 +1047,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @param _futureABlock The block number to update A value.
      */
     function updateA(uint256 _futureA, uint256 _futureABlock) external onlyOwner {
-        require(_futureA > 0 && _futureA < MAX_A, "A not set");
-        require(_futureABlock > block.number, "block in the past");
+        require(_futureA > 0 && _futureA < MAX_A, ANotSet());
+        require(_futureABlock > block.number, PastBlock());
 
         initialA = getA();
         initialABlock = block.number;
@@ -1032,7 +1058,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         collectFeeOrYield(false);
         uint256 newD = _getD(balances, futureA);
         uint256 absolute = totalSupply > newD ? totalSupply - newD : newD - totalSupply;
-        require(absolute < maxDeltaD, "Pool imbalanced");
+        require(absolute < maxDeltaD, PoolImbalanced());
 
         emit AModified(_futureA, _futureABlock);
     }
@@ -1065,7 +1091,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @dev Distribute losses
      */
     function distributeLoss() external onlyOwner {
-        require(paused, "not paused");
+        require(paused, NotPaused());
 
         uint256[] memory _balances = balances;
         uint256 A = getA();
@@ -1079,7 +1105,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         }
         uint256 newD = _getD(_balances, A);
 
-        require(newD < oldD, "no losses");
+        require(newD < oldD, NoLosses());
         poolToken.removeTotalSupply(oldD - newD);
         balances = _balances;
         totalSupply = newD;

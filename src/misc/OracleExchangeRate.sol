@@ -10,6 +10,8 @@ contract OracleExchangeRate is IExchangeRateProvider {
     address public oracle;
     string public func;
 
+    error InternalCallFailed();
+
     constructor(address _oracle, string memory _func) {
         oracle = _oracle;
         func = _func;
@@ -19,7 +21,7 @@ contract OracleExchangeRate is IExchangeRateProvider {
         bytes memory data = abi.encodeWithSignature(string(abi.encodePacked(func, "()")));
 
         (bool success, bytes memory result) = oracle.staticcall(data);
-        require(success, "Function call failed");
+        require(success, InternalCallFailed());
 
         uint256 decodedResult = abi.decode(result, (uint256));
 
