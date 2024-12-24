@@ -244,12 +244,14 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
         }
 
         bytes memory selfPeggingAssetInit = abi.encodeCall(
-            SelfPeggingAsset.initialize, (tokens, precisions, fees, LPToken(address(lpTokenProxy)), A, exchangeRateProviders)
+            SelfPeggingAsset.initialize,
+            (tokens, precisions, fees, LPToken(address(lpTokenProxy)), A, exchangeRateProviders)
         );
         BeaconProxy selfPeggingAssetProxy = new BeaconProxy(selfPeggingAssetBeacon, selfPeggingAssetInit);
         SelfPeggingAsset selfPeggingAsset = SelfPeggingAsset(address(selfPeggingAssetProxy));
         LPToken lpToken = LPToken(address(lpTokenProxy));
 
+        selfPeggingAsset.setAdmin(governor, true);
         selfPeggingAsset.transferOwnership(governor);
         lpToken.addPool(address(selfPeggingAsset));
         lpToken.transferOwnership(governor);

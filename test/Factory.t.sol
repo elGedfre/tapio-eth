@@ -38,7 +38,15 @@ contract FactoryTest is Test {
         address wlpTokenBeacon = address(beacon);
 
         factory.initialize(
-            governor, 0, 0, 0, 100, selfPeggingAssetBeacon, lpTokenBeacon, wlpTokenBeacon, new ConstantExchangeRateProvider()
+            governor,
+            0,
+            0,
+            0,
+            100,
+            selfPeggingAssetBeacon,
+            lpTokenBeacon,
+            wlpTokenBeacon,
+            new ConstantExchangeRateProvider()
         );
     }
 

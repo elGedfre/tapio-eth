@@ -23,7 +23,8 @@ error ImbalancedPool(uint256 oldD, uint256 newD);
  * @title SelfPeggingAsset swap
  * @author Nuts Finance Developer
  * @notice The SelfPeggingAsset pool provides a way to swap between different tokens
- * @dev The SelfPeggingAsset contract allows users to trade between different tokens, with prices determined algorithmically
+ * @dev The SelfPeggingAsset contract allows users to trade between different tokens, with prices determined
+ * algorithmically
  * based on the current supply and demand of each token
  */
 contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
@@ -142,7 +143,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      */
     address[] public tokens;
     /**
-     * @dev This is an array of uint256 values representing the precisions of each token in the SelfPeggingAsset contract.
+     * @dev This is an array of uint256 values representing the precisions of each token in the SelfPeggingAsset
+     * contract.
      * The precision of each token is calculated as 10 ** (18 - token decimals).
      */
     uint256[] public precisions;
@@ -989,8 +991,9 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /**
      * @dev Pause mint/swap/redeem actions. Can unpause later.
      */
-    function pause() external onlyOwner {
+    function pause() external {
         require(!paused, "paused");
+        require(admins[msg.sender], "not admin");
 
         paused = true;
     }
@@ -998,8 +1001,9 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /**
      * @dev Unpause mint/swap/redeem actions.
      */
-    function unpause() external onlyOwner {
+    function unpause() external {
         require(paused, "not paused");
+        require(admins[msg.sender], "not admin");
 
         paused = false;
     }
