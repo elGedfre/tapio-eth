@@ -31,6 +31,132 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /**
+     * @dev This is the denominator used for calculating transaction fees in the SelfPeggingAsset contract.
+     */
+    uint256 private constant FEE_DENOMINATOR = 10 ** 10;
+    /**
+     *  @dev This is the maximum error margin for calculating transaction fees in the SelfPeggingAsset contract.
+     */
+    uint256 private constant DEFAULT_FEE_ERROR_MARGIN = 100_000;
+
+    /**
+     *  @dev This is the maximum error margin for calculating transaction yield in the SelfPeggingAsset contract.
+     */
+    uint256 private constant DEFAULT_YIELD_ERROR_MARGIN = 10_000;
+
+    /**
+     *  @dev This is the maximum error margin for updating A in the SelfPeggingAsset contract.
+     */
+    uint256 private constant DEFAULT_MAX_DELTA_D = 100_000;
+
+    /**
+     * @dev This is the maximum value of the amplification coefficient A.
+     */
+    uint256 private constant MAX_A = 10 ** 6;
+
+    /**
+     *  @dev This is minimum initial mint
+     */
+    uint256 private constant INITIAL_MINT_MIN = 100_000;
+
+    /**
+     * @dev This is an array of addresses representing the tokens currently supported by the SelfPeggingAsset contract.
+     */
+    address[] public tokens;
+
+    /**
+     * @dev This is an array of uint256 values representing the precisions of each token in the SelfPeggingAsset
+     * contract.
+     * The precision of each token is calculated as 10 ** (18 - token decimals).
+     */
+    uint256[] public precisions;
+
+    /**
+     * @dev This is an array of uint256 values representing the current balances of each token in the SelfPeggingAsset
+     * contract.
+     * The balances are converted to the standard token unit (10 ** 18).
+     */
+    uint256[] public balances;
+
+    /**
+     * @dev This is the fee charged for adding liquidity to the SelfPeggingAsset contract.
+     */
+    uint256 public mintFee;
+
+    /**
+     * @dev This is the fee charged for trading assets in the SelfPeggingAsset contract.
+     * swapFee = swapFee * FEE_DENOMINATOR
+     */
+    uint256 public swapFee;
+
+    /**
+     * @dev This is the fee charged for removing liquidity from the SelfPeggingAsset contract.
+     * redeemFee = redeemFee * FEE_DENOMINATOR
+     */
+    uint256 public redeemFee;
+
+    /**
+     * @dev This is the address of the ERC20 token contract that represents the SelfPeggingAsset pool token.
+     */
+    ILPToken public poolToken;
+
+    /**
+     * @dev The total supply of pool token minted by the swap.
+     * It might be different from the pool token supply as the pool token can have multiple minters.
+     */
+    uint256 public totalSupply;
+
+    /**
+     * @dev This is a mapping of accounts that have administrative privileges over the SelfPeggingAsset contract.
+     */
+    mapping(address => bool) public admins;
+
+    /**
+     * @dev This is a state variable that represents whether or not the SelfPeggingAsset contract is currently paused.
+     */
+    bool public paused;
+
+    /**
+     * @dev These is a state variables that represents the initial amplification coefficient A.
+     */
+    uint256 public initialA;
+
+    /**
+     * @dev These is a state variables that represents the initial block number when A is set.
+     */
+    uint256 public initialABlock;
+
+    /**
+     * @dev These is a state variables that represents the future amplification coefficient A.
+     */
+    uint256 public futureA;
+
+    /**
+     * @dev These is a state variables that represents the future block number when A is set.
+     */
+    uint256 public futureABlock;
+
+    /**
+     * @dev Exchange rate provider for the tokens
+     */
+    IExchangeRateProvider[] public exchangeRateProviders;
+
+    /**
+     * @dev Fee error margin.
+     */
+    uint256 public feeErrorMargin;
+
+    /**
+     * @dev Yield error margin.
+     */
+    uint256 public yieldErrorMargin;
+
+    /**
+     * @dev Max delta D.
+     */
+    uint256 public maxDeltaD;
+
+    /**
      * @notice This event is emitted when a token swap occurs.
      * @param buyer is the address of the account that made the swap.
      * @param amounts is an array containing the amounts of each token received by the buyer.
@@ -39,6 +165,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     event TokenSwapped(
         address indexed buyer, uint256 swapAmount, uint256[] amounts, bool[] amountPositive, uint256 feeAmount
     );
+
     /**
      * @notice This event is emitted when liquidity is added to the SelfPeggingAsset contract.
      * @param provider is the address of the liquidity provider.
@@ -47,6 +174,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @param feeAmount is the amount of transaction fee charged for the liquidity provision.
      */
     event Minted(address indexed provider, uint256 mintAmount, uint256[] amounts, uint256 feeAmount);
+
     /**
      * @dev This event is emitted when liquidity is removed from the SelfPeggingAsset contract.
      * @param provider is the address of the liquidity provider.
@@ -55,12 +183,14 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @param feeAmount is the amount of transaction fee charged for the liquidity provision.
      */
     event Redeemed(address indexed provider, uint256 redeemAmount, uint256[] amounts, uint256 feeAmount);
+
     /**
      * @dev This event is emitted when transaction fees are collected by the SelfPeggingAsset contract.
      * @param feeAmount is the amount of fee collected.
      * @param totalSupply is the total supply of LP token.
      */
     event FeeCollected(uint256 feeAmount, uint256 totalSupply);
+
     /**
      * @dev This event is emitted when yield is collected by the SelfPeggingAsset contract.
      * @param amounts is an array containing the amounts of each token the yield receives.
@@ -68,6 +198,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @param totalSupply is the total supply of LP token.
      */
     event YieldCollected(uint256[] amounts, uint256 feeAmount, uint256 totalSupply);
+
     /**
      * @dev This event is emitted when the A parameter is modified.
      * @param futureA is the new value of the A parameter.
@@ -111,141 +242,76 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      */
     event MaxDeltaDModified(uint256 delta);
 
-    /**
-     * @dev This is the denominator used for calculating transaction fees in the SelfPeggingAsset contract.
-     */
-    uint256 private constant FEE_DENOMINATOR = 10 ** 10;
-    /**
-     *  @dev This is the maximum error margin for calculating transaction fees in the SelfPeggingAsset contract.
-     */
-    uint256 private constant DEFAULT_FEE_ERROR_MARGIN = 100_000;
-
-    /**
-     *  @dev This is the maximum error margin for calculating transaction yield in the SelfPeggingAsset contract.
-     */
-    uint256 private constant DEFAULT_YIELD_ERROR_MARGIN = 10_000;
-
-    /**
-     *  @dev This is the maximum error margin for updating A in the SelfPeggingAsset contract.
-     */
-    uint256 private constant DEFAULT_MAX_DELTA_D = 100_000;
-    /**
-     * @dev This is the maximum value of the amplification coefficient A.
-     */
-    uint256 private constant MAX_A = 10 ** 6;
-    /**
-     *  @dev This is minimum initial mint
-     */
-    uint256 private constant INITIAL_MINT_MIN = 100_000;
-
-    /**
-     * @dev This is an array of addresses representing the tokens currently supported by the SelfPeggingAsset contract.
-     */
-    address[] public tokens;
-    /**
-     * @dev This is an array of uint256 values representing the precisions of each token in the SelfPeggingAsset
-     * contract.
-     * The precision of each token is calculated as 10 ** (18 - token decimals).
-     */
-    uint256[] public precisions;
-    /**
-     * @dev This is an array of uint256 values representing the current balances of each token in the SelfPeggingAsset
-     * contract.
-     * The balances are converted to the standard token unit (10 ** 18).
-     */
-    uint256[] public balances;
-    /**
-     * @dev This is the fee charged for adding liquidity to the SelfPeggingAsset contract.
-     */
-    uint256 public mintFee;
-    /**
-     * @dev This is the fee charged for trading assets in the SelfPeggingAsset contract.
-     * swapFee = swapFee * FEE_DENOMINATOR
-     */
-    uint256 public swapFee;
-    /**
-     * @dev This is the fee charged for removing liquidity from the SelfPeggingAsset contract.
-     * redeemFee = redeemFee * FEE_DENOMINATOR
-     */
-    uint256 public redeemFee;
-    /**
-     * @dev This is the address of the ERC20 token contract that represents the SelfPeggingAsset pool token.
-     */
-    ILPToken public poolToken;
-    /**
-     * @dev The total supply of pool token minted by the swap.
-     * It might be different from the pool token supply as the pool token can have multiple minters.
-     */
-    uint256 public totalSupply;
-
-    /**
-     * @dev This is a mapping of accounts that have administrative privileges over the SelfPeggingAsset contract.
-     */
-    mapping(address => bool) public admins;
-    /**
-     * @dev This is a state variable that represents whether or not the SelfPeggingAsset contract is currently paused.
-     */
-    bool public paused;
-
-    /**
-     * @dev These is a state variables that represents the initial amplification coefficient A.
-     */
-    uint256 public initialA;
-    /**
-     * @dev These is a state variables that represents the initial block number when A is set.
-     */
-    uint256 public initialABlock;
-    /**
-     * @dev These is a state variables that represents the future amplification coefficient A.
-     */
-    uint256 public futureA;
-    /**
-     * @dev These is a state variables that represents the future block number when A is set.
-     */
-    uint256 public futureABlock;
-    /**
-     * @dev Exchange rate provider for the tokens
-     */
-    IExchangeRateProvider[] public exchangeRateProviders;
-
-    /**
-     * @dev Fee error margin.
-     */
-    uint256 public feeErrorMargin;
-
-    /**
-     * @dev Yield error margin.
-     */
-    uint256 public yieldErrorMargin;
-
-    /**
-     * @dev Max delta D.
-     */
-    uint256 public maxDeltaD;
-
+    /// @notice Error thrown when the input parameters do not match the expected values.
     error InputMismatch();
+
+    /// @notice Error thrown when fees are not set
     error NoFees();
+
+    /// @notice Error thrown when the fee percentage is too large.
     error FeePercentageTooLarge();
+
+    /// @notice Error thrown when the token address is not set.
     error TokenNotSet();
+
+    /// @notice Error thrown when the exchange rate provider is not set.
     error ExchangeRateProviderNotSet();
+
+    /// @notice Error thrown when the precision is not set.
     error PrecisionNotSet();
+
+    /// @notice Error thrown when the tokens are duplicates.
     error DuplicateToken();
+
+    /// @notice Error thrown when the pool token is not set.
     error PoolTokenNotSet();
+
+    /// @notice Error thrown when the A value is not set.
     error ANotSet();
+
+    /// @notice Error thrown when the amount is invalid.
     error InvalidAmount();
+
+    /// @notice Error thrown when the pool is paused.
     error Paused();
+
+    /// @notice Error thrown when the amount is zero.
     error ZeroAmount();
+
+    /// @notice Error thrown when the token is the same.
     error SameToken();
+
+    /// @notice Error thrown when the input token is invalid.
     error InvalidIn();
+
+    /// @notice Error thrown when the output token is invalid.
     error InvalidOut();
+
+    /// @notice Error thrown when the amount is invalid.
     error InvalidMins();
+
+    /// @notice Error thrown when the token is invalid.
     error InvalidToken();
+
+    /// @notice Error thrown when the limit is exceeded.
     error LimitExceeded();
+
+    /// @notice Error thrown when the pool is not paused.
     error NotPaused();
+
+    /// @notice Error thrown when the account address is zero
     error AccountIsZero();
+
+    /// @notice Error thrown when the block number is an past block
     error PastBlock();
+
+    /// @notice Error thrown when the pool is imbalanced
     error PoolImbalanced();
+
+    /// @notice Error thrown when there is no loss
     error NoLosses();
+
+    /// @notice Error thrown when the account is not an admin
     error NotAdmin();
 
     /**

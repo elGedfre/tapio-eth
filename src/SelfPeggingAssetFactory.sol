@@ -34,6 +34,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
     using SafeMathUpgradeable for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    /// @notice Token type enum
     enum TokenType {
         Standard,
         Oracle,
@@ -41,14 +42,23 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
         ERC4626
     }
 
+    /// @notice Parameters for creating a new pool
     struct CreatePoolArgument {
+        /// @notice Address of token A
         address tokenA;
+        /// @notice Address of token B
         address tokenB;
+        /// @notice Type of token A
         TokenType tokenAType;
+        /// @notice Address of the oracle for token A
         address tokenAOracle;
+        /// @notice Function signature for token A
         string tokenAFunctionSig;
+        /// @notice Type of token B
         TokenType tokenBType;
+        /// @notice Address of the oracle for token B
         address tokenBOracle;
+        /// @notice Function signature for token B
         string tokenBFunctionSig;
     }
 
@@ -133,9 +143,16 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
      */
     event AModified(uint256 A);
 
+    /// @dev Error thrown when the address is invalid
     error InvalidAddress();
+
+    /// @dev Error thrown when the value is invalid
     error InvalidValue();
+
+    /// @dev Error thrown when the oracle is invalid
     error InvalidOracle();
+
+    /// @dev Error thrown when the function signature is invalid
     error InvalidFunctionSig();
 
     /**
@@ -187,27 +204,42 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
         emit GovernorModified(governor);
     }
 
+    /**
+     * @dev Set the mint fee.
+     */
     function setMintFee(uint256 _mintFee) external onlyOwner {
         mintFee = _mintFee;
         emit MintFeeModified(_mintFee);
     }
 
+    /**
+     * @dev Set the swap fee.
+     */
     function setSwapFee(uint256 _swapFee) external onlyOwner {
         swapFee = _swapFee;
         emit SwapFeeModified(_swapFee);
     }
 
+    /**
+     * @dev Set the redeem fee.
+     */
     function setRedeemFee(uint256 _redeemFee) external onlyOwner {
         redeemFee = _redeemFee;
         emit RedeemFeeModified(_redeemFee);
     }
 
+    /**
+     * @dev Set the A parameter.
+     */
     function setA(uint256 _A) external onlyOwner {
         require(_A > 0, InvalidValue());
         A = _A;
         emit AModified(_A);
     }
 
+    /**
+     * @dev Create a new pool.
+     */
     function createPool(CreatePoolArgument memory argument) external {
         require(argument.tokenA != address(0), InvalidAddress());
         require(argument.tokenB != address(0), InvalidAddress());
@@ -283,5 +315,8 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
         emit PoolCreated(address(lpTokenProxy), address(selfPeggingAssetProxy), address(wlpTokenProxy));
     }
 
+    /**
+     * @dev Authorisation to upgrade the implementation of the contract.
+     */
     function _authorizeUpgrade(address) internal override onlyOwner { }
 }
