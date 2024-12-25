@@ -191,7 +191,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * @return the amount of tokens owned by the `_account`.
      */
     function balanceOf(address _account) external view returns (uint256) {
-        return getPooledEthByShares(_sharesOf(_account));
+        return getPeggedTokenByShares(_sharesOf(_account));
     }
 
     /**
@@ -332,7 +332,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     /**
      * @return the amount of shares that corresponds to `_lpTokenAmount` protocol-controlled lpToken.
      */
-    function getSharesByPooledEth(uint256 _lpTokenAmount) public view returns (uint256) {
+    function getSharesByPeggedToken(uint256 _lpTokenAmount) public view returns (uint256) {
         if (totalSupply == 0) {
             return 0;
         } else {
@@ -343,7 +343,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     /**
      * @return the amount of lpToken that corresponds to `_sharesAmount` token shares.
      */
-    function getPooledEthByShares(uint256 _sharesAmount) public view returns (uint256) {
+    function getPeggedTokenByShares(uint256 _sharesAmount) public view returns (uint256) {
         if (totalShares == 0) {
             return 0;
         } else {
@@ -360,7 +360,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      */
     function transferShares(address _recipient, uint256 _sharesAmount) external returns (uint256) {
         _transferShares(msg.sender, _recipient, _sharesAmount);
-        uint256 tokensAmount = getPooledEthByShares(_sharesAmount);
+        uint256 tokensAmount = getPeggedTokenByShares(_sharesAmount);
         _emitTransferEvents(msg.sender, _recipient, tokensAmount, _sharesAmount);
         return tokensAmount;
     }
@@ -373,7 +373,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * Emits a `Transfer` event.
      *
      * Requirements:
-     * - the caller must have allowance for `_sender`'s tokens of at least `getPooledEthByShares(_sharesAmount)`.
+     * - the caller must have allowance for `_sender`'s tokens of at least `getPeggedTokenByShares(_sharesAmount)`.
      */
     function transferSharesFrom(
         address _sender,
@@ -383,7 +383,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
         external
         returns (uint256)
     {
-        uint256 tokensAmount = getPooledEthByShares(_sharesAmount);
+        uint256 tokensAmount = getPeggedTokenByShares(_sharesAmount);
         _spendAllowance(_sender, msg.sender, tokensAmount);
         _transferShares(_sender, _recipient, _sharesAmount);
         _emitTransferEvents(_sender, _recipient, tokensAmount, _sharesAmount);
@@ -419,7 +419,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * Emits a `TransferShares` event.
      */
     function _transfer(address _sender, address _recipient, uint256 _amount) internal {
-        uint256 _sharesToTransfer = getSharesByPooledEth(_amount);
+        uint256 _sharesToTransfer = getSharesByPeggedToken(_amount);
         _transferShares(_sender, _recipient, _sharesToTransfer);
         _emitTransferEvents(_sender, _recipient, _amount, _sharesToTransfer);
     }
@@ -488,7 +488,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
         require(_recipient != address(0), "LPToken: MINT_TO_ZERO_ADDR");
         uint256 _sharesAmount;
         if (totalSupply != 0 && totalShares != 0) {
-            _sharesAmount = getSharesByPooledEth(_tokenAmount);
+            _sharesAmount = getSharesByPeggedToken(_tokenAmount);
         } else {
             _sharesAmount = _tokenAmount;
         }
@@ -506,12 +506,12 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     function _burnShares(address _account, uint256 _tokenAmount) internal returns (uint256 newTotalShares) {
         require(_account != address(0), "LPToken: BURN_FROM_ZERO_ADDR");
 
-        uint256 _balance = getPooledEthByShares(_sharesOf(_account));
+        uint256 _balance = getPeggedTokenByShares(_sharesOf(_account));
         if (_tokenAmount > _balance) {
             revert InsufficientBalance(_balance, _tokenAmount);
         }
 
-        uint256 _sharesAmount = getSharesByPooledEth(_tokenAmount);
+        uint256 _sharesAmount = getSharesByPeggedToken(_tokenAmount);
         shares[_account] -= _sharesAmount;
         totalShares -= _sharesAmount;
         newTotalShares = totalShares;
@@ -532,6 +532,6 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * @notice Emits Transfer and TransferShares events after minting shares.
      */
     function _emitTransferAfterMintingShares(address _to, uint256 _sharesAmount) internal {
-        _emitTransferEvents(address(0), _to, getPooledEthByShares(_sharesAmount), _sharesAmount);
+        _emitTransferEvents(address(0), _to, getPeggedTokenByShares(_sharesAmount), _sharesAmount);
     }
 }

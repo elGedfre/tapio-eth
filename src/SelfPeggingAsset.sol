@@ -8,7 +8,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import "./misc/IERC20MintableBurnable.sol";
 import "./interfaces/IExchangeRateProvider.sol";
 import "./interfaces/ILPToken.sol";
 

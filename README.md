@@ -69,7 +69,7 @@ This function allows the spender to burn `_tokenAmount` of tapETH from the addre
 
 ### View Methodes
 
-- **getTotalPooledEther()**
+- **getTotalPeggedTokener()**
 
   This function returns the total supply of tapETH (uint256).
 
@@ -77,11 +77,11 @@ This function allows the spender to burn `_tokenAmount` of tapETH from the addre
 
   This function returns the total shares of tapETH (uint256).
 
-- **getSharesByPooledEth(uint256_tapETHAmount)**
+- **getSharesByPeggedToken(uint256_tapETHAmount)**
 
 This function returns the shares of tapETH (uint256) corresponding to `_tapETHAmount` of tapETH.
 
-- **getPooledEthByShares(uint256 \_sharesAmount)**
+- **getPeggedTokenByShares(uint256 \_sharesAmount)**
 
   This function returns the amount of tapETH (uint256) corresponding to `sharesAmount' shares of tapETH.
 

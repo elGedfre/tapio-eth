@@ -47,7 +47,7 @@ contract WLPToken is ERC4626Upgradeable {
      * @return The equivalent shares.
      */
     function convertToShares(uint256 assets) public view override returns (uint256) {
-        return lpToken.getSharesByPooledEth(assets);
+        return lpToken.getSharesByPeggedToken(assets);
     }
 
     /**
@@ -56,7 +56,7 @@ contract WLPToken is ERC4626Upgradeable {
      * @return The equivalent lpToken.
      */
     function convertToAssets(uint256 shares) public view override returns (uint256) {
-        return lpToken.getPooledEthByShares(shares);
+        return lpToken.getPeggedTokenByShares(shares);
     }
 
     /**
