@@ -646,13 +646,12 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         collectFeeOrYield(false);
         uint256[] memory _balances = balances;
         uint256 A = getA();
-        uint256 D = totalSupply;
         uint256 balanceAmount = _dx;
         balanceAmount = (balanceAmount * exchangeRateProviders[_i].exchangeRate())
             / (10 ** exchangeRateProviders[_i].exchangeRateDecimals());
         // balance[i] = balance[i] + dx * precisions[i]
         _balances[_i] = _balances[_i] + (balanceAmount * precisions[_i]);
-        uint256 y = _getY(_balances, _j, D, A);
+        uint256 y = _getY(_balances, _j, totalSupply, A);
         // dy = (balance[j] - y - 1) / precisions[j] in case there was rounding errors
         uint256 dy = (_balances[_j] - y - 1) / precisions[_j];
         // Update token balance in storage

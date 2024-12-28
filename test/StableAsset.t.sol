@@ -16,6 +16,7 @@ import "../src/mock/MockExchangeRateProvider.sol";
 contract SelfPeggingAssetTest is Test {
     address owner = address(0x01);
     address user = address(0x02);
+    address user2 = address(0x03);
     uint256 A = 100;
     LPToken lpToken;
     SelfPeggingAsset pool; // WETH and frxETH Pool
@@ -25,6 +26,7 @@ contract SelfPeggingAssetTest is Test {
     uint256 redeemFee = 50_000_000;
     MockToken WETH;
     MockToken frxETH;
+    uint256[] precisions;
 
     function setUp() public {
         WETH = new MockToken("WETH", "WETH", 18);
@@ -42,7 +44,7 @@ contract SelfPeggingAssetTest is Test {
         tokens[0] = address(WETH);
         tokens[1] = address(frxETH);
 
-        uint256[] memory precisions = new uint256[](2);
+        precisions = new uint256[](2);
         precisions[0] = 1;
         precisions[1] = 1;
 
@@ -152,9 +154,128 @@ contract SelfPeggingAssetTest is Test {
         assertEq(true, isCloseTo(lpTokensMinted, 229e18, 0.01e18));
     }
 
+    function test_exchangeCorrectAmount() external {
+        WETH.mint(user, 105e18);
+        frxETH.mint(user, 85e18);
+
+        vm.startPrank(user);
+        WETH.approve(address(pool), 105e18);
+        frxETH.approve(address(pool), 85e18);
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 105e18;
+        amounts[1] = 85e18;
+
+        pool.mint(amounts, 0);
+        vm.stopPrank();
+
+        frxETH.mint(user2, 8e18);
+        vm.startPrank(user2);
+        frxETH.approve(address(pool), 8e18);
+        vm.stopPrank();
+
+        (uint256 exchangeAmount,) = pool.getSwapAmount(1, 0, 8e18);
+
+        assertEq(WETH.balanceOf(user2), 0);
+        assertEq(frxETH.balanceOf(user2), 8e18);
+
+        assertEq(WETH.balanceOf(address(pool)), 105e18);
+        assertEq(frxETH.balanceOf(address(pool)), 85e18);
+
+        assertEq(pool.balances(0), 105e18);
+        assertEq(pool.balances(1), 85e18);
+
+        assertEq(pool.totalSupply(), 189.994704791049550806e18);
+
+        assertEq(pool.totalSupply(), lpToken.totalSupply());
+
+        vm.prank(user2);
+        pool.swap(1, 0, 8e18, 0);
+
+        assertEq(WETH.balanceOf(user2), exchangeAmount);
+        assertEq(frxETH.balanceOf(user2), 0);
+
+        assertEq(WETH.balanceOf(address(pool)), 105e18 - exchangeAmount);
+        assertEq(frxETH.balanceOf(address(pool)), 85e18 + 8e18);
+        assertEq(pool.totalSupply(), lpToken.totalSupply());
+    }
+
+    function test_redeemCorrectAmountWithProportionalRedemption() external {
+        uint256[] memory mintAmounts = new uint256[](2);
+        mintAmounts[0] = 105e18;
+        mintAmounts[1] = 85e18;
+
+        uint256 totalAmount = mintAmounts[0] + mintAmounts[1];
+
+        WETH.mint(user, 105e18);
+        frxETH.mint(user, 85e18);
+
+        vm.startPrank(user);
+        WETH.approve(address(pool), 105e18);
+        frxETH.approve(address(pool), 85e18);
+
+        pool.mint(mintAmounts, 0);
+        vm.stopPrank();
+
+        (uint256[] memory tokenAmounts,) = pool.getRedeemProportionAmount(25e18);
+        uint256 token1Amount = tokenAmounts[0];
+        uint256 token2Amount = tokenAmounts[1];
+
+        uint256 totalShares = lpToken.totalShares();
+        uint256 totalBalance = lpToken.totalSupply();
+
+        vm.prank(user);
+        lpToken.transfer(user2, 25e18);
+
+        uint256 shares2 = lpToken.sharesOf(user2);
+        uint256 balance2 = lpToken.balanceOf(user2);
+
+        assertEq(WETH.balanceOf(user2), 0);
+        assertEq(frxETH.balanceOf(user2), 0);
+
+        assertEq(WETH.balanceOf(address(pool)), 105e18);
+        assertEq(frxETH.balanceOf(address(pool)), 85e18);
+
+        assertEq(pool.balances(0), 105e18);
+        assertEq(pool.balances(1), 85e18);
+
+        assertEq(pool.totalSupply(), 189.994704791049550806e18);
+        assertEq(lpToken.totalSupply(), 189.994704791049550806e18);
+
+        uint256 amountToRedeem = lpToken.balanceOf(user2);
+        vm.startPrank(user2);
+        lpToken.approve(address(pool), amountToRedeem);
+        uint256[] memory _minRedeemAmounts = new uint256[](2);
+        pool.redeemProportion(amountToRedeem, _minRedeemAmounts);
+        vm.stopPrank();
+
+        assertEq(WETH.balanceOf(user2), token1Amount);
+        assertEq(frxETH.balanceOf(user2), token2Amount);
+
+        assertEq(lpToken.sharesOf(user2), 1);
+        assertEq(lpToken.balanceOf(user2), 1);
+
+        assertEq(WETH.balanceOf(address(pool)), 105e18 - token1Amount);
+        assertEq(frxETH.balanceOf(address(pool)), 85e18 - token2Amount);
+
+        assertAlmostTheSame(pool.balances(0), 105e18 - token1Amount * precisions[0]);
+        assertAlmostTheSame(pool.balances(1), 85e18 - token2Amount * precisions[1]);
+
+        assertEq(pool.totalSupply(), lpToken.totalSupply());
+    }
+
     function assertFee(uint256 totalAmount, uint256 feeAmount, uint256 fee) internal view {
         uint256 expectedFee = totalAmount * fee / feeDenominator;
         assertEq(feeAmount, expectedFee);
+    }
+
+    function assertAlmostTheSame(uint256 a, uint256 b) internal pure {
+        // Assert that the difference is smaller than 0.01%
+        uint256 smaller = a > b ? b : a;
+        uint256 bigger = a > b ? a : b;
+        uint256 diff = ((bigger - smaller) * 10_000) / smaller;
+
+        assertEq(diff, 0);
     }
 
     function isCloseTo(uint256 a, uint256 b, uint256 tolerance) public pure returns (bool) {
