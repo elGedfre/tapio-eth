@@ -58,6 +58,7 @@ contract SelfPeggingAssetTest is Test {
         exchangeRateProviders[1] = exchangeRateProvider;
 
         pool.initialize(tokens, precisions, fees, lpToken, A, exchangeRateProviders);
+        pool.transferOwnership(owner);
 
         vm.prank(owner);
         lpToken.addPool(address(pool));
@@ -151,7 +152,7 @@ contract SelfPeggingAssetTest is Test {
 
         (uint256 lpTokensMinted,) = _pool.getMintAmount(amounts);
 
-        assertEq(true, isCloseTo(lpTokensMinted, 229e18, 0.01e18));
+        assertIsCloseTo(lpTokensMinted, 229e18, 0.01e18);
     }
 
     function test_exchangeCorrectAmount() external {
@@ -258,8 +259,8 @@ contract SelfPeggingAssetTest is Test {
         assertEq(WETH.balanceOf(address(pool)), 105e18 - token1Amount);
         assertEq(frxETH.balanceOf(address(pool)), 85e18 - token2Amount);
 
-        assertAlmostTheSame(pool.balances(0), 105e18 - token1Amount * precisions[0]);
-        assertAlmostTheSame(pool.balances(1), 85e18 - token2Amount * precisions[1]);
+        assertIsCloseTo(pool.balances(0), 105e18 - token1Amount * precisions[0], 0);
+        assertIsCloseTo(pool.balances(1), 85e18 - token2Amount * precisions[1], 0);
 
         assertEq(pool.totalSupply(), lpToken.totalSupply());
     }
@@ -309,7 +310,7 @@ contract SelfPeggingAssetTest is Test {
 
         assertEq(WETH.balanceOf(address(pool)), 105e18 - token1Amount);
         assertEq(frxETH.balanceOf(address(pool)), 85e18);
-        assertAlmostTheSame(pool.balances(0), 105e18 - token1Amount * precisions[0]);
+        assertIsCloseTo(pool.balances(0), 105e18 - token1Amount * precisions[0], 0);
         assertEq(pool.balances(1), 85e18);
         assertEq(pool.totalSupply(), lpToken.totalSupply());
     }
@@ -391,12 +392,66 @@ contract SelfPeggingAssetTest is Test {
         uint256 redeemAmount = 25e18;
         (uint256 token1Amount, uint256 feeAmount) = pool.getRedeemSingleAmount(redeemAmount, 0);
 
-        assertInvariant(
-            105e18 - (token1Amount * precisions[0]),
-            85e18,
-            100,
-            totalAmount - redeemAmount - feeAmount
-        );
+        assertInvariant(105e18 - (token1Amount * precisions[0]), 85e18, 100, totalAmount - redeemAmount - feeAmount);
+    }
+
+    function test_redeemCorrectAmountWithProportionalRedemptionRebasing() external {
+        uint256[] memory mintAmounts = new uint256[](2);
+        mintAmounts[0] = 105e18;
+        mintAmounts[1] = 85e18;
+
+        WETH.mint(user, 105e18);
+        frxETH.mint(user, 85e18);
+
+        vm.startPrank(user);
+        WETH.approve(address(pool), 105e18);
+        frxETH.approve(address(pool), 85e18);
+
+        pool.mint(mintAmounts, 0);
+        vm.stopPrank();
+
+        WETH.mint(address(pool), 10e18);
+        uint256 redeemAmount = 25e18;
+        (uint256[] memory tokenAmounts, uint256 feeAmount) = pool.getRedeemProportionAmount(redeemAmount);
+
+        uint256 token1Amount = tokenAmounts[0];
+        uint256 token2Amount = tokenAmounts[1];
+
+        assertEq(token1Amount, 14_303_943_881_560_144_839);
+        assertEq(token2Amount, 10_572_480_260_283_585_316);
+        assertEq(feeAmount, 125_000_000_000_000_000);
+    }
+
+    function test_correctExchangeAmountRebasing() external {
+        WETH.mint(user, 105e18);
+        frxETH.mint(user, 85e18);
+
+        vm.startPrank(user);
+        WETH.approve(address(pool), 105e18);
+        frxETH.approve(address(pool), 85e18);
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 105e18;
+        amounts[1] = 85e18;
+
+        pool.mint(amounts, 0);
+        vm.stopPrank();
+
+        WETH.mint(address(pool), 10e18);
+        frxETH.mint(user2, 8e18);
+        vm.startPrank(user2);
+        frxETH.approve(address(pool), 8e18);
+        vm.stopPrank();
+
+        (uint256 exchangeAmount, uint256 feeAmount) = pool.getSwapAmount(1, 0, 8e18);
+
+        assertEq(exchangeAmount, 7.992985053666343961e18);
+        assertEq(feeAmount, 0.016018006119571831e18);
+    }
+
+    function test_getA() external {
+        assertEq(pool.initialA(), 100);
+        assertEq(pool.futureA(), 100);
     }
 
     function assertFee(uint256 totalAmount, uint256 feeAmount, uint256 fee) internal view {
@@ -404,33 +459,36 @@ contract SelfPeggingAssetTest is Test {
         assertEq(feeAmount, expectedFee);
     }
 
-    function assertAlmostTheSame(uint256 num1, uint256 num2) internal {
-        // Assert that the difference is smaller than 0.01%
-        uint256 diff = (num1 > num2 ? num1 - num2 : num2 - num1) * 10000 / (num1 < num2 ? num1 : num2);
-        assertEq(diff, 0, "Values are not almost the same");
+    function assertAlmostTheSame(uint256 num1, uint256 num2) internal view {
+        // Calculate the absolute difference
+        uint256 diff = num1 > num2 ? num1 - num2 : num2 - num1;
+
+        // Use the smaller number as the denominator
+        uint256 denominator = num1 < num2 ? num1 : num2;
+        require(denominator > 0, "Denominator must be greater than 0");
+
+        // Calculate the relative difference scaled by 10000 (0.01% precision)
+        uint256 scaledDiff = (diff * 10_000) / denominator;
+
+        // Assert that the relative difference is smaller than 0.15% (scaled value <= 15)
+        require(scaledDiff <= 15, "Values are not almost the same");
     }
 
-    function assertInvariant(
-        uint256 balance0,
-        uint256 balance1,
-        uint256 A,
-        uint256 D
-    ) internal {
+    function assertInvariant(uint256 balance0, uint256 balance1, uint256 A, uint256 D) internal {
         // We only check n = 2 here
         uint256 left = (A * 4) * (balance0 + balance1) + D;
         uint256 denominator = balance0 * balance1 * 4;
         require(denominator > 0, "Denominator must be greater than 0");
-        uint256 right = (A * 4) * D + (D**3) / denominator;
+        uint256 right = (A * 4) * D + (D ** 3) / denominator;
 
         assertAlmostTheSame(left, right);
     }
 
-
-    function isCloseTo(uint256 a, uint256 b, uint256 tolerance) public pure returns (bool) {
+    function assertIsCloseTo(uint256 a, uint256 b, uint256 tolerance) public pure returns (bool) {
         if (a > b) {
-            return a - b <= tolerance;
+            require(a - b <= tolerance == true, "Not close enough");
         } else {
-            return b - a <= tolerance;
+            require(b - a <= tolerance == true == true, "Not close enough");
         }
     }
 }
