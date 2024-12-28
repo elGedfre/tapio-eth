@@ -23,18 +23,14 @@ contract Deploy is Config {
         address lpTokenImplentation = address(new LPToken());
         address wlpTokenImplentation = address(new WLPToken());
 
-        UpgradeableBeacon beacon = new UpgradeableBeacon(selfPeggingAssetImplentation);
+        UpgradeableBeacon beacon = new UpgradeableBeacon(selfPeggingAssetImplentation, GOVERNOR);
         selfPeggingAssetBeacon = address(beacon);
 
-        beacon = new UpgradeableBeacon(lpTokenImplentation);
+        beacon = new UpgradeableBeacon(lpTokenImplentation, GOVERNOR);
         lpTokenBeacon = address(beacon);
 
-        beacon = new UpgradeableBeacon(wlpTokenImplentation);
+        beacon = new UpgradeableBeacon(wlpTokenImplentation, GOVERNOR);
         wlpTokenBeacon = address(beacon);
-
-        UpgradeableBeacon(selfPeggingAssetBeacon).transferOwnership(GOVERNOR);
-        UpgradeableBeacon(lpTokenBeacon).transferOwnership(GOVERNOR);
-        UpgradeableBeacon(wlpTokenBeacon).transferOwnership(GOVERNOR);
     }
 
     function deployFactory() internal {

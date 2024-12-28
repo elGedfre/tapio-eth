@@ -3,7 +3,7 @@ pragma solidity ^0.8.28;
 
 import "../../interfaces/IExchangeRateProvider.sol";
 import "./RocketTokenRETHInterface.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
 /**
  * @notice Rocket Token exchange rate.

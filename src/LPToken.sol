@@ -137,7 +137,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
         tokenName = _name;
         tokenSymbol = _symbol;
 
-        __Ownable_init();
+        __Ownable_init(msg.sender);
     }
 
     /**
