@@ -370,19 +370,61 @@ contract SelfPeggingAssetTest is Test {
         assertEq(pool.totalSupply(), lpToken.totalSupply());
     }
 
+    function test_redeemCorrectAmountToSingleTokenRebasing() external {
+        uint256[] memory mintAmounts = new uint256[](2);
+        mintAmounts[0] = 105e18;
+        mintAmounts[1] = 85e18;
+
+        uint256 totalAmount = mintAmounts[0] + mintAmounts[1];
+
+        WETH.mint(user, 105e18);
+        frxETH.mint(user, 85e18);
+
+        vm.startPrank(user);
+        WETH.approve(address(pool), 105e18);
+        frxETH.approve(address(pool), 85e18);
+
+        pool.mint(mintAmounts, 0);
+        vm.stopPrank();
+
+        WETH.mint(address(pool), 10e18);
+        uint256 redeemAmount = 25e18;
+        (uint256 token1Amount, uint256 feeAmount) = pool.getRedeemSingleAmount(redeemAmount, 0);
+
+        assertInvariant(
+            105e18 - (token1Amount * precisions[0]),
+            85e18,
+            100,
+            totalAmount - redeemAmount - feeAmount
+        );
+    }
+
     function assertFee(uint256 totalAmount, uint256 feeAmount, uint256 fee) internal view {
         uint256 expectedFee = totalAmount * fee / feeDenominator;
         assertEq(feeAmount, expectedFee);
     }
 
-    function assertAlmostTheSame(uint256 a, uint256 b) internal pure {
+    function assertAlmostTheSame(uint256 num1, uint256 num2) internal {
         // Assert that the difference is smaller than 0.01%
-        uint256 smaller = a > b ? b : a;
-        uint256 bigger = a > b ? a : b;
-        uint256 diff = ((bigger - smaller) * 10_000) / smaller;
-
-        assertEq(diff, 0);
+        uint256 diff = (num1 > num2 ? num1 - num2 : num2 - num1) * 10000 / (num1 < num2 ? num1 : num2);
+        assertEq(diff, 0, "Values are not almost the same");
     }
+
+    function assertInvariant(
+        uint256 balance0,
+        uint256 balance1,
+        uint256 A,
+        uint256 D
+    ) internal {
+        // We only check n = 2 here
+        uint256 left = (A * 4) * (balance0 + balance1) + D;
+        uint256 denominator = balance0 * balance1 * 4;
+        require(denominator > 0, "Denominator must be greater than 0");
+        uint256 right = (A * 4) * D + (D**3) / denominator;
+
+        assertAlmostTheSame(left, right);
+    }
+
 
     function isCloseTo(uint256 a, uint256 b, uint256 tolerance) public pure returns (bool) {
         if (a > b) {
