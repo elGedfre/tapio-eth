@@ -264,6 +264,56 @@ contract SelfPeggingAssetTest is Test {
         assertEq(pool.totalSupply(), lpToken.totalSupply());
     }
 
+    function test_redeemCorrectAmountToSingleToken() external {
+        uint256[] memory mintAmounts = new uint256[](2);
+        mintAmounts[0] = 105e18;
+        mintAmounts[1] = 85e18;
+
+        uint256 totalAmount = mintAmounts[0] + mintAmounts[1];
+
+        WETH.mint(user, 105e18);
+        frxETH.mint(user, 85e18);
+
+        vm.startPrank(user);
+        WETH.approve(address(pool), 105e18);
+        frxETH.approve(address(pool), 85e18);
+
+        pool.mint(mintAmounts, 0);
+        vm.stopPrank();
+
+        (uint256 token1Amount, uint256 token2Amount) = pool.getRedeemSingleAmount(25e18, 0);
+
+        vm.prank(user);
+        lpToken.transfer(user2, 25e18);
+
+        assertEq(WETH.balanceOf(user2), 0);
+        assertEq(frxETH.balanceOf(user2), 0);
+
+        assertEq(WETH.balanceOf(address(pool)), 105e18);
+        assertEq(frxETH.balanceOf(address(pool)), 85e18);
+
+        assertEq(pool.balances(0), 105e18);
+        assertEq(pool.balances(1), 85e18);
+
+        assertEq(pool.totalSupply(), lpToken.totalSupply());
+
+        uint256 redeemAmount = lpToken.balanceOf(user2);
+        vm.startPrank(user2);
+        lpToken.approve(address(pool), redeemAmount);
+        pool.redeemSingle(redeemAmount, 0, 0);
+        vm.stopPrank();
+
+        assertEq(WETH.balanceOf(user2), token1Amount);
+        assertEq(frxETH.balanceOf(user2), 0);
+        assertEq(lpToken.sharesOf(user2), 1);
+
+        assertEq(WETH.balanceOf(address(pool)), 105e18 - token1Amount);
+        assertEq(frxETH.balanceOf(address(pool)), 85e18);
+        assertAlmostTheSame(pool.balances(0), 105e18 - token1Amount * precisions[0]);
+        assertEq(pool.balances(1), 85e18);
+        assertEq(pool.totalSupply(), lpToken.totalSupply());
+    }
+
     function assertFee(uint256 totalAmount, uint256 feeAmount, uint256 fee) internal view {
         uint256 expectedFee = totalAmount * fee / feeDenominator;
         assertEq(feeAmount, expectedFee);
