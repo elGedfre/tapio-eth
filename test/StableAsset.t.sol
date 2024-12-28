@@ -314,6 +314,62 @@ contract SelfPeggingAssetTest is Test {
         assertEq(pool.totalSupply(), lpToken.totalSupply());
     }
 
+    function test_redeemCorrectAmountToMultipleTokens() external {
+        uint256[] memory mintAmounts = new uint256[](2);
+        mintAmounts[0] = 105e18;
+        mintAmounts[1] = 85e18;
+
+        WETH.mint(user, 105e18);
+        frxETH.mint(user, 85e18);
+
+        vm.startPrank(user);
+        WETH.approve(address(pool), 105e18);
+        frxETH.approve(address(pool), 85e18);
+
+        pool.mint(mintAmounts, 0);
+        vm.stopPrank();
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 10e18;
+        amounts[1] = 5e18;
+        (uint256 redeemAmount,) = pool.getRedeemMultiAmount(amounts);
+
+        vm.prank(user);
+        lpToken.transfer(user2, 25e18);
+
+        uint256 balance = lpToken.balanceOf(user2);
+
+        assertEq(WETH.balanceOf(user2), 0);
+        assertEq(frxETH.balanceOf(user2), 0);
+        assertEq(lpToken.balanceOf(user2), balance);
+
+        assertEq(WETH.balanceOf(address(pool)), 105e18);
+        assertEq(frxETH.balanceOf(address(pool)), 85e18);
+
+        assertEq(pool.balances(0), 105e18);
+        assertEq(pool.balances(1), 85e18);
+
+        assertEq(pool.totalSupply(), lpToken.totalSupply());
+
+        vm.startPrank(user2);
+        lpToken.approve(address(pool), redeemAmount);
+        uint256[] memory redeemAmounts = new uint256[](2);
+        redeemAmounts[0] = 10e18;
+        redeemAmounts[1] = 5e18;
+        pool.redeemMulti(redeemAmounts, redeemAmount);
+        vm.stopPrank();
+
+        assertEq(WETH.balanceOf(user2), 10e18);
+        assertEq(frxETH.balanceOf(user2), 5e18);
+
+        assertEq(WETH.balanceOf(address(pool)), 105e18 - 10e18);
+        assertEq(frxETH.balanceOf(address(pool)), 85e18 - 5e18);
+
+        assertEq(pool.balances(0), 105e18 - 10e18);
+        assertEq(pool.balances(1), 85e18 - 5e18);
+        assertEq(pool.totalSupply(), lpToken.totalSupply());
+    }
+
     function assertFee(uint256 totalAmount, uint256 feeAmount, uint256 fee) internal view {
         uint256 expectedFee = totalAmount * fee / feeDenominator;
         assertEq(feeAmount, expectedFee);
