@@ -47,7 +47,7 @@ contract Pool is Config {
         return (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken);
     }
 
-    function initialMintAndUnpause(
+    function initialMint(
         uint256 usdcAmount,
         uint256 usdtAmount,
         SelfPeggingAsset selfPeggingAsset
@@ -58,8 +58,8 @@ contract Pool is Config {
         console.log("initial-mint-logs");
         console.log("---------------");
 
-        MockToken(usdc).approve(address(factory), usdcAmount);
-        MockToken(usdt).approve(address(factory), usdtAmount);
+        MockToken(usdc).approve(address(selfPeggingAsset), usdcAmount);
+        MockToken(usdt).approve(address(selfPeggingAsset), usdtAmount);
 
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = usdcAmount;
