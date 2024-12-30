@@ -1178,13 +1178,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     }
 
     /**
-     * @dev Returns the array of token addresses in the pool.
-     */
-    function getTokens() public view returns (address[] memory) {
-        return tokens;
-    }
-
-    /**
      * @notice This function allows to rebase LPToken by increasing his total supply
      * from the current stableSwap pool by the staking rewards and the swap fee.
      */
