@@ -3,17 +3,15 @@ pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import "./StableAsset.sol";
+import "./SelfPeggingAsset.sol";
 import "./LPToken.sol";
 import "./WLPToken.sol";
 import "./misc/ConstantExchangeRateProvider.sol";
@@ -22,17 +20,15 @@ import "./misc/OracleExchangeRate.sol";
 import "./interfaces/IExchangeRateProvider.sol";
 
 /**
- * @title StableAsset Application
+ * @title SelfPeggingAsset Application
  * @author Nuts Finance Developer
  * @notice The StableSwap Application provides an interface for users to interact with StableSwap pool contracts
  * @dev The StableSwap Application contract allows users to mint pool tokens, swap between different tokens, and redeem
  * pool tokens to underlying tokens.
  * This contract should never store assets.
  */
-contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
-    using SafeMathUpgradeable for uint256;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
-
+contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
+    /// @notice Token type enum
     enum TokenType {
         Standard,
         Oracle,
@@ -40,27 +36,30 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
         ERC4626
     }
 
+    /// @notice Parameters for creating a new pool
     struct CreatePoolArgument {
+        /// @notice Address of token A
         address tokenA;
+        /// @notice Address of token B
         address tokenB;
-        address initialMinter;
+        /// @notice Type of token A
         TokenType tokenAType;
+        /// @notice Address of the oracle for token A
         address tokenAOracle;
+        /// @notice Function signature for token A
         string tokenAFunctionSig;
+        /// @notice Type of token B
         TokenType tokenBType;
+        /// @notice Address of the oracle for token B
         address tokenBOracle;
+        /// @notice Function signature for token B
         string tokenBFunctionSig;
     }
 
     /**
-     * @dev This is the account that has governance control over the protocol.
+     * @dev This is the account that has governor control over the protocol.
      */
-    address public governance;
-
-    /**
-     * @dev Pending governance address,
-     */
-    address public pendingGovernance;
+    address public governor;
 
     /**
      * @dev Default mint fee for the pool.
@@ -83,9 +82,9 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
     uint256 public A;
 
     /**
-     * @dev Beacon for the StableAsset implementation.
+     * @dev Beacon for the SelfPeggingAsset implementation.
      */
-    address public stableAssetBeacon;
+    address public selfPeggingAssetBeacon;
 
     /**
      * @dev Beacon for the LPToken implementation.
@@ -103,22 +102,16 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
     ConstantExchangeRateProvider public constantExchangeRateProvider;
 
     /**
-     * @dev This event is emitted when the governance is modified.
-     * @param governance is the new value of the governance.
+     * @dev This event is emitted when the governor is modified.
+     * @param governor is the new value of the governor.
      */
-    event GovernanceModified(address governance);
-
-    /**
-     * @dev This event is emitted when the governance is modified.
-     * @param governance is the new value of the governance.
-     */
-    event GovernanceProposed(address governance);
+    event GovernorModified(address governor);
 
     /**
      * @dev This event is emitted when a new pool is created.
      * @param poolToken is the pool token created.
      */
-    event PoolCreated(address poolToken, address stableAsset, address wrappedPoolToken);
+    event PoolCreated(address poolToken, address selfPeggingAsset, address wrappedPoolToken);
 
     /**
      * @dev This event is emitted when the mint fee is updated.
@@ -144,16 +137,28 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
      */
     event AModified(uint256 A);
 
+    /// @dev Error thrown when the address is invalid
+    error InvalidAddress();
+
+    /// @dev Error thrown when the value is invalid
+    error InvalidValue();
+
+    /// @dev Error thrown when the oracle is invalid
+    error InvalidOracle();
+
+    /// @dev Error thrown when the function signature is invalid
+    error InvalidFunctionSig();
+
     /**
      * @dev Initializes the StableSwap Application contract.
      */
     function initialize(
-        address _governance,
+        address _governor,
         uint256 _mintFee,
         uint256 _swapFee,
         uint256 _redeemFee,
         uint256 _A,
-        address _stableAssetBeacon,
+        address _selfPeggingAssetBeacon,
         address _lpTokenBeacon,
         address _wlpTokenBeacon,
         ConstantExchangeRateProvider _constantExchangeRateProvider
@@ -161,13 +166,21 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
         public
         initializer
     {
-        __ReentrancyGuard_init();
-        governance = _governance;
+        require(_governor != address(0), InvalidAddress());
+        require(_A > 0, InvalidValue());
+        require(_selfPeggingAssetBeacon != address(0), InvalidAddress());
+        require(_lpTokenBeacon != address(0), InvalidAddress());
+        require(_wlpTokenBeacon != address(0), InvalidAddress());
+        require(address(_constantExchangeRateProvider) != address(0), InvalidAddress());
 
-        stableAssetBeacon = _stableAssetBeacon;
+        __ReentrancyGuard_init();
+        __Ownable_init(msg.sender);
+
+        governor = _governor;
+
+        selfPeggingAssetBeacon = _selfPeggingAssetBeacon;
         lpTokenBeacon = _lpTokenBeacon;
         wlpTokenBeacon = _wlpTokenBeacon;
-
         constantExchangeRateProvider = _constantExchangeRateProvider;
 
         mintFee = _mintFee;
@@ -177,57 +190,66 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
     }
 
     /**
-     * @dev Propose the govenance address.
-     * @param _governance Address of the new governance.
+     * @dev Set the govenance address.
      */
-    function proposeGovernance(address _governance) public {
-        require(msg.sender == governance, "not governance");
-        pendingGovernance = _governance;
-        emit GovernanceProposed(_governance);
+    function setGovernor(address _governor) public onlyOwner {
+        require(_governor != address(0), InvalidAddress());
+        governor = _governor;
+        emit GovernorModified(governor);
     }
 
     /**
-     * @dev Accept the govenance address.
+     * @dev Set the mint fee.
      */
-    function acceptGovernance() public {
-        require(msg.sender == pendingGovernance, "not pending governance");
-        governance = pendingGovernance;
-        pendingGovernance = address(0);
-        emit GovernanceModified(governance);
-    }
-
-    modifier onlyGovernance() {
-        require(msg.sender == governance, "not governance");
-        _;
-    }
-
-    function setMintFee(uint256 _mintFee) external onlyGovernance {
+    function setMintFee(uint256 _mintFee) external onlyOwner {
         mintFee = _mintFee;
         emit MintFeeModified(_mintFee);
     }
 
-    function setSwapFee(uint256 _swapFee) external onlyGovernance {
+    /**
+     * @dev Set the swap fee.
+     */
+    function setSwapFee(uint256 _swapFee) external onlyOwner {
         swapFee = _swapFee;
         emit SwapFeeModified(_swapFee);
     }
 
-    function setRedeemFee(uint256 _redeemFee) external onlyGovernance {
+    /**
+     * @dev Set the redeem fee.
+     */
+    function setRedeemFee(uint256 _redeemFee) external onlyOwner {
         redeemFee = _redeemFee;
         emit RedeemFeeModified(_redeemFee);
     }
 
-    function setA(uint256 _A) external onlyGovernance {
+    /**
+     * @dev Set the A parameter.
+     */
+    function setA(uint256 _A) external onlyOwner {
+        require(_A > 0, InvalidValue());
         A = _A;
         emit AModified(_A);
     }
 
+    /**
+     * @dev Create a new pool.
+     */
     function createPool(CreatePoolArgument memory argument) external {
+        require(argument.tokenA != address(0), InvalidAddress());
+        require(argument.tokenB != address(0), InvalidAddress());
+        require(argument.tokenA != argument.tokenB, InvalidValue());
+
         string memory symbolA = ERC20Upgradeable(argument.tokenA).symbol();
         string memory symbolB = ERC20Upgradeable(argument.tokenB).symbol();
-        string memory symbol = string.concat(string.concat(string.concat("SA-", symbolA), "-"), symbolB);
-        string memory name = string.concat(string.concat(string.concat("Stable Asset ", symbolA), " "), symbolB);
-        bytes memory lpTokenInit = abi.encodeCall(LPToken.initialize, (address(this), name, symbol));
+        string memory symbol = string.concat(string.concat(string.concat("SPA-", symbolA), "-"), symbolB);
+        string memory name = string.concat(string.concat(string.concat("Self Pegging Asset ", symbolA), " "), symbolB);
+        bytes memory lpTokenInit = abi.encodeCall(LPToken.initialize, (name, symbol));
         BeaconProxy lpTokenProxy = new BeaconProxy(lpTokenBeacon, lpTokenInit);
+
+        address[] memory proposers = new address[](1);
+        address[] memory executors = new address[](1);
+        proposers[0] = governor;
+        executors[0] = governor;
 
         address[] memory tokens = new address[](2);
         uint256[] memory precisions = new uint256[](2);
@@ -245,6 +267,8 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
         if (argument.tokenAType == TokenType.Standard || argument.tokenAType == TokenType.Rebasing) {
             exchangeRateProviders[0] = IExchangeRateProvider(constantExchangeRateProvider);
         } else if (argument.tokenAType == TokenType.Oracle) {
+            require(argument.tokenAOracle != address(0), InvalidOracle());
+            require(bytes(argument.tokenAFunctionSig).length > 0, InvalidFunctionSig());
             OracleExchangeRate oracleExchangeRate =
                 new OracleExchangeRate(argument.tokenAOracle, argument.tokenAFunctionSig);
             exchangeRateProviders[0] = IExchangeRateProvider(oracleExchangeRate);
@@ -256,6 +280,8 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
         if (argument.tokenBType == TokenType.Standard || argument.tokenBType == TokenType.Rebasing) {
             exchangeRateProviders[1] = IExchangeRateProvider(constantExchangeRateProvider);
         } else if (argument.tokenBType == TokenType.Oracle) {
+            require(argument.tokenBOracle != address(0), InvalidOracle());
+            require(bytes(argument.tokenBFunctionSig).length > 0, InvalidFunctionSig());
             OracleExchangeRate oracleExchangeRate =
                 new OracleExchangeRate(argument.tokenBOracle, argument.tokenBFunctionSig);
             exchangeRateProviders[1] = IExchangeRateProvider(oracleExchangeRate);
@@ -264,24 +290,27 @@ contract StableAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable {
             exchangeRateProviders[1] = IExchangeRateProvider(erc4626ExchangeRate);
         }
 
-        bytes memory stableAssetInit = abi.encodeCall(
-            StableAsset.initialize, (tokens, precisions, fees, LPToken(address(lpTokenProxy)), A, exchangeRateProviders)
+        bytes memory selfPeggingAssetInit = abi.encodeCall(
+            SelfPeggingAsset.initialize,
+            (tokens, precisions, fees, LPToken(address(lpTokenProxy)), A, exchangeRateProviders)
         );
-        BeaconProxy stableAssetProxy = new BeaconProxy(stableAssetBeacon, stableAssetInit);
-        StableAsset stableAsset = StableAsset(address(stableAssetProxy));
+        BeaconProxy selfPeggingAssetProxy = new BeaconProxy(selfPeggingAssetBeacon, selfPeggingAssetInit);
+        SelfPeggingAsset selfPeggingAsset = SelfPeggingAsset(address(selfPeggingAssetProxy));
         LPToken lpToken = LPToken(address(lpTokenProxy));
 
-        stableAsset.setAdmin(argument.initialMinter, true);
-
-        stableAsset.proposeGovernance(governance);
-        lpToken.addPool(address(stableAsset));
-        lpToken.proposeGovernance(governance);
+        selfPeggingAsset.setAdmin(governor, true);
+        selfPeggingAsset.transferOwnership(governor);
+        lpToken.addPool(address(selfPeggingAsset));
+        lpToken.transferOwnership(governor);
 
         bytes memory wlpTokenInit = abi.encodeCall(WLPToken.initialize, (ILPToken(lpToken)));
         BeaconProxy wlpTokenProxy = new BeaconProxy(wlpTokenBeacon, wlpTokenInit);
 
-        emit PoolCreated(address(lpTokenProxy), address(stableAssetProxy), address(wlpTokenProxy));
+        emit PoolCreated(address(lpTokenProxy), address(selfPeggingAssetProxy), address(wlpTokenProxy));
     }
 
-    function _authorizeUpgrade(address) internal override onlyGovernance { }
+    /**
+     * @dev Authorisation to upgrade the implementation of the contract.
+     */
+    function _authorizeUpgrade(address) internal override onlyOwner { }
 }

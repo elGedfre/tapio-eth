@@ -3,30 +3,28 @@ pragma solidity 0.8.28;
 
 import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
-import { StableAssetFactory } from "../src/StableAssetFactory.sol";
+import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
 
 contract Config is Script {
     bool testnet = vm.envBool("TESTNET");
 
     uint256 deployerPrivateKey;
-    uint256 initialMinterPrivateKey;
 
-    address GOVERNANCE;
+    address GOVERNOR;
     address DEPLOYER;
-    address INITIAL_MINTER;
 
     address usdc;
     address usdt;
 
-    StableAssetFactory factory;
-    address stableAssetBeacon;
+    SelfPeggingAssetFactory factory;
+    address selfPeggingAssetBeacon;
     address lpTokenBeacon;
     address wlpTokenBeacon;
 
     struct JSONData {
         address Factory;
         address LPTokenBeacon;
-        address StableAssetBeacon;
+        address SelfPeggingAssetBeacon;
         address USDC;
         address USDT;
         address WLPTokenBeacon;

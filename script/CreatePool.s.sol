@@ -7,22 +7,22 @@ import { console } from "forge-std/console.sol";
 import { Deploy } from "script/Deploy.sol";
 import { Setup } from "script/Setup.sol";
 import { Pool } from "script/Pool.sol";
-import { StableAssetFactory } from "../src/StableAssetFactory.sol";
-import { StableAsset } from "../src/StableAsset.sol";
+import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
+import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
 import { MockToken } from "../src/mock/MockToken.sol";
 
 contract Testnet is Deploy, Setup, Pool {
     function init() internal {
         if (vm.envUint("HEX_PRIV_KEY") == 0) revert("No private key found");
-        initialMinterPrivateKey = vm.envUint("HEX_PRIV_KEY");
-        INITIAL_MINTER = vm.addr(initialMinterPrivateKey);
+        deployerPrivateKey = vm.envUint("HEX_PRIV_KEY");
+        DEPLOYER = vm.addr(deployerPrivateKey);
     }
 
     function run() public payable {
         init();
         loadConfig();
 
-        vm.startBroadcast(initialMinterPrivateKey);
+        vm.startBroadcast(deployerPrivateKey);
 
         string memory root = vm.projectRoot();
         string memory path;
@@ -37,19 +37,21 @@ contract Testnet is Deploy, Setup, Pool {
 
         JSONData memory jsonData = abi.decode(data, (JSONData));
 
-        factory = StableAssetFactory(jsonData.Factory);
-        stableAssetBeacon = jsonData.StableAssetBeacon;
+        factory = SelfPeggingAssetFactory(jsonData.Factory);
+        selfPeggingAssetBeacon = jsonData.SelfPeggingAssetBeacon;
         lpTokenBeacon = jsonData.LPTokenBeacon;
         wlpTokenBeacon = jsonData.WLPTokenBeacon;
         usdc = jsonData.USDC;
         usdt = jsonData.USDT;
 
-        (, address stableAsset,) = createStandardPool();
+        (, address selfPeggingAsset,) = createStandardPool();
 
-        MockToken(usdc).mint(INITIAL_MINTER, 100e18);
-        MockToken(usdt).mint(INITIAL_MINTER, 100e18);
+        uint256 amount = 10_000e18;
 
-        initialMintAndUnpause(100e18, 100e18, StableAsset(stableAsset));
+        MockToken(usdc).mint(DEPLOYER, amount);
+        MockToken(usdt).mint(DEPLOYER, amount);
+
+        initialMint(amount, amount, SelfPeggingAsset(selfPeggingAsset));
 
         vm.stopBroadcast();
     }

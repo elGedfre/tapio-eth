@@ -14,6 +14,9 @@ contract WETH9 {
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
 
+    error InsufficientBalance();
+    error NoAllowance();
+
     function deposit() public payable {
         balanceOf[msg.sender] += msg.value;
         emit Deposit(msg.sender, msg.value);
@@ -41,14 +44,14 @@ contract WETH9 {
     }
 
     function transferFrom(address src, address dst, uint256 wad) public returns (bool) {
-        require(balanceOf[src] >= wad, "insufficient balance");
+        require(balanceOf[src] >= wad, InsufficientBalance());
 
         // solhint-disable max-line-length
         if (
             src != msg.sender
                 && allowance[src][msg.sender] != uint256(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
         ) {
-            require(allowance[src][msg.sender] >= wad, "no allowance");
+            require(allowance[src][msg.sender] >= wad, NoAllowance());
             allowance[src][msg.sender] -= wad;
         }
 
