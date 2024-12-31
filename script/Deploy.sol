@@ -8,11 +8,9 @@ import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
 import { LPToken } from "../src/LPToken.sol";
 import { WLPToken } from "../src/WLPToken.sol";
 import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
-import { Timelock } from "../src/governance/Timelock.sol";
 import { Config } from "script/Config.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "../src/misc/ConstantExchangeRateProvider.sol";
-import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 
 contract Deploy is Config {
     function deployBeacons() internal {
@@ -24,18 +22,14 @@ contract Deploy is Config {
         address lpTokenImplentation = address(new LPToken());
         address wlpTokenImplentation = address(new WLPToken());
 
-        UpgradeableBeacon beacon = new UpgradeableBeacon(selfPeggingAssetImplentation);
+        UpgradeableBeacon beacon = new UpgradeableBeacon(selfPeggingAssetImplentation, GOVERNOR);
         selfPeggingAssetBeacon = address(beacon);
 
-        beacon = new UpgradeableBeacon(lpTokenImplentation);
+        beacon = new UpgradeableBeacon(lpTokenImplentation, GOVERNOR);
         lpTokenBeacon = address(beacon);
 
-        beacon = new UpgradeableBeacon(wlpTokenImplentation);
+        beacon = new UpgradeableBeacon(wlpTokenImplentation, GOVERNOR);
         wlpTokenBeacon = address(beacon);
-
-        UpgradeableBeacon(selfPeggingAssetBeacon).transferOwnership(GOVERNOR);
-        UpgradeableBeacon(lpTokenBeacon).transferOwnership(GOVERNOR);
-        UpgradeableBeacon(wlpTokenBeacon).transferOwnership(GOVERNOR);
     }
 
     function deployFactory() internal {

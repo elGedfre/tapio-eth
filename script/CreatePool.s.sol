@@ -46,10 +46,12 @@ contract Testnet is Deploy, Setup, Pool {
 
         (, address selfPeggingAsset,) = createStandardPool();
 
-        MockToken(usdc).mint(DEPLOYER, 100e18);
-        MockToken(usdt).mint(DEPLOYER, 100e18);
+        uint256 amount = 10_000e18;
 
-        initialMintAndUnpause(100e18, 100e18, SelfPeggingAsset(selfPeggingAsset));
+        MockToken(usdc).mint(DEPLOYER, amount);
+        MockToken(usdt).mint(DEPLOYER, amount);
+
+        initialMint(amount, amount, SelfPeggingAsset(selfPeggingAsset));
 
         vm.stopBroadcast();
     }

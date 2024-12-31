@@ -3,10 +3,7 @@ pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -20,7 +17,6 @@ import "./WLPToken.sol";
 import "./misc/ConstantExchangeRateProvider.sol";
 import "./misc/ERC4626ExchangeRate.sol";
 import "./misc/OracleExchangeRate.sol";
-import "./governance/Timelock.sol";
 import "./interfaces/IExchangeRateProvider.sol";
 
 /**
@@ -32,9 +28,7 @@ import "./interfaces/IExchangeRateProvider.sol";
  * This contract should never store assets.
  */
 contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
-    using SafeMathUpgradeable for uint256;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
-
+    /// @notice Token type enum
     enum TokenType {
         Standard,
         Oracle,
@@ -42,14 +36,23 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
         ERC4626
     }
 
+    /// @notice Parameters for creating a new pool
     struct CreatePoolArgument {
+        /// @notice Address of token A
         address tokenA;
+        /// @notice Address of token B
         address tokenB;
+        /// @notice Type of token A
         TokenType tokenAType;
+        /// @notice Address of the oracle for token A
         address tokenAOracle;
+        /// @notice Function signature for token A
         string tokenAFunctionSig;
+        /// @notice Type of token B
         TokenType tokenBType;
+        /// @notice Address of the oracle for token B
         address tokenBOracle;
+        /// @notice Function signature for token B
         string tokenBFunctionSig;
     }
 
@@ -134,6 +137,18 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
      */
     event AModified(uint256 A);
 
+    /// @dev Error thrown when the address is invalid
+    error InvalidAddress();
+
+    /// @dev Error thrown when the value is invalid
+    error InvalidValue();
+
+    /// @dev Error thrown when the oracle is invalid
+    error InvalidOracle();
+
+    /// @dev Error thrown when the function signature is invalid
+    error InvalidFunctionSig();
+
     /**
      * @dev Initializes the StableSwap Application contract.
      */
@@ -151,8 +166,15 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
         public
         initializer
     {
+        require(_governor != address(0), InvalidAddress());
+        require(_A > 0, InvalidValue());
+        require(_selfPeggingAssetBeacon != address(0), InvalidAddress());
+        require(_lpTokenBeacon != address(0), InvalidAddress());
+        require(_wlpTokenBeacon != address(0), InvalidAddress());
+        require(address(_constantExchangeRateProvider) != address(0), InvalidAddress());
+
         __ReentrancyGuard_init();
-        __Ownable_init();
+        __Ownable_init(msg.sender);
 
         governor = _governor;
 
@@ -171,31 +193,52 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
      * @dev Set the govenance address.
      */
     function setGovernor(address _governor) public onlyOwner {
+        require(_governor != address(0), InvalidAddress());
         governor = _governor;
         emit GovernorModified(governor);
     }
 
+    /**
+     * @dev Set the mint fee.
+     */
     function setMintFee(uint256 _mintFee) external onlyOwner {
         mintFee = _mintFee;
         emit MintFeeModified(_mintFee);
     }
 
+    /**
+     * @dev Set the swap fee.
+     */
     function setSwapFee(uint256 _swapFee) external onlyOwner {
         swapFee = _swapFee;
         emit SwapFeeModified(_swapFee);
     }
 
+    /**
+     * @dev Set the redeem fee.
+     */
     function setRedeemFee(uint256 _redeemFee) external onlyOwner {
         redeemFee = _redeemFee;
         emit RedeemFeeModified(_redeemFee);
     }
 
+    /**
+     * @dev Set the A parameter.
+     */
     function setA(uint256 _A) external onlyOwner {
+        require(_A > 0, InvalidValue());
         A = _A;
         emit AModified(_A);
     }
 
+    /**
+     * @dev Create a new pool.
+     */
     function createPool(CreatePoolArgument memory argument) external {
+        require(argument.tokenA != address(0), InvalidAddress());
+        require(argument.tokenB != address(0), InvalidAddress());
+        require(argument.tokenA != argument.tokenB, InvalidValue());
+
         string memory symbolA = ERC20Upgradeable(argument.tokenA).symbol();
         string memory symbolB = ERC20Upgradeable(argument.tokenB).symbol();
         string memory symbol = string.concat(string.concat(string.concat("SPA-", symbolA), "-"), symbolB);
@@ -224,6 +267,8 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
         if (argument.tokenAType == TokenType.Standard || argument.tokenAType == TokenType.Rebasing) {
             exchangeRateProviders[0] = IExchangeRateProvider(constantExchangeRateProvider);
         } else if (argument.tokenAType == TokenType.Oracle) {
+            require(argument.tokenAOracle != address(0), InvalidOracle());
+            require(bytes(argument.tokenAFunctionSig).length > 0, InvalidFunctionSig());
             OracleExchangeRate oracleExchangeRate =
                 new OracleExchangeRate(argument.tokenAOracle, argument.tokenAFunctionSig);
             exchangeRateProviders[0] = IExchangeRateProvider(oracleExchangeRate);
@@ -235,6 +280,8 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
         if (argument.tokenBType == TokenType.Standard || argument.tokenBType == TokenType.Rebasing) {
             exchangeRateProviders[1] = IExchangeRateProvider(constantExchangeRateProvider);
         } else if (argument.tokenBType == TokenType.Oracle) {
+            require(argument.tokenBOracle != address(0), InvalidOracle());
+            require(bytes(argument.tokenBFunctionSig).length > 0, InvalidFunctionSig());
             OracleExchangeRate oracleExchangeRate =
                 new OracleExchangeRate(argument.tokenBOracle, argument.tokenBFunctionSig);
             exchangeRateProviders[1] = IExchangeRateProvider(oracleExchangeRate);
@@ -262,5 +309,8 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
         emit PoolCreated(address(lpTokenProxy), address(selfPeggingAssetProxy), address(wlpTokenProxy));
     }
 
+    /**
+     * @dev Authorisation to upgrade the implementation of the contract.
+     */
     function _authorizeUpgrade(address) internal override onlyOwner { }
 }

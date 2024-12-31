@@ -5,9 +5,9 @@ applications.
 
 The main contracts of Tapio V1.5 are the following:
 
-**TapEth** : contract of rebase token tapETH
+**LPToken** : contract of rebase token lpToken
 
-**WtapETH**: contract of wrapped tapETH
+**WlpToken**: contract of wrapped lpToken
 
 **SelfPeggingAsset**: contract of stableswap pool
 
@@ -17,17 +17,17 @@ The main contracts of Tapio V1.5 are the following:
 
 The main contracts of Tapio V1.5 are the following:
 
-**TapEth** : contract of rebase token tapETH
+**LPToken** : contract of rebase token lpToken
 
-**WtapETH**: contract of wrapped tapETH
+**WlpToken**: contract of wrapped lpToken
 
 **SelfPeggingAsset**: contract of stableswap pool
 
 **SelfPeggingAssetApplication**: user contract interface for different stableSwap pools
 
-## Contract TapETH
+## Contract LPToken
 
-The contract **TapETH** is upgradable and uses the interface IERC20.
+The contract **LPToken** is upgradable and uses the interface IERC20.
 
 ### Write Methodes
 
@@ -49,80 +49,46 @@ The contract **TapETH** is upgradable and uses the interface IERC20.
 
 - **transferShares(address \_recipient, uint256 \_sharesAmount)**
 
-  This function allows the caller to transfer `_sharesAmount` shares of tapETH from his address to `_recipient`.
+  This function allows the caller to transfer `_sharesAmount` shares of lpToken from his address to `_recipient`.
 
 - **transferSharesFrom(address \_sender, address \_recipient, uint256 \_sharesAmount)**
 
-This function allows the spender to transfer `_sharesAmount` shares of tapETH from to `_sender` to `_recipient`.
+This function allows the spender to transfer `_sharesAmount` shares of lpToken from to `_sender` to `_recipient`.
 
 - **mintShares(address \_account, uint256 \_tokenAmount)**
 
-This function can be executed by a whitelisted stableSwap pool to mint `_tokenAmount` of tapETH for `_account`.
+This function can be executed by a whitelisted stableSwap pool to mint `_tokenAmount` of lpToken for `_account`.
 
 - **burnShares(uint256 \_tokenAmount)**
 
-This function allows the caller to burn `_tokenAmount` of tapETH.
+This function allows the caller to burn `_tokenAmount` of lpToken.
 
 - **burnSharesFrom(address \_account, uint256 \_tokenAmount)**
 
-This function allows the spender to burn `_tokenAmount` of tapETH from the addresss `_account`.
+This function allows the spender to burn `_tokenAmount` of lpToken from the addresss `_account`.
 
 ### View Methodes
 
-- **getTotalPooledEther()**
+- **getTotalPeggedTokener()**
 
-  This function returns the total supply of tapETH (uint256).
+  This function returns the total supply of lpToken (uint256).
 
 - **getTotalShares()**
 
-  This function returns the total shares of tapETH (uint256).
+  This function returns the total shares of lpToken (uint256).
 
-- **getSharesByPooledEth(uint256_tapETHAmount)**
+- **getSharesByPeggedToken(uint256_lpTokenAmount)**
 
-This function returns the shares of tapETH (uint256) corresponding to `_tapETHAmount` of tapETH.
+This function returns the shares of lpToken (uint256) corresponding to `_lpTokenAmount` of lpToken.
 
-- **getPooledEthByShares(uint256 \_sharesAmount)**
+- **getPeggedTokenByShares(uint256 \_sharesAmount)**
 
-  This function returns the amount of tapETH (uint256) corresponding to `sharesAmount' shares of tapETH.
+  This function returns the amount of lpToken (uint256) corresponding to `sharesAmount' shares of lpToken.
 
 - **setTotalSupply(uint256 \_amount)**
 
-  This function can be only called by a whitelist stableSwap pool contract to increase the total supply of tapETH by
+  This function can be only called by a whitelist stableSwap pool contract to increase the total supply of lpToken by
   `_amount`.
-
-## Contract WTapETH
-
-The contract **WTapETH** is upgradable and inherits from the contract ERC20Permit.
-
-### Write Methodes
-
-- **wrap(uint256 \_tapETHAmount)**
-
-This function allows the user to wrap `_ tapETHAmount` of tapETH that consisting in transferring `_tapETHAmount` of
-tapETH to the smart contract WTapETH and minting the corresponding shares amount in wtapETH.
-
-- **unwrap(uint256 \_wtapETHAmount)**
-
-This function allows the user to unwrap `_wtapETHAmount` of wtapETH that consisting in burning `wtapETHAmount` of
-wtapETH and sending from the smart contract WTapETH to the caller the corresponding amount of tapETH.
-
-### View Methodes
-
-- **getWtapETHByTapETH(uint256 \_tapETHAmount)**
-
-This function returns the amount of wtapETH that corresponds to `_tapETHAmount` of tapETH.
-
-- **getTapETHByWtapETH(uint256 \_wtapETHAmount)**
-
-This function returns the amount of tapETH that corresponds to `_wtapETHAmount` of wtapETH.
-
-- **tapETHPerToken()**
-
-This function returns the amount of tapETH that corresponds to 1 wtapETH.
-
-- **tokensPerTapETH()**
-
-This function returns the amount of wtapETH that corresponds to 1 tapETH.
 
 ## Contract SelfPeggingAsset
 
@@ -132,16 +98,16 @@ The contract **SelfPeggingAsset** is upgradable and inherits from the contract R
 
 - **mint(uint256[] calldata \_amounts, uint256 \_minMintAmount)**
 
-This function allows the user to provide liquidity in the different tokens of the pool to mint at least `_wtapETHAmount`
-of tapETH. The Logic of the function consists of :
+This function allows the user to provide liquidity in the different tokens of the pool to mint at least
+`_wlpTokenAmount` of lpToken. The Logic of the function consists of :
 
 1.  update token balances
 2.  calculate the new D value
 3.  calculate delta D = new D - old D
 4.  calculate mintAmount = delta D - feeAmount = delta D \* ( 1- mintFee)
 5.  revert if mintAmount < \_minMintAmount
-6.  mint mintAmount of tapETH for the caller
-7.  increase the total supply of tapETH by feeAmount
+6.  mint mintAmount of lpToken for the caller
+7.  increase the total supply of lpToken by feeAmount
 
 - **swap(uint256 \_i, uint256 \_j, uint256 \_dx, uint256 \_minDy)**
 
@@ -154,11 +120,11 @@ The Logic of the function consists of:
 4.  calculate outputAmount = delta y - feeAmount = delta y \* ( 1- swapFee)
 5.  revert if outputAmount < \_minDy
 6.  send outputAmount of token index `j` to the caller
-7.  increase the total supply of tapETH by feeAmount
+7.  increase the total supply of lpToken by feeAmount
 
 - **redeemProportion(uint256 \_amount, uint256[] calldata \_minRedeemAmounts)**
 
-This function allows the user to redeem `_amount `of tapETH in order to receive at least `_minRedeemAmounts[i]` of each
+This function allows the user to redeem `_amount `of lpToken in order to receive at least `_minRedeemAmounts[i]` of each
 token index i. The Logic of the function consists of:
 
 1.  calculate redeemAmount = \_amount - feeAmount = amount \* ( 1 - redeemFee).
@@ -167,12 +133,12 @@ token index i. The Logic of the function consists of:
     - revert if tokenAmount < minRedeemAmounts[i]
     - send tokenAmount of token index i to the caller
 3.  update D = D - \_amount
-4.  burn \_amount of tapETH from the caller
-5.  increase the totalSupply of tapETH by feeAmount
+4.  burn \_amount of lpToken from the caller
+5.  increase the totalSupply of lpToken by feeAmount
 
 - **redeemSingle(uint256 \_amount, uint256 \_i, uint256 \_minRedeemAmount)**
 
-This function allows the user to redeem `_amount `of tapETH in order to receive at least `_minRedeemAmount` of token
+This function allows the user to redeem `_amount `of lpToken in order to receive at least `_minRedeemAmount` of token
 index i. The Logic of the function consists of:
 
 1.  calculate redeemAmount = \_amount - feeAmount = amount \* ( 1 - redeemFee).
@@ -180,11 +146,11 @@ index i. The Logic of the function consists of:
 3.  calculate delta y = new y - old y
 4.  revert if delta y < \_minRedeemAmount
 5.  send delta y of token index `i` to the caller
-6.  increase the total supply of tapETH by feeAmount
+6.  increase the total supply of lpToken by feeAmount
 
 - **redeemMulti(uint256[] calldata \_amounts, uint256 \_maxRedeemAmount)**
 
-This function allows the user to redeem at most `_maxRedeemAmount ` of tapETH to receive `_amouns[i] `of each token
+This function allows the user to redeem at most `_maxRedeemAmount ` of lpToken to receive `_amouns[i] `of each token
 index i. The Logic of the function consists of:
 
 1.  update balance of each token index `i ` .
@@ -193,7 +159,7 @@ index i. The Logic of the function consists of:
 4.  calculate redeemAmount = delta D + feeAmount = delta D \* ( 1 + redeemFee)
 5.  revert if redeemAmount > \_maxRedeemAmount
 6.  for each token index i, send \_amounts[i] to the caller
-7.  increase the total supply of tapETH by feeAmount
+7.  increase the total supply of lpToken by feeAmount
 
 functions to be executed only by the governance:
 
@@ -242,7 +208,7 @@ This function returns the current value of A.
 
 - **getMintAmount(uint256[] calldata \_amounts)**
 
-This function returns (uint256 mintAmount, uint256 fee) where mintAmount is the amount of tapETH to mint for the user,
+This function returns (uint256 mintAmount, uint256 fee) where mintAmount is the amount of lpToken to mint for the user,
 and fee is the mint fee.
 
 - **getSwapAmount(uint256 \_i, uint256 \_j, uint256 \_dx)**
@@ -262,8 +228,8 @@ user, and fee is the redeem fee.
 
 - **getRedeemMultiAmount(uint256[] calldata \_amounts)**
 
-This function returns (uint256 amount, uint256 fee) where amount is the amount of tapETH to redeem and fee is the redeem
-fee.
+This function returns (uint256 amount, uint256 fee) where amount is the amount of lpToken to redeem and fee is the
+redeem fee.
 
 ## Contract SelfPeggingAssetApplication
 
@@ -274,7 +240,7 @@ The contract **SelfPeggingAssetApplication** is upgradable and inherits from the
 - **mint(SelfPeggingAsset \_pool, uint256[] calldata \_amounts, uint256 \_minMintAmount )**
 
 This function allows the user to provide liquidity in the different tokens of the pool `_pool` to mint at least
-`_wtapETHAmount` of tapETH.
+`_wlpTokenAmount` of lpToken.
 
 - **swap(SelfPeggingAsset \_pool, uint256 \_i, uint256 \_j, uint256 \_dx, uint256 \_minDy)**
 
@@ -283,16 +249,16 @@ using the pool `_pool`.
 
 - **redeemProportion(SelfPeggingAsset \_pool, uint256 \_amount, uint256[] calldata \_minRedeemAmounts)**
 
-This function allows the user to redeem `_amount `of tapETH from the pool `_pool` in order to receive at least
+This function allows the user to redeem `_amount `of lpToken from the pool `_pool` in order to receive at least
 `_minRedeemAmounts[i]` of each token index i .
 
 - **redeemSingle(SelfPeggingAsset \_pool, uint256 \_amount, uint256 \_i, uint256 \_minRedeemAmount)**
 
-This function allows the user to redeem `_amount `of tapETH from the pool `_pool` in order to receive at least
+This function allows the user to redeem `_amount `of lpToken from the pool `_pool` in order to receive at least
 `_minRedeemAmount` of token index i.
 
-- **swapCrossPool(SelfPeggingAsset \_sourcePool, SelfPeggingAsset \_destPool, address \_sourceToken, address \_destToken, uint256
-  \_amount, uint256 \_minSwapAmount)**
+- **swapCrossPool(SelfPeggingAsset \_sourcePool, SelfPeggingAsset \_destPool, address \_sourceToken, address
+  \_destToken, uint256 \_amount, uint256 \_minSwapAmount)**
 
 This function allows the user to swap `_amount ` amount of token `_sourceToken` from the pool `_sourcePool` to at least
 `_minSwapAmount` amount of token `_destToken` from the pool `_destPool`.
