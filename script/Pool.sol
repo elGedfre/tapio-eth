@@ -47,13 +47,7 @@ contract Pool is Config {
         return (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken);
     }
 
-    function initialMint(
-        uint256 usdcAmount,
-        uint256 usdtAmount,
-        SelfPeggingAsset selfPeggingAsset
-    )
-        internal
-    {
+    function initialMint(uint256 usdcAmount, uint256 usdtAmount, SelfPeggingAsset selfPeggingAsset) internal {
         console.log("---------------");
         console.log("initial-mint-logs");
         console.log("---------------");

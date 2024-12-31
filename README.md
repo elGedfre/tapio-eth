@@ -98,8 +98,8 @@ The contract **SelfPeggingAsset** is upgradable and inherits from the contract R
 
 - **mint(uint256[] calldata \_amounts, uint256 \_minMintAmount)**
 
-This function allows the user to provide liquidity in the different tokens of the pool to mint at least `_wlpTokenAmount`
-of lpToken. The Logic of the function consists of :
+This function allows the user to provide liquidity in the different tokens of the pool to mint at least
+`_wlpTokenAmount` of lpToken. The Logic of the function consists of :
 
 1.  update token balances
 2.  calculate the new D value
@@ -228,8 +228,8 @@ user, and fee is the redeem fee.
 
 - **getRedeemMultiAmount(uint256[] calldata \_amounts)**
 
-This function returns (uint256 amount, uint256 fee) where amount is the amount of lpToken to redeem and fee is the redeem
-fee.
+This function returns (uint256 amount, uint256 fee) where amount is the amount of lpToken to redeem and fee is the
+redeem fee.
 
 ## Contract SelfPeggingAssetApplication
 
@@ -257,8 +257,8 @@ This function allows the user to redeem `_amount `of lpToken from the pool `_poo
 This function allows the user to redeem `_amount `of lpToken from the pool `_pool` in order to receive at least
 `_minRedeemAmount` of token index i.
 
-- **swapCrossPool(SelfPeggingAsset \_sourcePool, SelfPeggingAsset \_destPool, address \_sourceToken, address \_destToken, uint256
-  \_amount, uint256 \_minSwapAmount)**
+- **swapCrossPool(SelfPeggingAsset \_sourcePool, SelfPeggingAsset \_destPool, address \_sourceToken, address
+  \_destToken, uint256 \_amount, uint256 \_minSwapAmount)**
 
 This function allows the user to swap `_amount ` amount of token `_sourceToken` from the pool `_sourcePool` to at least
 `_minSwapAmount` amount of token `_destToken` from the pool `_destPool`.
