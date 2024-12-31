@@ -5,21 +5,23 @@ import "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import "../interfaces/IExchangeRateProvider.sol";
 
 /**
- * @notice Mock exchange rate.
+ * @notice ERC4626 exchange rate.
  */
 contract ERC4626ExchangeRate is IExchangeRateProvider {
+    /// @dev ERC4626 token
     IERC4626 token;
 
+    /// @dev Initialize the contract
     constructor(IERC4626 _token) {
         token = _token;
     }
 
+    /// @dev Get the exchange rate
     function exchangeRate() external view returns (uint256) {
-        uint256 totalAsset = token.totalAssets();
-        uint256 totalSupply = token.totalSupply();
-        return (totalAsset * (10 ** 18)) / totalSupply;
+        return token.convertToAssets(1e18);
     }
 
+    /// @dev Get the exchange rate decimals
     function exchangeRateDecimals() external pure returns (uint256) {
         return 18;
     }

@@ -3,7 +3,8 @@ pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "./interfaces/ITapETH.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "./interfaces/ILPToken.sol";
 
 error InsufficientAllowance(uint256 currentAllowance, uint256 amount);
 error InsufficientBalance(uint256 currentBalance, uint256 amount);
@@ -12,86 +13,156 @@ error InsufficientBalance(uint256 currentBalance, uint256 amount);
  * @title Interest-bearing ERC20-like token for Tapio protocol
  * @author Nuts Finance Developer
  * @notice ERC20 token minted by the StableSwap pools.
- * @dev TapETH is ERC20 rebase token minted by StableSwap pools for liquidity providers.
- * TapETH balances are dynamic and represent the holder's share in the total amount
- * of tapETH controlled by the protocol. Account shares aren't normalized, so the
+ * @dev LPToken is ERC20 rebase token minted by StableSwap pools for liquidity providers.
+ * LPToken balances are dynamic and represent the holder's share in the total amount
+ * of lpToken controlled by the protocol. Account shares aren't normalized, so the
  * contract also stores the sum of all shares to calculate each account's token balance
  * which equals to:
  *
  *   shares[account] * _totalSupply / _totalShares
- * where the _totalSupply is the total supply of tapETH controlled by the protocol.
+ * where the _totalSupply is the total supply of lpToken controlled by the protocol.
  */
-contract TapETH is Initializable, ITapETH {
-    using Math for uint256;
-
+contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
+    /**
+     * @dev Constant value representing an infinite allowance.
+     */
     uint256 internal constant INFINITE_ALLOWANCE = ~uint256(0);
+
+    /**
+     * @dev Constant value representing the denominator for the buffer rate.
+     */
     uint256 public constant BUFFER_DENOMINATOR = 10 ** 10;
 
+    /**
+     * @dev The total amount of shares.
+     */
     uint256 public totalShares;
+
+    /**
+     * @dev The total supply of lpToken
+     */
     uint256 public totalSupply;
+
+    /**
+     * @dev The total amount of rewards
+     */
     uint256 public totalRewards;
-    address public governance;
-    address public pendingGovernance;
+
+    /**
+     * @dev The mapping of account shares.
+     */
     mapping(address => uint256) public shares;
+
+    /**
+     * @dev The mapping of account allowances.
+     */
     mapping(address => mapping(address => uint256)) public allowances;
+
+    /**
+     * @dev The mapping of pools.
+     */
     mapping(address => bool) public pools;
+
+    /**
+     * @dev The buffer rate.
+     */
     uint256 public bufferPercent;
+
+    /**
+     * @dev The buffer amount.
+     */
     uint256 public bufferAmount;
+
+    /**
+     * @dev The token name.
+     */
     string internal tokenName;
+
+    /**
+     * @dev The token symbol.
+     */
     string internal tokenSymbol;
 
+    /**
+     * @notice Emitted when shares are transferred.
+     */
     event TransferShares(address indexed from, address indexed to, uint256 sharesValue);
 
+    /**
+     * @notice Emitted when shares are minted.
+     */
     event SharesMinted(address indexed account, uint256 tokenAmount, uint256 sharesAmount);
 
+    /**
+     * @notice Emitted when shares are burnt.
+     */
     event SharesBurnt(address indexed account, uint256 tokenAmount, uint256 sharesAmount);
 
+    /**
+     * @notice Emitted when rewards are minted.
+     */
     event RewardsMinted(uint256 amount, uint256 actualAmount);
 
-    event GovernanceModified(address indexed governance);
-    event GovernanceProposed(address indexed governance);
+    /**
+     * @notice Emitted when a pool is added.
+     */
     event PoolAdded(address indexed pool);
+
+    /**
+     * @notice Emitted when a pool is removed.
+     */
     event PoolRemoved(address indexed pool);
+
+    /**
+     * @notice Emitted when the buffer rate is set.
+     */
     event SetBufferPercent(uint256);
+
+    /**
+     * @notice Emitted when the buffer is increased.
+     */
     event BufferIncreased(uint256, uint256);
+
+    /**
+     * @notice Emitted when the buffer is decreased.
+     */
     event BufferDecreased(uint256, uint256);
 
-    function initialize(address _governance, string memory _name, string memory _symbol) public initializer {
-        require(_governance != address(0), "TapETH: zero address");
-        governance = _governance;
+    /**
+     * @notice Emitted when the symbol is modified.
+     */
+    event SymbolModified(string);
+
+    function initialize(string memory _name, string memory _symbol) public initializer {
         tokenName = _name;
         tokenSymbol = _symbol;
+
+        __Ownable_init(msg.sender);
     }
 
-    function proposeGovernance(address _governance) public {
-        require(msg.sender == governance, "TapETH: no governance");
-        pendingGovernance = _governance;
-        emit GovernanceProposed(_governance);
-    }
-
-    function acceptGovernance() public {
-        require(msg.sender == pendingGovernance, "TapETH: no pending governance");
-        governance = pendingGovernance;
-        pendingGovernance = address(0);
-        emit GovernanceModified(governance);
-    }
-
-    function addPool(address _pool) public {
-        require(msg.sender == governance, "TapETH: no governance");
-        require(_pool != address(0), "TapETH: zero address");
-        require(!pools[_pool], "TapETH: pool is already added");
+    /**
+     * @dev Adds a pool to the list of pools.
+     * @param _pool The address of the pool to add.
+     */
+    function addPool(address _pool) public onlyOwner {
+        require(_pool != address(0), "LPToken: zero address");
+        require(!pools[_pool], "LPToken: pool is already added");
         pools[_pool] = true;
         emit PoolAdded(_pool);
     }
 
-    function removePool(address _pool) public {
-        require(msg.sender == governance, "TapETH: no governance");
-        require(pools[_pool], "TapETH: pool doesn't exist");
+    /**
+     * @dev Removes a pool from the list of pools.
+     * @param _pool The address of the pool to remove.
+     */
+    function removePool(address _pool) public onlyOwner {
+        require(pools[_pool], "LPToken: pool doesn't exist");
         pools[_pool] = false;
         emit PoolRemoved(_pool);
     }
 
     /**
+     * @dev Returns the name of the token.
      * @return the name of the token.
      */
     function name() external view returns (string memory) {
@@ -99,14 +170,15 @@ contract TapETH is Initializable, ITapETH {
     }
 
     /**
-     * @return the symbol of the token, usually a shorter version of the
-     * name.
+     * @dev Returns the symbol of the token.
+     * @return the symbol of the token.
      */
     function symbol() external view returns (string memory) {
         return tokenSymbol;
     }
 
     /**
+     * @dev Returns the decimals of the token.
      * @return the number of decimals for getting user representation of a token amount.
      */
     function decimals() external pure returns (uint8) {
@@ -114,21 +186,20 @@ contract TapETH is Initializable, ITapETH {
     }
 
     /**
-     * @return the amount of tokens owned by the `_account`.
-     *
      * @dev Balances are dynamic and equal the `_account`'s share in the amount of the
-     * total tapETH controlled by the protocol. See `sharesOf`.
+     * total lpToken controlled by the protocol. See `sharesOf`.
+     * @return the amount of tokens owned by the `_account`.
      */
     function balanceOf(address _account) external view returns (uint256) {
-        return getPooledEthByShares(_sharesOf(_account));
+        return getPeggedTokenByShares(_sharesOf(_account));
     }
 
     /**
      * @notice Moves `_amount` tokens from the caller's account to the `_recipient`account.
+     * @dev The `_amount` argument is the amount of tokens, not shares.
      * @return a boolean value indicating whether the operation succeeded.
      * Emits a `Transfer` event.
      * Emits a `TransferShares` event.
-     * @dev The `_amount` argument is the amount of tokens, not shares.
      */
     function transfer(address _recipient, uint256 _amount) external returns (bool) {
         _transfer(msg.sender, _recipient, _amount);
@@ -136,9 +207,9 @@ contract TapETH is Initializable, ITapETH {
     }
 
     /**
+     * @dev This value changes when `approve` or `transferFrom` is called.
      * @return the remaining number of tokens that `_spender` is allowed to spend
      * on behalf of `_owner` through `transferFrom`. This is zero by default.
-     * @dev This value changes when `approve` or `transferFrom` is called.
      */
     function allowance(address _owner, address _spender) external view returns (uint256) {
         return allowances[_owner][_spender];
@@ -146,10 +217,9 @@ contract TapETH is Initializable, ITapETH {
 
     /**
      * @notice Sets `_amount` as the allowance of `_spender` over the caller's tokens.
-     *
+     * @dev The `_amount` argument is the amount of tokens, not shares.
      * @return a boolean value indicating whether the operation succeeded.
      * Emits an `Approval` event.
-     * @dev The `_amount` argument is the amount of tokens, not shares.
      */
     function approve(address _spender, uint256 _amount) external returns (bool) {
         _approve(msg.sender, _spender, _amount);
@@ -160,7 +230,7 @@ contract TapETH is Initializable, ITapETH {
      * @notice Moves `_amount` tokens from `_sender` to `_recipient` using the
      * allowance mechanism. `_amount` is then deducted from the caller's
      * allowance.
-     *
+     * @dev The `_amount` argument is the amount of tokens, not shares.
      * @return a boolean value indicating whether the operation succeeded.
      *
      * Emits a `Transfer` event.
@@ -169,8 +239,6 @@ contract TapETH is Initializable, ITapETH {
      *
      * Requirements:
      * - the caller must have allowance for `_sender`'s tokens of at least `_amount`.
-     *
-     * @dev The `_amount` argument is the amount of tokens, not shares.
      */
     function transferFrom(address _sender, address _recipient, uint256 _amount) external returns (bool) {
         _spendAllowance(_sender, msg.sender, _amount);
@@ -202,29 +270,33 @@ contract TapETH is Initializable, ITapETH {
      */
     function decreaseAllowance(address _spender, uint256 _subtractedValue) external returns (bool) {
         uint256 currentAllowance = allowances[msg.sender][_spender];
-        require(currentAllowance >= _subtractedValue, "TapETH:ALLOWANCE_BELOW_ZERO");
+        require(currentAllowance >= _subtractedValue, "LPToken:ALLOWANCE_BELOW_ZERO");
         _approve(msg.sender, _spender, currentAllowance - _subtractedValue);
         return true;
     }
     // solhint-enable max-line-length
 
     /**
-     * @notice This function is called by the governance to set the buffer rate.
+     * @notice This function is called by the owner to set the buffer rate.
      */
-    function setBuffer(uint256 _buffer) external {
-        require(msg.sender == governance, "TapETH: no governance");
-        require(_buffer < BUFFER_DENOMINATOR, "TapETH: out of range");
+    function setBuffer(uint256 _buffer) external onlyOwner {
+        require(_buffer < BUFFER_DENOMINATOR, "LPToken: out of range");
         bufferPercent = _buffer;
         emit SetBufferPercent(_buffer);
     }
 
+    function setSymbol(string memory _symbol) external onlyOwner {
+        tokenSymbol = _symbol;
+        emit SymbolModified(_symbol);
+    }
+
     /**
      * @notice This function is called only by a stableSwap pool to increase
-     * the total supply of TapETH by the staking rewards and the swap fee.
+     * the total supply of LPToken by the staking rewards and the swap fee.
      */
     function addTotalSupply(uint256 _amount) external {
-        require(pools[msg.sender], "TapETH: no pool");
-        require(_amount != 0, "TapETH: no amount");
+        require(pools[msg.sender], "LPToken: no pool");
+        require(_amount != 0, "LPToken: no amount");
         uint256 _deltaBuffer = (bufferPercent * _amount) / BUFFER_DENOMINATOR;
         uint256 actualAmount = _amount - _deltaBuffer;
 
@@ -238,12 +310,12 @@ contract TapETH is Initializable, ITapETH {
 
     /**
      * @notice This function is called only by a stableSwap pool to decrease
-     * the total supply of TapETH by lost amount.
+     * the total supply of LPToken by lost amount.
      */
     function removeTotalSupply(uint256 _amount) external {
-        require(pools[msg.sender], "TapETH: no pool");
-        require(_amount != 0, "TapETH: no amount");
-        require(_amount <= bufferAmount, "TapETH: insuffcient buffer");
+        require(pools[msg.sender], "LPToken: no pool");
+        require(_amount != 0, "LPToken: no amount");
+        require(_amount <= bufferAmount, "LPToken: insuffcient buffer");
 
         bufferAmount -= _amount;
 
@@ -258,20 +330,20 @@ contract TapETH is Initializable, ITapETH {
     }
 
     /**
-     * @return the amount of shares that corresponds to `_tapETHAmount` protocol-controlled tapETH.
+     * @return the amount of shares that corresponds to `_lpTokenAmount` protocol-controlled lpToken.
      */
-    function getSharesByPooledEth(uint256 _tapETHAmount) public view returns (uint256) {
+    function getSharesByPeggedToken(uint256 _lpTokenAmount) public view returns (uint256) {
         if (totalSupply == 0) {
             return 0;
         } else {
-            return (_tapETHAmount * totalShares) / totalSupply;
+            return (_lpTokenAmount * totalShares) / totalSupply;
         }
     }
 
     /**
-     * @return the amount of tapETH that corresponds to `_sharesAmount` token shares.
+     * @return the amount of lpToken that corresponds to `_sharesAmount` token shares.
      */
-    function getPooledEthByShares(uint256 _sharesAmount) public view returns (uint256) {
+    function getPeggedTokenByShares(uint256 _sharesAmount) public view returns (uint256) {
         if (totalShares == 0) {
             return 0;
         } else {
@@ -281,28 +353,27 @@ contract TapETH is Initializable, ITapETH {
 
     /**
      * @notice Moves `_sharesAmount` token shares from the caller's account to the `_recipient` account.
+     * @dev The `_sharesAmount` argument is the amount of shares, not tokens.
      * @return amount of transferred tokens.
      * Emits a `TransferShares` event.
      * Emits a `Transfer` event.
-     * @dev The `_sharesAmount` argument is the amount of shares, not tokens.
      */
     function transferShares(address _recipient, uint256 _sharesAmount) external returns (uint256) {
         _transferShares(msg.sender, _recipient, _sharesAmount);
-        uint256 tokensAmount = getPooledEthByShares(_sharesAmount);
+        uint256 tokensAmount = getPeggedTokenByShares(_sharesAmount);
         _emitTransferEvents(msg.sender, _recipient, tokensAmount, _sharesAmount);
         return tokensAmount;
     }
 
     /**
      * @notice Moves `_sharesAmount` token shares from the `_sender` account to the `_recipient` account.
-     *
+     * @dev The `_sharesAmount` argument is the amount of shares, not tokens.
      * @return amount of transferred tokens.
      * Emits a `TransferShares` event.
      * Emits a `Transfer` event.
      *
      * Requirements:
-     * - the caller must have allowance for `_sender`'s tokens of at least `getPooledEthByShares(_sharesAmount)`.
-     * @dev The `_sharesAmount` argument is the amount of shares, not tokens.
+     * - the caller must have allowance for `_sender`'s tokens of at least `getPeggedTokenByShares(_sharesAmount)`.
      */
     function transferSharesFrom(
         address _sender,
@@ -312,28 +383,31 @@ contract TapETH is Initializable, ITapETH {
         external
         returns (uint256)
     {
-        uint256 tokensAmount = getPooledEthByShares(_sharesAmount);
+        uint256 tokensAmount = getPeggedTokenByShares(_sharesAmount);
         _spendAllowance(_sender, msg.sender, tokensAmount);
         _transferShares(_sender, _recipient, _sharesAmount);
         _emitTransferEvents(_sender, _recipient, tokensAmount, _sharesAmount);
         return tokensAmount;
     }
 
+    /**
+     * @dev Mints shares for the `_account` and transfers them to the `_account`.
+     */
     function mintShares(address _account, uint256 _tokenAmount) external {
-        require(pools[msg.sender], "TapETH: no pool");
+        require(pools[msg.sender], "LPToken: no pool");
         _mintShares(_account, _tokenAmount);
     }
 
-    function donateShares(uint256 _tokenAmount) external {
-        bufferAmount += _tokenAmount;
-        emit BufferIncreased(_tokenAmount, bufferAmount);
-        _burnShares(msg.sender, _tokenAmount);
-    }
-
+    /**
+     * @dev Burns shares from the `_account`.
+     */
     function burnShares(uint256 _tokenAmount) external {
         _burnShares(msg.sender, _tokenAmount);
     }
 
+    /**
+     * @dev Burns shares from the `_account`.
+     */
     function burnSharesFrom(address _account, uint256 _tokenAmount) external {
         _spendAllowance(_account, msg.sender, _tokenAmount);
         _burnShares(_account, _tokenAmount);
@@ -345,7 +419,7 @@ contract TapETH is Initializable, ITapETH {
      * Emits a `TransferShares` event.
      */
     function _transfer(address _sender, address _recipient, uint256 _amount) internal {
-        uint256 _sharesToTransfer = getSharesByPooledEth(_amount);
+        uint256 _sharesToTransfer = getSharesByPeggedToken(_amount);
         _transferShares(_sender, _recipient, _sharesToTransfer);
         _emitTransferEvents(_sender, _recipient, _amount, _sharesToTransfer);
     }
@@ -356,8 +430,8 @@ contract TapETH is Initializable, ITapETH {
      * Emits an `Approval` event.
      */
     function _approve(address _owner, address _spender, uint256 _amount) internal {
-        require(_owner != address(0), "TapETH: APPROVE_FROM_ZERO_ADDR");
-        require(_spender != address(0), "TapETH: APPROVE_TO_ZERO_ADDR");
+        require(_owner != address(0), "LPToken: APPROVE_FROM_ZERO_ADDR");
+        require(_spender != address(0), "LPToken: APPROVE_TO_ZERO_ADDR");
 
         allowances[_owner][_spender] = _amount;
         emit Approval(_owner, _spender, _amount);
@@ -393,9 +467,9 @@ contract TapETH is Initializable, ITapETH {
      * @notice Moves `_sharesAmount` shares from `_sender` to `_recipient`.
      */
     function _transferShares(address _sender, address _recipient, uint256 _sharesAmount) internal {
-        require(_sender != address(0), "TapETH: zero address");
-        require(_recipient != address(0), "TapETH: zero address");
-        require(_recipient != address(this), "TapETH: TRANSFER_TO_tapETH_CONTRACT");
+        require(_sender != address(0), "LPToken: zero address");
+        require(_recipient != address(0), "LPToken: zero address");
+        require(_recipient != address(this), "LPToken: TRANSFER_TO_lpToken_CONTRACT");
 
         uint256 currentSenderShares = shares[_sender];
 
@@ -411,10 +485,10 @@ contract TapETH is Initializable, ITapETH {
      * @notice Creates `_sharesAmount` shares and assigns them to `_recipient`, increasing the total amount of shares.
      */
     function _mintShares(address _recipient, uint256 _tokenAmount) internal returns (uint256 newTotalShares) {
-        require(_recipient != address(0), "TapETH: MINT_TO_ZERO_ADDR");
+        require(_recipient != address(0), "LPToken: MINT_TO_ZERO_ADDR");
         uint256 _sharesAmount;
         if (totalSupply != 0 && totalShares != 0) {
-            _sharesAmount = getSharesByPooledEth(_tokenAmount);
+            _sharesAmount = getSharesByPeggedToken(_tokenAmount);
         } else {
             _sharesAmount = _tokenAmount;
         }
@@ -430,14 +504,14 @@ contract TapETH is Initializable, ITapETH {
      * @notice Destroys `_sharesAmount` shares from `_account`'s holdings, decreasing the total amount of shares.
      */
     function _burnShares(address _account, uint256 _tokenAmount) internal returns (uint256 newTotalShares) {
-        require(_account != address(0), "TapETH: BURN_FROM_ZERO_ADDR");
+        require(_account != address(0), "LPToken: BURN_FROM_ZERO_ADDR");
 
-        uint256 _balance = getPooledEthByShares(_sharesOf(_account));
+        uint256 _balance = getPeggedTokenByShares(_sharesOf(_account));
         if (_tokenAmount > _balance) {
             revert InsufficientBalance(_balance, _tokenAmount);
         }
 
-        uint256 _sharesAmount = getSharesByPooledEth(_tokenAmount);
+        uint256 _sharesAmount = getSharesByPeggedToken(_tokenAmount);
         shares[_account] -= _sharesAmount;
         totalShares -= _sharesAmount;
         newTotalShares = totalShares;
@@ -446,12 +520,18 @@ contract TapETH is Initializable, ITapETH {
         emit SharesBurnt(_account, _tokenAmount, _sharesAmount);
     }
 
+    /**
+     * @notice Emits Transfer and TransferShares events.
+     */
     function _emitTransferEvents(address _from, address _to, uint256 _tokenAmount, uint256 _sharesAmount) internal {
         emit Transfer(_from, _to, _tokenAmount);
         emit TransferShares(_from, _to, _sharesAmount);
     }
 
+    /**
+     * @notice Emits Transfer and TransferShares events after minting shares.
+     */
     function _emitTransferAfterMintingShares(address _to, uint256 _sharesAmount) internal {
-        _emitTransferEvents(address(0), _to, getPooledEthByShares(_sharesAmount), _sharesAmount);
+        _emitTransferEvents(address(0), _to, getPeggedTokenByShares(_sharesAmount), _sharesAmount);
     }
 }

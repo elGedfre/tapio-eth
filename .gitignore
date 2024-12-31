@@ -3,6 +3,7 @@ cache
 coverage
 node_modules
 out
+broadcast/**/dry-run/
 
 # files
 *.env
@@ -12,8 +13,3 @@ out
 lcov.info
 package-lock.json
 pnpm-lock.yaml
-
-# broadcasts
-!broadcast
-broadcast/*
-broadcast/*/31337/
