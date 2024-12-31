@@ -11,7 +11,6 @@ import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
 import { Config } from "script/Config.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "../src/misc/ConstantExchangeRateProvider.sol";
-import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 
 contract Deploy is Config {
     function deployBeacons() internal {
