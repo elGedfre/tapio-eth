@@ -5,8 +5,8 @@ import { Vm } from "forge-std/Vm.sol";
 import { stdJson } from "forge-std/StdJson.sol";
 import { console } from "forge-std/console.sol";
 import { Config } from "script/Config.sol";
-import { StableAssetFactory } from "../src/StableAssetFactory.sol";
-import { StableAsset } from "../src/StableAsset.sol";
+import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
+import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
 import { MockToken } from "../src/mock/MockToken.sol";
 
 contract Pool is Config {
@@ -15,14 +15,13 @@ contract Pool is Config {
         console.log("create-pool-logs");
         console.log("---------------");
 
-        StableAssetFactory.CreatePoolArgument memory arg = StableAssetFactory.CreatePoolArgument({
+        SelfPeggingAssetFactory.CreatePoolArgument memory arg = SelfPeggingAssetFactory.CreatePoolArgument({
             tokenA: usdc,
             tokenB: usdt,
-            initialMinter: INITIAL_MINTER,
-            tokenAType: StableAssetFactory.TokenType.Standard,
+            tokenAType: SelfPeggingAssetFactory.TokenType.Standard,
             tokenAOracle: address(0),
             tokenAFunctionSig: "",
-            tokenBType: StableAssetFactory.TokenType.Standard,
+            tokenBType: SelfPeggingAssetFactory.TokenType.Standard,
             tokenBOracle: address(0),
             tokenBFunctionSig: ""
         });
@@ -33,34 +32,33 @@ contract Pool is Config {
         bytes32 eventSig = keccak256("PoolCreated(address,address,address)");
 
         address decodedPoolToken;
-        address decodedStableAsset;
+        address decodedSelfPeggingAsset;
         address decodedWrappedPoolToken;
 
         for (uint256 i = 0; i < entries.length; i++) {
             Vm.Log memory log = entries[i];
 
             if (log.topics[0] == eventSig) {
-                (decodedPoolToken, decodedStableAsset, decodedWrappedPoolToken) =
+                (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken) =
                     abi.decode(log.data, (address, address, address));
             }
         }
 
-        return (decodedPoolToken, decodedStableAsset, decodedWrappedPoolToken);
+        return (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken);
     }
 
-    function initialMintAndUnpause(uint256 usdcAmount, uint256 usdtAmount, StableAsset stableAsset) internal {
+    function initialMint(uint256 usdcAmount, uint256 usdtAmount, SelfPeggingAsset selfPeggingAsset) internal {
         console.log("---------------");
         console.log("initial-mint-logs");
         console.log("---------------");
 
-        MockToken(usdc).approve(address(factory), usdcAmount);
-        MockToken(usdt).approve(address(factory), usdtAmount);
+        MockToken(usdc).approve(address(selfPeggingAsset), usdcAmount);
+        MockToken(usdt).approve(address(selfPeggingAsset), usdtAmount);
 
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = usdcAmount;
         amounts[1] = usdtAmount;
 
-        stableAsset.mint(amounts, 0);
-        stableAsset.unpause();
+        selfPeggingAsset.mint(amounts, 0);
     }
 }
