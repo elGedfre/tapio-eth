@@ -65,6 +65,25 @@ contract WLPToken is ERC4626Upgradeable {
     }
 
     /**
+     * @dev Mints shares for a given amount of assets deposited.
+     * @param shares Amount of shares to mint.
+     * @param receiver Address to receive the minted shares.
+     * @return assets The amount of lpToken deposited.
+     */
+    function mint(uint256 shares, address receiver) public override returns (uint256 assets) {
+        require(shares > 0, ZeroAmount());
+
+        // Calculate the amount of assets required to mint the given shares
+        assets = convertToAssets(shares);
+
+        // Transfer the required assets from the user to the vault
+        lpToken.transferFrom(msg.sender, address(this), assets);
+
+        // Mint the shares to the receiver
+        _mint(receiver, shares);
+    }
+
+    /**
      * @dev Withdraws lpToken from the vault in exchange for burning shares.
      * @param assets Amount of lpToken to withdraw.
      * @param receiver Address to receive the lpToken.
