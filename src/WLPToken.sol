@@ -110,4 +110,44 @@ contract WLPToken is ERC4626Upgradeable {
         _burn(owner, shares);
         lpToken.transfer(receiver, assets);
     }
+
+    /**
+     * @dev Returns the maximum amount of assets that can be withdrawn by `owner`.
+     * @param owner Address of the account.
+     * @return The maximum amount of lpToken that can be withdrawn.
+     */
+    function maxWithdraw(address owner) public view override returns (uint256) {
+        // Convert the owner's balance of shares to assets
+        return convertToAssets(balanceOf(owner));
+    }
+
+    /**
+     * @dev Simulates the amount of shares that would be minted for a given amount of assets.
+     * @param assets Amount of lpToken to deposit.
+     * @return The number of shares that would be minted.
+     */
+    function previewDeposit(uint256 assets) public view override returns (uint256) {
+        // Convert assets to shares
+        return convertToShares(assets);
+    }
+
+    /**
+     * @dev Simulates the amount of assets that would be needed to mint a given amount of shares.
+     * @param shares Amount of shares to mint.
+     * @return The number of assets required.
+     */
+    function previewMint(uint256 shares) public view override returns (uint256) {
+        // Convert shares to assets
+        return convertToAssets(shares);
+    }
+
+    /**
+     * @dev Simulates the amount of assets that would be withdrawn for a given amount of shares.
+     * @param shares Amount of shares to redeem.
+     * @return The number of assets that would be withdrawn.
+     */
+    function previewRedeem(uint256 shares) public view override returns (uint256) {
+        // Convert shares to assets
+        return convertToAssets(shares);
+    }
 }
