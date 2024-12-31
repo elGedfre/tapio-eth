@@ -34,15 +34,6 @@ contract WLPToken is ERC4626Upgradeable {
     }
 
     /**
-     * @dev Returns the total assets managed by the vault.
-     * Overrides the virtual totalAssets method of ERC4626.
-     * @return The total amount of lpToken held by the vault.
-     */
-    function totalAssets() public view override returns (uint256) {
-        return lpToken.balanceOf(address(this));
-    }
-
-    /**
      * @dev Converts an amount of lpToken to the equivalent amount of shares.
      * @param assets Amount of lpToken.
      * @return The equivalent shares.
