@@ -92,7 +92,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
     address public lpTokenBeacon;
 
     /**
-     * @dev Beacon for the LPToken implementation.
+     * @dev Beacon for the WLPToken implementation.
      */
     address public wlpTokenBeacon;
 
