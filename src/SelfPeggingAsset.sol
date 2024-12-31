@@ -2,10 +2,9 @@
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "./interfaces/IExchangeRateProvider.sol";
@@ -27,7 +26,7 @@ error ImbalancedPool(uint256 oldD, uint256 newD);
  * based on the current supply and demand of each token
  */
 contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
     /**
      * @dev This is the denominator used for calculating transaction fees in the SelfPeggingAsset contract.
@@ -357,7 +356,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         require(address(_poolToken) != address(0x0), PoolTokenNotSet());
         require(_A > 0 && _A < MAX_A, ANotSet());
         __ReentrancyGuard_init();
-        __Ownable_init();
+        __Ownable_init(msg.sender);
 
         tokens = _tokens;
         precisions = _precisions;
@@ -573,7 +572,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             if (_amounts[i] == 0) continue;
             // Update the balance in storage
             balances[i] = _balances[i];
-            IERC20Upgradeable(tokens[i]).safeTransferFrom(msg.sender, address(this), _amounts[i]);
+            IERC20(tokens[i]).safeTransferFrom(msg.sender, address(this), _amounts[i]);
         }
         totalSupply = oldD + mintAmount;
         poolToken.mintShares(msg.sender, mintAmount);
@@ -647,13 +646,12 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         collectFeeOrYield(false);
         uint256[] memory _balances = balances;
         uint256 A = getA();
-        uint256 D = totalSupply;
         uint256 balanceAmount = _dx;
         balanceAmount = (balanceAmount * exchangeRateProviders[_i].exchangeRate())
             / (10 ** exchangeRateProviders[_i].exchangeRateDecimals());
         // balance[i] = balance[i] + dx * precisions[i]
         _balances[_i] = _balances[_i] + (balanceAmount * precisions[_i]);
-        uint256 y = _getY(_balances, _j, D, A);
+        uint256 y = _getY(_balances, _j, totalSupply, A);
         // dy = (balance[j] - y - 1) / precisions[j] in case there was rounding errors
         uint256 dy = (_balances[_j] - y - 1) / precisions[_j];
         // Update token balance in storage
@@ -672,7 +670,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             revert InsufficientSwapOutAmount(dy, _minDy);
         }
 
-        IERC20Upgradeable(tokens[_i]).safeTransferFrom(msg.sender, address(this), _dx);
+        IERC20(tokens[_i]).safeTransferFrom(msg.sender, address(this), _dx);
         // Important: When swap fee > 0, the swap fee is charged on the output token.
         // Therefore, balances[j] < tokens[j].balanceOf(this)
         // Since balances[j] is used to compute D, D is unchanged.
@@ -681,7 +679,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 transferAmountJ = dy;
         transferAmountJ = (transferAmountJ * (10 ** exchangeRateProviders[_j].exchangeRateDecimals()))
             / exchangeRateProviders[_j].exchangeRate();
-        IERC20Upgradeable(tokens[_j]).safeTransfer(msg.sender, transferAmountJ);
+        IERC20(tokens[_j]).safeTransfer(msg.sender, transferAmountJ);
 
         uint256[] memory amounts = new uint256[](_balances.length);
         bool[] memory amountPositive = new bool[](_balances.length);
@@ -777,7 +775,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             transferAmount = (transferAmount * (10 ** exchangeRateProviders[i].exchangeRateDecimals()))
                 / exchangeRateProviders[i].exchangeRate();
             amounts[i] = transferAmount;
-            IERC20Upgradeable(tokens[i]).safeTransfer(msg.sender, transferAmount);
+            IERC20(tokens[i]).safeTransfer(msg.sender, transferAmount);
         }
 
         totalSupply = D - _amount;
@@ -871,7 +869,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         transferAmount = (transferAmount * (10 ** exchangeRateProviders[_i].exchangeRateDecimals()))
             / exchangeRateProviders[_i].exchangeRate();
         amounts[_i] = transferAmount;
-        IERC20Upgradeable(tokens[_i]).safeTransfer(msg.sender, transferAmount);
+        IERC20(tokens[_i]).safeTransfer(msg.sender, transferAmount);
         totalSupply = D - _amount;
         poolToken.burnSharesFrom(msg.sender, _amount);
         feeAmount = collectFeeOrYield(true);
@@ -965,7 +963,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256[] memory amounts = _amounts;
         for (i = 0; i < _balances.length; i++) {
             if (_amounts[i] == 0) continue;
-            IERC20Upgradeable(tokens[i]).safeTransfer(msg.sender, _amounts[i]);
+            IERC20(tokens[i]).safeTransfer(msg.sender, _amounts[i]);
         }
         feeAmount = collectFeeOrYield(true);
         emit Redeemed(msg.sender, redeemAmount, amounts, feeAmount);
@@ -982,7 +980,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 A = getA();
 
         for (uint256 i = 0; i < _balances.length; i++) {
-            uint256 balanceI = IERC20Upgradeable(tokens[i]).balanceOf(address(this));
+            uint256 balanceI = IERC20(tokens[i]).balanceOf(address(this));
             balanceI = (balanceI * exchangeRateProviders[i].exchangeRate())
                 / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
             _balances[i] = balanceI * precisions[i];
@@ -1004,7 +1002,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 oldD = totalSupply;
 
         for (uint256 i = 0; i < _balances.length; i++) {
-            uint256 balanceI = IERC20Upgradeable(tokens[i]).balanceOf(address(this));
+            uint256 balanceI = IERC20(tokens[i]).balanceOf(address(this));
             balanceI = (balanceI * (exchangeRateProviders[i].exchangeRate()))
                 / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
             _balances[i] = balanceI * precisions[i];
@@ -1166,7 +1164,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 oldD = totalSupply;
 
         for (uint256 i = 0; i < _balances.length; i++) {
-            uint256 balanceI = IERC20Upgradeable(tokens[i]).balanceOf(address(this));
+            uint256 balanceI = IERC20(tokens[i]).balanceOf(address(this));
             balanceI = (balanceI * (exchangeRateProviders[i].exchangeRate()))
                 / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
             _balances[i] = balanceI * precisions[i];
@@ -1196,7 +1194,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 oldD = totalSupply;
 
         for (uint256 i = 0; i < _balances.length; i++) {
-            uint256 balanceI = IERC20Upgradeable(tokens[i]).balanceOf(address(this));
+            uint256 balanceI = IERC20(tokens[i]).balanceOf(address(this));
             balanceI = (balanceI * (exchangeRateProviders[i].exchangeRate()))
                 / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
             _balances[i] = balanceI * precisions[i];

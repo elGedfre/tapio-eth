@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
 import { Test } from "forge-std/Test.sol";
@@ -24,16 +25,13 @@ contract FactoryTest is Test {
         address lpTokenImplentation = address(new LPToken());
         address wlpTokenImplentation = address(new WLPToken());
 
-        UpgradeableBeacon beacon = new UpgradeableBeacon(selfPeggingAssetImplentation);
-        beacon.transferOwnership(governor);
+        UpgradeableBeacon beacon = new UpgradeableBeacon(selfPeggingAssetImplentation, governor);
         address selfPeggingAssetBeacon = address(beacon);
 
-        beacon = new UpgradeableBeacon(lpTokenImplentation);
-        beacon.transferOwnership(governor);
+        beacon = new UpgradeableBeacon(lpTokenImplentation, governor);
         address lpTokenBeacon = address(beacon);
 
-        beacon = new UpgradeableBeacon(wlpTokenImplentation);
-        beacon.transferOwnership(governor);
+        beacon = new UpgradeableBeacon(wlpTokenImplentation, governor);
         address wlpTokenBeacon = address(beacon);
 
         factory.initialize(
