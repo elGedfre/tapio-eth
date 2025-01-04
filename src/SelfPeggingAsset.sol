@@ -1068,18 +1068,22 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @param _A The new A value.
      */
     function updateA(uint256 _A) external onlyOwner {
+        collectFeeOrYield(false);
         A = _A;
 
-        collectFeeOrYield(false);
         uint256 newD = _getD(balances, _A);
 
         if (totalSupply > newD) {
             // A decreased
             poolToken.removeTotalSupply(totalSupply - newD);
-        } else {
+        } 
+        
+        if (newD > totalSupply) {
             // A increased
-            poolToken.addBuffer(totalSupply - newD);
+            poolToken.addBuffer(newD - totalSupply);
         }
+
+        totalSupply = newD;
 
         emit AModified(_A);
     }
@@ -1115,7 +1119,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         }
 
         totalSupply = oldD + donationAmount;
-        poolToken.addTotalSupply(donationAmount);
+        poolToken.addBuffer(donationAmount);
 
         emit Donated(msg.sender, donationAmount, _amounts);
 

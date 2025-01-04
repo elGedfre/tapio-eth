@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./interfaces/ILPToken.sol";
+import { console } from "forge-std/console.sol";
 
 error InsufficientAllowance(uint256 currentAllowance, uint256 amount);
 error InsufficientBalance(uint256 currentBalance, uint256 amount);

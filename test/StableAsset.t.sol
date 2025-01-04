@@ -450,19 +450,54 @@ contract SelfPeggingAssetTest is Test {
         assertEq(feeAmount, 0.016018006119571831e18);
     }
 
-    // function test_updateA() external {
-    //     assertEq(pool.initialA(), 100);
-    //     assertEq(pool.futureA(), 100);
+    function test_updateA() external {
+        WETH.mint(user, 105e18);
+        frxETH.mint(user, 85e18);
 
-    //     vm.prank(owner);
-    //     pool.updateA(1000, 20);
+        vm.startPrank(user);
+        WETH.approve(address(pool), 105e18);
+        frxETH.approve(address(pool), 85e18);
 
-    //     assertEq(pool.initialA(), 100);
-    //     assertEq(pool.futureA(), 1000);
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 105e18;
+        amounts[1] = 85e18;
 
-    //     vm.prank(owner);
-    //     pool.updateA(1000, 20);
-    // }
+        pool.mint(amounts, 0);
+        vm.stopPrank();
+
+        frxETH.mint(user2, 8e18);
+        
+        assertEq(pool.A(), 100);
+
+        uint256 bufferBefore = lpToken.bufferAmount();
+
+        // increase A
+        vm.prank(owner);
+        pool.updateA(200);
+
+        assertEq(pool.A(), 200);
+        assert(lpToken.bufferAmount() > bufferBefore);
+
+        // decrease A
+        vm.prank(owner);
+        WETH.mint(user, 205e18);
+        frxETH.mint(user, 195e18);
+
+        vm.startPrank(user);
+        WETH.approve(address(pool), 205e18);
+        frxETH.approve(address(pool), 195e18);
+
+        amounts[0] = 205e18;
+        amounts[1] = 195e18;
+
+        pool.donateD(amounts, 0);
+        vm.stopPrank();
+
+        vm.prank(owner);
+        pool.updateA(90);
+
+        assertEq(pool.A(), 90);
+    }
 
     function assertFee(uint256 totalAmount, uint256 feeAmount, uint256 fee) internal view {
         uint256 expectedFee = totalAmount * fee / feeDenominator;
