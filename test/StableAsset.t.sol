@@ -466,7 +466,7 @@ contract SelfPeggingAssetTest is Test {
         vm.stopPrank();
 
         frxETH.mint(user2, 8e18);
-        
+
         assertEq(pool.A(), 100);
 
         uint256 bufferBefore = lpToken.bufferAmount();

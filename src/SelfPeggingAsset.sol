@@ -1076,8 +1076,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         if (totalSupply > newD) {
             // A decreased
             poolToken.removeTotalSupply(totalSupply - newD);
-        } 
-        
+        }
+
         if (newD > totalSupply) {
             // A increased
             poolToken.addBuffer(newD - totalSupply);
