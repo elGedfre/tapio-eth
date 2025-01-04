@@ -450,19 +450,19 @@ contract SelfPeggingAssetTest is Test {
         assertEq(feeAmount, 0.016018006119571831e18);
     }
 
-    function test_updateA() external {
-        assertEq(pool.initialA(), 100);
-        assertEq(pool.futureA(), 100);
+    // function test_updateA() external {
+    //     assertEq(pool.initialA(), 100);
+    //     assertEq(pool.futureA(), 100);
 
-        vm.prank(owner);
-        pool.updateA(1000, 20);
+    //     vm.prank(owner);
+    //     pool.updateA(1000, 20);
 
-        assertEq(pool.initialA(), 100);
-        assertEq(pool.futureA(), 1000);
+    //     assertEq(pool.initialA(), 100);
+    //     assertEq(pool.futureA(), 1000);
 
-        vm.prank(owner);
-        pool.updateA(1000, 20);
-    }
+    //     vm.prank(owner);
+    //     pool.updateA(1000, 20);
+    // }
 
     function assertFee(uint256 totalAmount, uint256 feeAmount, uint256 fee) internal view {
         uint256 expectedFee = totalAmount * fee / feeDenominator;

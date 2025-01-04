@@ -323,6 +323,18 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     }
 
     /**
+     * @notice This function is called only by a stableSwap pool to increase
+     * the total supply of LPToken
+     */
+    function addBuffer(uint256 _amount) external {
+        require(pools[msg.sender], "LPToken: no pool");
+        require(_amount != 0, "LPToken: no amount");
+
+        bufferAmount += _amount;
+        emit BufferIncreased(_amount, bufferAmount);
+    }
+
+    /**
      * @return the amount of shares owned by `_account`.
      */
     function sharesOf(address _account) external view returns (uint256) {
