@@ -18,7 +18,7 @@ contract ERC4626ExchangeRate is IExchangeRateProvider {
 
     /// @dev Get the exchange rate
     function exchangeRate() external view returns (uint256) {
-        return token.convertToAssets(token.decimals());
+        return token.convertToAssets(10 ** token.decimals());
     }
 
     /// @dev Get the exchange rate decimals
