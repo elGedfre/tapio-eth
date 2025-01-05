@@ -324,6 +324,9 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
         emit SetBufferPercent(_buffer);
     }
 
+    /**
+     * @notice This function is called by the owner to set the token symbol.
+     */
     function setSymbol(string memory _symbol) external onlyOwner {
         tokenSymbol = _symbol;
         emit SymbolModified(_symbol);

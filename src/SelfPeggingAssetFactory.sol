@@ -246,11 +246,6 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
         bytes memory lpTokenInit = abi.encodeCall(LPToken.initialize, (name, symbol));
         BeaconProxy lpTokenProxy = new BeaconProxy(lpTokenBeacon, lpTokenInit);
 
-        address[] memory proposers = new address[](1);
-        address[] memory executors = new address[](1);
-        proposers[0] = governor;
-        executors[0] = governor;
-
         address[] memory tokens = new address[](2);
         uint256[] memory precisions = new uint256[](2);
         uint256[] memory fees = new uint256[](3);
