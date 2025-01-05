@@ -10,13 +10,6 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./interfaces/IExchangeRateProvider.sol";
 import "./interfaces/ILPToken.sol";
 
-error InsufficientMintAmount(uint256 mintAmount, uint256 minMintAmount);
-error InsufficientSwapOutAmount(uint256 outAmount, uint256 minOutAmount);
-error InsufficientRedeemAmount(uint256 redeemAmount, uint256 minRedeemAmount);
-error MaxRedeemAmount(uint256 redeemAmount, uint256 maxRedeemAmount);
-error SameTokenInTokenOut(uint256 tokenInIndex, uint256 tokenOutIndex);
-error ImbalancedPool(uint256 oldD, uint256 newD);
-
 /**
  * @title SelfPeggingAsset swap
  * @author Nuts Finance Developer
@@ -306,6 +299,24 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
     /// @notice Error thrown donation amount is insufficient
     error InsufficientDonationAmount();
+
+    /// @notice Error thrown insufficient mint amount
+    error InsufficientMintAmount(uint256 mintAmount, uint256 minMintAmount);
+
+    /// @notice Error thrown insufficient swap out amount
+    error InsufficientSwapOutAmount(uint256 outAmount, uint256 minOutAmount);
+
+    /// @notice Error thrown insufficient redeem amount
+    error InsufficientRedeemAmount(uint256 redeemAmount, uint256 minRedeemAmount);
+
+    /// @notice Error thrown when redeem amount is max
+    error MaxRedeemAmount(uint256 redeemAmount, uint256 maxRedeemAmount);
+
+    /// @notice Error thrown in and out token are the same
+    error SameTokenInTokenOut(uint256 tokenInIndex, uint256 tokenOutIndex);
+
+    /// @notice Error thrown when the pool is imbalanced
+    error ImbalancedPool(uint256 oldD, uint256 newD);
 
     /**
      * @dev Initializes the SelfPeggingAsset contract with the given parameters.
