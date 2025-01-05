@@ -95,7 +95,7 @@ contract WLPToken is ERC4626Upgradeable {
         shares = convertToShares(assets);
         if (msg.sender != owner) {
             uint256 allowed = allowance(owner, msg.sender);
-            require(allowed >= shares, "ERC4626: insufficient allowance");
+            require(allowed >= shares, InsufficientAllowance());
             _approve(owner, msg.sender, allowed - shares);
         }
         _burn(owner, shares);
