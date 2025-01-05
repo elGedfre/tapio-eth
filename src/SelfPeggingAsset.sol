@@ -1103,20 +1103,18 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             balanceAmount = (balanceAmount * exchangeRateProviders[i].exchangeRate())
                 / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
             _balances[i] = _balances[i] + (balanceAmount * precisions[i]);
+
+            // Update the balance in storage
+            balances[i] = _balances[i];
+
+            // Transfer tokens into the swap
+            IERC20(tokens[i]).safeTransferFrom(msg.sender, address(this), _amounts[i]);
         }
         uint256 newD = _getD(_balances);
         // newD should be bigger than or equal to oldD
         uint256 donationAmount = newD - oldD;
 
-        // Transfer tokens into the swap
-        for (i = 0; i < _amounts.length; i++) {
-            if (_amounts[i] == 0) continue;
-            // Update the balance in storage
-            balances[i] = _balances[i];
-            IERC20(tokens[i]).safeTransferFrom(msg.sender, address(this), _amounts[i]);
-        }
-
-        totalSupply = oldD + donationAmount;
+        totalSupply = newD;
         poolToken.addBuffer(donationAmount);
 
         emit Donated(msg.sender, donationAmount, _amounts);
