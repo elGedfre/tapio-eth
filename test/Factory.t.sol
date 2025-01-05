@@ -8,6 +8,7 @@ import { console } from "forge-std/console.sol";
 import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
 import { MockToken } from "../src/mock/MockToken.sol";
 import { MockERC4626Token } from "../src/mock/MockERC4626Token.sol";
+import { MockOracle } from "../src/mock/MockOracle.sol";
 import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
 import { LPToken } from "../src/LPToken.sol";
 import { WLPToken } from "../src/WLPToken.sol";
@@ -160,6 +161,64 @@ contract FactoryTest is Test {
 
         vaultTokenA.approve(address(selfPeggingAsset), 100e18);
         vaultTokenB.approve(address(selfPeggingAsset), 100e18);
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 100e18;
+        amounts[1] = 100e18;
+
+        vm.warp(block.timestamp + 1000);
+
+        selfPeggingAsset.mint(amounts, 0);
+
+        assertEq(poolToken.balanceOf(initialMinter), 200e18);
+        assertNotEq(address(wrappedPoolToken), address(0));
+    }
+
+    function test_CreatePoolOracleExchangeRate() external {
+        MockToken tokenA = new MockToken("test 1", "T1", 18);
+        MockToken tokenB = new MockToken("test 2", "T2", 18);
+
+        MockOracle oracle = new MockOracle();
+
+        SelfPeggingAssetFactory.CreatePoolArgument memory arg = SelfPeggingAssetFactory.CreatePoolArgument({
+            tokenA: address(tokenA),
+            tokenB: address(tokenB),
+            tokenAType: SelfPeggingAssetFactory.TokenType.Oracle,
+            tokenAOracle: address(oracle),
+            tokenAFunctionSig: "rate",
+            tokenBType: SelfPeggingAssetFactory.TokenType.Oracle,
+            tokenBOracle: address(oracle),
+            tokenBFunctionSig: "rate"
+        });
+
+        vm.recordLogs();
+        factory.createPool(arg);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 eventSig = keccak256("PoolCreated(address,address,address)");
+
+        address decodedPoolToken;
+        address decodedSelfPeggingAsset;
+        address decodedWrappedPoolToken;
+
+        for (uint256 i = 0; i < entries.length; i++) {
+            Vm.Log memory log = entries[i];
+
+            if (log.topics[0] == eventSig) {
+                (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken) =
+                    abi.decode(log.data, (address, address, address));
+            }
+        }
+
+        SelfPeggingAsset selfPeggingAsset = SelfPeggingAsset(decodedSelfPeggingAsset);
+        LPToken poolToken = LPToken(decodedPoolToken);
+        WLPToken wrappedPoolToken = WLPToken(decodedWrappedPoolToken);
+
+        vm.startPrank(initialMinter);
+        tokenA.mint(initialMinter, 100e18);
+        tokenB.mint(initialMinter, 100e18);
+
+        tokenA.approve(address(selfPeggingAsset), 100e18);
+        tokenB.approve(address(selfPeggingAsset), 100e18);
 
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = 100e18;
