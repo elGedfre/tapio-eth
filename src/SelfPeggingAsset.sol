@@ -304,6 +304,9 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /// @notice Error thrown when the account is not an admin
     error NotAdmin();
 
+    /// @notice Error thrown donation amount is insufficient
+    error InsufficientDonationAmount();
+
     /**
      * @dev Initializes the SelfPeggingAsset contract with the given parameters.
      * @param _tokens The tokens in the pool.
@@ -1113,6 +1116,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 newD = _getD(_balances);
         // newD should be bigger than or equal to oldD
         uint256 donationAmount = newD - oldD;
+        require(donationAmount >= _minDonationAmount, InsufficientDonationAmount());
 
         totalSupply = newD;
         poolToken.addBuffer(donationAmount);

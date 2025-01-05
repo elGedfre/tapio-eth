@@ -7,11 +7,13 @@ import { console } from "forge-std/console.sol";
 
 import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
 import { MockToken } from "../src/mock/MockToken.sol";
+import { MockERC4626Token } from "../src/mock/MockERC4626Token.sol";
 import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
 import { LPToken } from "../src/LPToken.sol";
 import { WLPToken } from "../src/WLPToken.sol";
 import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import "../src/misc/ConstantExchangeRateProvider.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 
 contract FactoryTest is Test {
     SelfPeggingAssetFactory internal factory;
@@ -90,6 +92,74 @@ contract FactoryTest is Test {
 
         tokenA.approve(address(selfPeggingAsset), 100e18);
         tokenB.approve(address(selfPeggingAsset), 100e18);
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 100e18;
+        amounts[1] = 100e18;
+
+        vm.warp(block.timestamp + 1000);
+
+        selfPeggingAsset.mint(amounts, 0);
+
+        assertEq(poolToken.balanceOf(initialMinter), 200e18);
+        assertNotEq(address(wrappedPoolToken), address(0));
+    }
+
+    function test_CreatePoolERC4626ExchangeRate() external {
+        MockERC4626Token vaultTokenA = new MockERC4626Token();
+        MockERC4626Token vaultTokenB = new MockERC4626Token();
+
+        MockToken tokenA = new MockToken("test 1", "T1", 18);
+        MockToken tokenB = new MockToken("test 2", "T2", 18);
+
+        vaultTokenA.initialize(tokenA);
+        vaultTokenB.initialize(tokenB);
+
+        SelfPeggingAssetFactory.CreatePoolArgument memory arg = SelfPeggingAssetFactory.CreatePoolArgument({
+            tokenA: address(vaultTokenA),
+            tokenB: address(vaultTokenB),
+            tokenAType: SelfPeggingAssetFactory.TokenType.ERC4626,
+            tokenAOracle: address(0),
+            tokenAFunctionSig: "",
+            tokenBType: SelfPeggingAssetFactory.TokenType.ERC4626,
+            tokenBOracle: address(0),
+            tokenBFunctionSig: ""
+        });
+
+        vm.recordLogs();
+        factory.createPool(arg);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 eventSig = keccak256("PoolCreated(address,address,address)");
+
+        address decodedPoolToken;
+        address decodedSelfPeggingAsset;
+        address decodedWrappedPoolToken;
+
+        for (uint256 i = 0; i < entries.length; i++) {
+            Vm.Log memory log = entries[i];
+
+            if (log.topics[0] == eventSig) {
+                (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken) =
+                    abi.decode(log.data, (address, address, address));
+            }
+        }
+
+        SelfPeggingAsset selfPeggingAsset = SelfPeggingAsset(decodedSelfPeggingAsset);
+        LPToken poolToken = LPToken(decodedPoolToken);
+        WLPToken wrappedPoolToken = WLPToken(decodedWrappedPoolToken);
+
+        vm.startPrank(initialMinter);
+        tokenA.mint(initialMinter, 100e18);
+        tokenB.mint(initialMinter, 100e18);
+
+        tokenA.approve(address(vaultTokenA), 100e18);
+        tokenB.approve(address(vaultTokenB), 100e18);
+
+        vaultTokenA.deposit(100e18, initialMinter);
+        vaultTokenB.deposit(100e18, initialMinter);
+
+        vaultTokenA.approve(address(selfPeggingAsset), 100e18);
+        vaultTokenB.approve(address(selfPeggingAsset), 100e18);
 
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = 100e18;
