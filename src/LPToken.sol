@@ -133,6 +133,45 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      */
     event SymbolModified(string);
 
+    /// @notice Error thrown when the allowance is below zero.
+    error AllowanceBelowZero();
+
+    /// @notice Error thrown when array index is out of range.
+    error OutOfRange();
+
+    /// @notice Error thrown when the pool is not added.
+    error NoPool();
+
+    /// @notice Error thrown when the amount is invalid.
+    error InvalidAmount();
+
+    /// @notice Error thrown when the buffer is insufficient.
+    error InsufficientBuffer();
+
+    /// @notice Error thrown when the sender's address is zero.
+    error ApproveFromZeroAddr();
+
+    /// @notice Error thrown when the recipient's address is zero.
+    error ApproveToZeroAddr();
+
+    /// @notice Error thrown when the address is zero.
+    error ZeroAddress();
+
+    /// @notice Error thrown when transferring to the lpToken contract.
+    error TransferToLPTokenContract();
+
+    /// @notice Error thrown when minting to the zero address.
+    error MintToZeroAddr();
+
+    /// @notice Error thrown when burning from the zero address.
+    error BurnFromZeroAddr();
+
+    /// @notice Error thrown when the pool is already added.
+    error PoolAlreadyAdded();
+
+    /// @notice Error thrown when the pool is not found.
+    error PoolNotFound();
+
     function initialize(string memory _name, string memory _symbol) public initializer {
         tokenName = _name;
         tokenSymbol = _symbol;
@@ -145,8 +184,8 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * @param _pool The address of the pool to add.
      */
     function addPool(address _pool) public onlyOwner {
-        require(_pool != address(0), "LPToken: zero address");
-        require(!pools[_pool], "LPToken: pool is already added");
+        require(_pool != address(0), ZeroAddress());
+        require(!pools[_pool], PoolAlreadyAdded());
         pools[_pool] = true;
         emit PoolAdded(_pool);
     }
@@ -156,7 +195,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * @param _pool The address of the pool to remove.
      */
     function removePool(address _pool) public onlyOwner {
-        require(pools[_pool], "LPToken: pool doesn't exist");
+        require(pools[_pool], PoolNotFound());
         pools[_pool] = false;
         emit PoolRemoved(_pool);
     }
@@ -270,7 +309,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      */
     function decreaseAllowance(address _spender, uint256 _subtractedValue) external returns (bool) {
         uint256 currentAllowance = allowances[msg.sender][_spender];
-        require(currentAllowance >= _subtractedValue, "LPToken:ALLOWANCE_BELOW_ZERO");
+        require(currentAllowance >= _subtractedValue, AllowanceBelowZero());
         _approve(msg.sender, _spender, currentAllowance - _subtractedValue);
         return true;
     }
@@ -280,7 +319,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * @notice This function is called by the owner to set the buffer rate.
      */
     function setBuffer(uint256 _buffer) external onlyOwner {
-        require(_buffer < BUFFER_DENOMINATOR, "LPToken: out of range");
+        require(_buffer < BUFFER_DENOMINATOR, OutOfRange());
         bufferPercent = _buffer;
         emit SetBufferPercent(_buffer);
     }
@@ -295,8 +334,8 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * the total supply of LPToken by the staking rewards and the swap fee.
      */
     function addTotalSupply(uint256 _amount) external {
-        require(pools[msg.sender], "LPToken: no pool");
-        require(_amount != 0, "LPToken: no amount");
+        require(pools[msg.sender], NoPool());
+        require(_amount != 0, InvalidAmount());
         uint256 _deltaBuffer = (bufferPercent * _amount) / BUFFER_DENOMINATOR;
         uint256 actualAmount = _amount - _deltaBuffer;
 
@@ -313,13 +352,25 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * the total supply of LPToken by lost amount.
      */
     function removeTotalSupply(uint256 _amount) external {
-        require(pools[msg.sender], "LPToken: no pool");
-        require(_amount != 0, "LPToken: no amount");
-        require(_amount <= bufferAmount, "LPToken: insuffcient buffer");
+        require(pools[msg.sender], NoPool());
+        require(_amount != 0, InvalidAmount());
+        require(_amount <= bufferAmount, InsufficientBuffer());
 
         bufferAmount -= _amount;
 
         emit BufferDecreased(_amount, bufferAmount);
+    }
+
+    /**
+     * @notice This function is called only by a stableSwap pool to increase
+     * the total supply of LPToken
+     */
+    function addBuffer(uint256 _amount) external {
+        require(pools[msg.sender], NoPool());
+        require(_amount != 0, InvalidAmount());
+
+        bufferAmount += _amount;
+        emit BufferIncreased(_amount, bufferAmount);
     }
 
     /**
@@ -394,7 +445,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * @dev Mints shares for the `_account` and transfers them to the `_account`.
      */
     function mintShares(address _account, uint256 _tokenAmount) external {
-        require(pools[msg.sender], "LPToken: no pool");
+        require(pools[msg.sender], NoPool());
         _mintShares(_account, _tokenAmount);
     }
 
@@ -430,8 +481,8 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * Emits an `Approval` event.
      */
     function _approve(address _owner, address _spender, uint256 _amount) internal {
-        require(_owner != address(0), "LPToken: APPROVE_FROM_ZERO_ADDR");
-        require(_spender != address(0), "LPToken: APPROVE_TO_ZERO_ADDR");
+        require(_owner != address(0), ApproveFromZeroAddr());
+        require(_spender != address(0), ApproveToZeroAddr());
 
         allowances[_owner][_spender] = _amount;
         emit Approval(_owner, _spender, _amount);
@@ -467,9 +518,9 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * @notice Moves `_sharesAmount` shares from `_sender` to `_recipient`.
      */
     function _transferShares(address _sender, address _recipient, uint256 _sharesAmount) internal {
-        require(_sender != address(0), "LPToken: zero address");
-        require(_recipient != address(0), "LPToken: zero address");
-        require(_recipient != address(this), "LPToken: TRANSFER_TO_lpToken_CONTRACT");
+        require(_sender != address(0), ZeroAddress());
+        require(_recipient != address(0), ZeroAddress());
+        require(_recipient != address(this), TransferToLPTokenContract());
 
         uint256 currentSenderShares = shares[_sender];
 
@@ -485,7 +536,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * @notice Creates `_sharesAmount` shares and assigns them to `_recipient`, increasing the total amount of shares.
      */
     function _mintShares(address _recipient, uint256 _tokenAmount) internal returns (uint256 newTotalShares) {
-        require(_recipient != address(0), "LPToken: MINT_TO_ZERO_ADDR");
+        require(_recipient != address(0), MintToZeroAddr());
         uint256 _sharesAmount;
         if (totalSupply != 0 && totalShares != 0) {
             _sharesAmount = getSharesByPeggedToken(_tokenAmount);
@@ -504,7 +555,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * @notice Destroys `_sharesAmount` shares from `_account`'s holdings, decreasing the total amount of shares.
      */
     function _burnShares(address _account, uint256 _tokenAmount) internal returns (uint256 newTotalShares) {
-        require(_account != address(0), "LPToken: BURN_FROM_ZERO_ADDR");
+        require(_account != address(0), BurnFromZeroAddr());
 
         uint256 _balance = getPeggedTokenByShares(_sharesOf(_account));
         if (_tokenAmount > _balance) {

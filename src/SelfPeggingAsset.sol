@@ -10,13 +10,6 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./interfaces/IExchangeRateProvider.sol";
 import "./interfaces/ILPToken.sol";
 
-error InsufficientMintAmount(uint256 mintAmount, uint256 minMintAmount);
-error InsufficientSwapOutAmount(uint256 outAmount, uint256 minOutAmount);
-error InsufficientRedeemAmount(uint256 redeemAmount, uint256 minRedeemAmount);
-error MaxRedeemAmount(uint256 redeemAmount, uint256 maxRedeemAmount);
-error SameTokenInTokenOut(uint256 tokenInIndex, uint256 tokenOutIndex);
-error ImbalancedPool(uint256 oldD, uint256 newD);
-
 /**
  * @title SelfPeggingAsset swap
  * @author Nuts Finance Developer
@@ -115,24 +108,9 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     bool public paused;
 
     /**
-     * @dev These is a state variables that represents the initial amplification coefficient A.
+     * @dev These is a state variables that represents the amplification coefficient A.
      */
-    uint256 public initialA;
-
-    /**
-     * @dev These is a state variables that represents the initial block number when A is set.
-     */
-    uint256 public initialABlock;
-
-    /**
-     * @dev These is a state variables that represents the future amplification coefficient A.
-     */
-    uint256 public futureA;
-
-    /**
-     * @dev These is a state variables that represents the future block number when A is set.
-     */
-    uint256 public futureABlock;
+    uint256 public A;
 
     /**
      * @dev Exchange rate provider for the tokens
@@ -174,6 +152,14 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     event Minted(address indexed provider, uint256 mintAmount, uint256[] amounts, uint256 feeAmount);
 
     /**
+     * @notice This event is emitted when liquidity is added to the SelfPeggingAsset contract.
+     * @param provider is the address of the liquidity provider.
+     * @param mintAmount is the amount of liquidity tokens minted to the provider in exchange for their contribution.
+     * @param amounts is an array containing the amounts of each token contributed by the provider.
+     */
+    event Donated(address indexed provider, uint256 mintAmount, uint256[] amounts);
+
+    /**
      * @dev This event is emitted when liquidity is removed from the SelfPeggingAsset contract.
      * @param provider is the address of the liquidity provider.
      * @param redeemAmount is the amount of liquidity tokens redeemed by the provider.
@@ -199,10 +185,9 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
     /**
      * @dev This event is emitted when the A parameter is modified.
-     * @param futureA is the new value of the A parameter.
-     * @param futureABlock is the block number at which the new value of the A parameter will take effect.
+     * @param A is the new value of the A parameter.
      */
-    event AModified(uint256 futureA, uint256 futureABlock);
+    event AModified(uint256 A);
 
     /**
      * @dev This event is emitted when the mint fee is modified.
@@ -312,6 +297,27 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /// @notice Error thrown when the account is not an admin
     error NotAdmin();
 
+    /// @notice Error thrown donation amount is insufficient
+    error InsufficientDonationAmount();
+
+    /// @notice Error thrown insufficient mint amount
+    error InsufficientMintAmount(uint256 mintAmount, uint256 minMintAmount);
+
+    /// @notice Error thrown insufficient swap out amount
+    error InsufficientSwapOutAmount(uint256 outAmount, uint256 minOutAmount);
+
+    /// @notice Error thrown insufficient redeem amount
+    error InsufficientRedeemAmount(uint256 redeemAmount, uint256 minRedeemAmount);
+
+    /// @notice Error thrown when redeem amount is max
+    error MaxRedeemAmount(uint256 redeemAmount, uint256 maxRedeemAmount);
+
+    /// @notice Error thrown in and out token are the same
+    error SameTokenInTokenOut(uint256 tokenInIndex, uint256 tokenOutIndex);
+
+    /// @notice Error thrown when the pool is imbalanced
+    error ImbalancedPool(uint256 oldD, uint256 newD);
+
     /**
      * @dev Initializes the SelfPeggingAsset contract with the given parameters.
      * @param _tokens The tokens in the pool.
@@ -366,10 +372,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         poolToken = _poolToken;
         exchangeRateProviders = _exchangeRateProviders;
 
-        initialA = _A;
-        futureA = _A;
-        initialABlock = block.number;
-        futureABlock = block.number;
+        A = _A;
         feeErrorMargin = DEFAULT_FEE_ERROR_MARGIN;
         yieldErrorMargin = DEFAULT_YIELD_ERROR_MARGIN;
         maxDeltaD = DEFAULT_MAX_DELTA_D;
@@ -378,38 +381,14 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     }
 
     /**
-     * @dev Returns the current value of A. This method might be updated in the future.
-     * @return The current value of A.
-     */
-    function getA() public view returns (uint256) {
-        uint256 currentBlock = block.number;
-        if (currentBlock < futureABlock) {
-            uint256 blockDiff = currentBlock - initialABlock;
-            uint256 blockDiffDiv = futureABlock - initialABlock;
-            if (futureA > initialA) {
-                uint256 diff = futureA - initialA;
-                uint256 amount = (diff * blockDiff) / blockDiffDiv;
-                return initialA + amount;
-            } else {
-                uint256 diff = initialA - futureA;
-                uint256 amount = (diff * blockDiff) / blockDiffDiv;
-                return initialA - amount;
-            }
-        } else {
-            return futureA;
-        }
-    }
-
-    /**
      * @dev Computes D given token balances.
      * @param _balances Normalized balance of each token.
-     * @param _A Amplification coefficient from getA().
      * @return D The SelfPeggingAsset invariant.
      */
-    function _getD(uint256[] memory _balances, uint256 _A) internal pure returns (uint256) {
+    function _getD(uint256[] memory _balances) internal view returns (uint256) {
         uint256 sum = 0;
         uint256 i = 0;
-        uint256 Ann = _A;
+        uint256 Ann = A;
         /*
      * We choose to implement n*n instead of n*(n-1) because it's
      * clearer in code and A value across pool is comparable.
@@ -453,13 +432,12 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @param _balances Converted balance of each token except token with index _j.
      * @param _j Index of the token to calculate balance.
      * @param _D The target D value.
-     * @param _A Amplification coeffient.
      * @return Converted balance of the token with index _j.
      */
-    function _getY(uint256[] memory _balances, uint256 _j, uint256 _D, uint256 _A) internal pure returns (uint256) {
+    function _getY(uint256[] memory _balances, uint256 _j, uint256 _D) internal view returns (uint256) {
         uint256 c = _D;
         uint256 S_ = 0;
-        uint256 Ann = _A;
+        uint256 Ann = A;
         uint256 i = 0;
         for (i = 0; i < _balances.length; i++) {
             Ann = Ann * _balances.length;
@@ -501,7 +479,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         (_balances, _totalSupply) = getPendingYieldAmount();
         require(_amounts.length == _balances.length, InvalidAmount());
 
-        uint256 A = getA();
         uint256 oldD = _totalSupply;
         uint256 i = 0;
         for (i = 0; i < _balances.length; i++) {
@@ -512,7 +489,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             // balance = balance + amount * precision
             _balances[i] = _balances[i] + (balanceAmount * precisions[i]);
         }
-        uint256 newD = _getD(_balances, A);
+        uint256 newD = _getD(_balances);
         // newD should be bigger than or equal to oldD
         uint256 mintAmount = newD - oldD;
         uint256 feeAmount = 0;
@@ -538,7 +515,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
         collectFeeOrYield(false);
         uint256[] memory _balances = balances;
-        uint256 A = getA();
         uint256 oldD = totalSupply;
         uint256 i = 0;
         for (i = 0; i < _balances.length; i++) {
@@ -554,7 +530,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
                 / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
             _balances[i] = _balances[i] + (balanceAmount * precisions[i]);
         }
-        uint256 newD = _getD(_balances, A);
+        uint256 newD = _getD(_balances);
         // newD should be bigger than or equal to oldD
         uint256 mintAmount = newD - oldD;
 
@@ -598,14 +574,13 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         require(_j < _balances.length, InvalidOut());
         require(_dx > 0, InvalidAmount());
 
-        uint256 A = getA();
         uint256 D = _totalSupply;
         uint256 balanceAmount = _dx;
         balanceAmount = (balanceAmount * exchangeRateProviders[_i].exchangeRate())
             / (10 ** exchangeRateProviders[_i].exchangeRateDecimals());
         // balance[i] = balance[i] + dx * precisions[i]
         _balances[_i] = _balances[_i] + (balanceAmount * precisions[_i]);
-        uint256 y = _getY(_balances, _j, D, A);
+        uint256 y = _getY(_balances, _j, D);
         // dy = (balance[j] - y - 1) / precisions[j] in case there was rounding errors
         uint256 dy = (_balances[_j] - y - 1) / precisions[_j];
         uint256 feeAmount = 0;
@@ -645,13 +620,12 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
         collectFeeOrYield(false);
         uint256[] memory _balances = balances;
-        uint256 A = getA();
         uint256 balanceAmount = _dx;
         balanceAmount = (balanceAmount * exchangeRateProviders[_i].exchangeRate())
             / (10 ** exchangeRateProviders[_i].exchangeRateDecimals());
         // balance[i] = balance[i] + dx * precisions[i]
         _balances[_i] = _balances[_i] + (balanceAmount * precisions[_i]);
-        uint256 y = _getY(_balances, _j, totalSupply, A);
+        uint256 y = _getY(_balances, _j, totalSupply);
         // dy = (balance[j] - y - 1) / precisions[j] in case there was rounding errors
         uint256 dy = (_balances[_j] - y - 1) / precisions[_j];
         // Update token balance in storage
@@ -801,7 +775,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         require(_amount > 0, ZeroAmount());
         require(_i < _balances.length, InvalidToken());
 
-        uint256 A = getA();
         uint256 D = _totalSupply;
         uint256 feeAmount = 0;
         uint256 redeemAmount = _amount;
@@ -810,7 +783,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             redeemAmount = _amount - feeAmount;
         }
         // The pool token amount becomes D - redeemAmount
-        uint256 y = _getY(_balances, _i, D - redeemAmount, A);
+        uint256 y = _getY(_balances, _i, D - redeemAmount);
         // dy = (balance[i] - y - 1) / precisions[i] in case there was rounding errors
         uint256 dy = (_balances[_i] - y - 1) / precisions[_i];
         uint256 transferAmount = dy;
@@ -843,7 +816,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
         collectFeeOrYield(false);
         uint256[] memory _balances = balances;
-        uint256 A = getA();
         uint256 D = totalSupply;
         uint256 feeAmount = 0;
         uint256 redeemAmount = _amount;
@@ -855,7 +827,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             / (10 ** exchangeRateProviders[_i].exchangeRateDecimals());
 
         // y is converted(18 decimals)
-        uint256 y = _getY(_balances, _i, D - redeemAmount, A);
+        uint256 y = _getY(_balances, _i, D - redeemAmount);
         // dy is not converted
         // dy = (balance[i] - y - 1) / precisions[i] in case there was rounding errors
         uint256 dy = (_balances[_i] - y - 1) / precisions[_i];
@@ -889,7 +861,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         (_balances, _totalSupply) = getPendingYieldAmount();
         require(_amounts.length == balances.length, InputMismatch());
 
-        uint256 A = getA();
         uint256 oldD = _totalSupply;
         for (uint256 i = 0; i < _balances.length; i++) {
             if (_amounts[i] == 0) continue;
@@ -899,7 +870,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
                 / 10 ** exchangeRateProviders[i].exchangeRateDecimals();
             _balances[i] = _balances[i] - (balanceAmount * precisions[i]);
         }
-        uint256 newD = _getD(_balances, A);
+        uint256 newD = _getD(_balances);
 
         // newD should be smaller than or equal to oldD
         uint256 redeemAmount = oldD - newD;
@@ -932,7 +903,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
         collectFeeOrYield(false);
         uint256[] memory _balances = balances;
-        uint256 A = getA();
         uint256 oldD = totalSupply;
         uint256 i = 0;
         for (i = 0; i < _balances.length; i++) {
@@ -943,7 +913,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             // balance = balance + amount * precision
             _balances[i] = _balances[i] - (balanceAmount * precisions[i]);
         }
-        uint256 newD = _getD(_balances, A);
+        uint256 newD = _getD(_balances);
 
         // newD should be smaller than or equal to oldD
         uint256 redeemAmount = oldD - newD;
@@ -977,7 +947,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      */
     function getPendingYieldAmount() internal view returns (uint256[] memory, uint256) {
         uint256[] memory _balances = balances;
-        uint256 A = getA();
 
         for (uint256 i = 0; i < _balances.length; i++) {
             uint256 balanceI = IERC20(tokens[i]).balanceOf(address(this));
@@ -985,7 +954,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
                 / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
             _balances[i] = balanceI * precisions[i];
         }
-        uint256 newD = _getD(_balances, A);
+        uint256 newD = _getD(_balances);
 
         return (_balances, newD);
     }
@@ -998,7 +967,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     function collectFeeOrYield(bool isFee) internal returns (uint256) {
         uint256[] memory oldBalances = balances;
         uint256[] memory _balances = balances;
-        uint256 A = getA();
         uint256 oldD = totalSupply;
 
         for (uint256 i = 0; i < _balances.length; i++) {
@@ -1007,7 +975,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
                 / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
             _balances[i] = balanceI * precisions[i];
         }
-        uint256 newD = _getD(_balances, A);
+        uint256 newD = _getD(_balances);
 
         balances = _balances;
         totalSupply = newD;
@@ -1109,24 +1077,64 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
     /**
      * @dev Update the A value.
-     * @param _futureA The new A value.
-     * @param _futureABlock The block number to update A value.
+     * @param _A The new A value.
      */
-    function updateA(uint256 _futureA, uint256 _futureABlock) external onlyOwner {
-        require(_futureA > 0 && _futureA < MAX_A, ANotSet());
-        require(_futureABlock > block.number, PastBlock());
-
-        initialA = getA();
-        initialABlock = block.number;
-        futureA = _futureA;
-        futureABlock = _futureABlock;
-
+    function updateA(uint256 _A) external onlyOwner {
         collectFeeOrYield(false);
-        uint256 newD = _getD(balances, futureA);
-        uint256 absolute = totalSupply > newD ? totalSupply - newD : newD - totalSupply;
-        require(absolute < maxDeltaD, PoolImbalanced());
+        A = _A;
 
-        emit AModified(_futureA, _futureABlock);
+        uint256 newD = _getD(balances);
+
+        if (totalSupply > newD) {
+            // A decreased
+            poolToken.removeTotalSupply(totalSupply - newD);
+        }
+
+        if (newD > totalSupply) {
+            // A increased
+            poolToken.addBuffer(newD - totalSupply);
+        }
+
+        totalSupply = newD;
+
+        emit AModified(_A);
+    }
+
+    /**
+     * @dev Update the exchange rate provider for the token.
+     */
+    function donateD(uint256[] calldata _amounts, uint256 _minDonationAmount) external nonReentrant returns (uint256) {
+        collectFeeOrYield(false);
+
+        uint256[] memory _balances = balances;
+        uint256 oldD = totalSupply;
+        uint256 i = 0;
+        for (i = 0; i < _balances.length; i++) {
+            if (_amounts[i] == 0) {
+                continue;
+            }
+            uint256 balanceAmount = _amounts[i];
+            balanceAmount = (balanceAmount * exchangeRateProviders[i].exchangeRate())
+                / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
+            _balances[i] = _balances[i] + (balanceAmount * precisions[i]);
+
+            // Update the balance in storage
+            balances[i] = _balances[i];
+
+            // Transfer tokens into the swap
+            IERC20(tokens[i]).safeTransferFrom(msg.sender, address(this), _amounts[i]);
+        }
+        uint256 newD = _getD(_balances);
+        // newD should be bigger than or equal to oldD
+        uint256 donationAmount = newD - oldD;
+        require(donationAmount >= _minDonationAmount, InsufficientDonationAmount());
+
+        totalSupply = newD;
+        poolToken.addBuffer(donationAmount);
+
+        emit Donated(msg.sender, donationAmount, _amounts);
+
+        return donationAmount;
     }
 
     /**
@@ -1160,7 +1168,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         require(paused, NotPaused());
 
         uint256[] memory _balances = balances;
-        uint256 A = getA();
         uint256 oldD = totalSupply;
 
         for (uint256 i = 0; i < _balances.length; i++) {
@@ -1169,7 +1176,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
                 / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
             _balances[i] = balanceI * precisions[i];
         }
-        uint256 newD = _getD(_balances, A);
+        uint256 newD = _getD(_balances);
 
         require(newD < oldD, NoLosses());
         poolToken.removeTotalSupply(oldD - newD);
@@ -1190,7 +1197,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      */
     function rebase() external returns (uint256) {
         uint256[] memory _balances = balances;
-        uint256 A = getA();
         uint256 oldD = totalSupply;
 
         for (uint256 i = 0; i < _balances.length; i++) {
@@ -1199,7 +1205,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
                 / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
             _balances[i] = balanceI * precisions[i];
         }
-        uint256 newD = _getD(_balances, A);
+        uint256 newD = _getD(_balances);
 
         if (oldD > newD) {
             return 0;

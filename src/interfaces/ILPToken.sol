@@ -62,4 +62,7 @@ interface ILPToken is IERC20 {
 
     /// @dev Burn the shares from the account
     function burnSharesFrom(address _account, uint256 _sharesAmount) external;
+
+    // @dev Add to buffer
+    function addBuffer(uint256 _amount) external;
 }
