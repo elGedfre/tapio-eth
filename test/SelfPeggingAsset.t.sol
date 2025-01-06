@@ -372,7 +372,7 @@ contract SelfPeggingAssetTest is Test {
         assertEq(pool.totalSupply(), lpToken.totalSupply());
     }
 
-    function test_redeemCorrectAmountToSingleTokenRebasing() external {
+    function testRedeemCorrectAmountToSingleTokenRebasing() external {
         uint256[] memory mintAmounts = new uint256[](2);
         mintAmounts[0] = 105e18;
         mintAmounts[1] = 85e18;
@@ -396,7 +396,7 @@ contract SelfPeggingAssetTest is Test {
         assertInvariant(105e18 - (token1Amount * precisions[0]), 85e18, 100, totalAmount - redeemAmount - feeAmount);
     }
 
-    function test_redeemCorrectAmountWithProportionalRedemptionRebasing() external {
+    function testRedeemCorrectAmountWithProportionalRedemptionRebasing() external {
         uint256[] memory mintAmounts = new uint256[](2);
         mintAmounts[0] = 105e18;
         mintAmounts[1] = 85e18;
@@ -423,7 +423,7 @@ contract SelfPeggingAssetTest is Test {
         assertEq(feeAmount, 125_000_000_000_000_000);
     }
 
-    function test_correctExchangeAmountRebasing() external {
+    function testCorrectExchangeAmountRebasing() external {
         WETH.mint(user, 105e18);
         frxETH.mint(user, 85e18);
 
@@ -450,7 +450,7 @@ contract SelfPeggingAssetTest is Test {
         assertEq(feeAmount, 0.016018006119571831e18);
     }
 
-    function test_updateA() external {
+    function testUpdateA() external {
         WETH.mint(user, 105e18);
         frxETH.mint(user, 85e18);
 
@@ -510,20 +510,20 @@ contract SelfPeggingAssetTest is Test {
 
         // Use the smaller number as the denominator
         uint256 denominator = num1 < num2 ? num1 : num2;
-        require(denominator > 0, "Denominator must be greater than 0");
+        assert(denominator > 0);
 
         // Calculate the relative difference scaled by 10000 (0.01% precision)
         uint256 scaledDiff = (diff * 10_000) / denominator;
 
         // Assert that the relative difference is smaller than 0.15% (scaled value <= 15)
-        require(scaledDiff <= 15, "Values are not almost the same");
+        assert(scaledDiff <= 15);
     }
 
     function assertInvariant(uint256 balance0, uint256 balance1, uint256 A, uint256 D) internal {
         // We only check n = 2 here
         uint256 left = (A * 4) * (balance0 + balance1) + D;
         uint256 denominator = balance0 * balance1 * 4;
-        require(denominator > 0, "Denominator must be greater than 0");
+        assert(denominator > 0);
         uint256 right = (A * 4) * D + (D ** 3) / denominator;
 
         assertAlmostTheSame(left, right);

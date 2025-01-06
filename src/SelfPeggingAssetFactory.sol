@@ -190,7 +190,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
     /**
      * @dev Set the govenance address.
      */
-    function setGovernor(address _governor) public onlyOwner {
+    function setGovernor(address _governor) external onlyOwner {
         require(_governor != address(0), InvalidAddress());
         governor = _governor;
         emit GovernorModified(governor);

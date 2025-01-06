@@ -180,57 +180,65 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     }
 
     /**
-     * @dev Adds a pool to the list of pools.
-     * @param _pool The address of the pool to add.
+     * @notice Moves `_sharesAmount` token shares from the caller's account to the `_recipient` account.
+     * @dev The `_sharesAmount` argument is the amount of shares, not tokens.
+     * @return amount of transferred tokens.
+     * Emits a `TransferShares` event.
+     * Emits a `Transfer` event.
      */
-    function addPool(address _pool) public onlyOwner {
-        require(_pool != address(0), ZeroAddress());
-        require(!pools[_pool], PoolAlreadyAdded());
-        pools[_pool] = true;
-        emit PoolAdded(_pool);
+    function transferShares(address _recipient, uint256 _sharesAmount) external returns (uint256) {
+        _transferShares(msg.sender, _recipient, _sharesAmount);
+        uint256 tokensAmount = getPeggedTokenByShares(_sharesAmount);
+        _emitTransferEvents(msg.sender, _recipient, tokensAmount, _sharesAmount);
+        return tokensAmount;
     }
 
     /**
-     * @dev Removes a pool from the list of pools.
-     * @param _pool The address of the pool to remove.
+     * @notice Moves `_sharesAmount` token shares from the `_sender` account to the `_recipient` account.
+     * @dev The `_sharesAmount` argument is the amount of shares, not tokens.
+     * @return amount of transferred tokens.
+     * Emits a `TransferShares` event.
+     * Emits a `Transfer` event.
+     *
+     * Requirements:
+     * - the caller must have allowance for `_sender`'s tokens of at least `getPeggedTokenByShares(_sharesAmount)`.
      */
-    function removePool(address _pool) public onlyOwner {
-        require(pools[_pool], PoolNotFound());
-        pools[_pool] = false;
-        emit PoolRemoved(_pool);
+    function transferSharesFrom(
+        address _sender,
+        address _recipient,
+        uint256 _sharesAmount
+    )
+        external
+        returns (uint256)
+    {
+        uint256 tokensAmount = getPeggedTokenByShares(_sharesAmount);
+        _spendAllowance(_sender, msg.sender, tokensAmount);
+        _transferShares(_sender, _recipient, _sharesAmount);
+        _emitTransferEvents(_sender, _recipient, tokensAmount, _sharesAmount);
+        return tokensAmount;
     }
 
     /**
-     * @dev Returns the name of the token.
-     * @return the name of the token.
+     * @dev Mints shares for the `_account` and transfers them to the `_account`.
      */
-    function name() external view returns (string memory) {
-        return tokenName;
+    function mintShares(address _account, uint256 _tokenAmount) external {
+        require(pools[msg.sender], NoPool());
+        _mintShares(_account, _tokenAmount);
     }
 
     /**
-     * @dev Returns the symbol of the token.
-     * @return the symbol of the token.
+     * @dev Burns shares from the `_account`.
      */
-    function symbol() external view returns (string memory) {
-        return tokenSymbol;
+    function burnShares(uint256 _tokenAmount) external {
+        _burnShares(msg.sender, _tokenAmount);
     }
 
     /**
-     * @dev Returns the decimals of the token.
-     * @return the number of decimals for getting user representation of a token amount.
+     * @dev Burns shares from the `_account`.
      */
-    function decimals() external pure returns (uint8) {
-        return 18;
-    }
-
-    /**
-     * @dev Balances are dynamic and equal the `_account`'s share in the amount of the
-     * total lpToken controlled by the protocol. See `sharesOf`.
-     * @return the amount of tokens owned by the `_account`.
-     */
-    function balanceOf(address _account) external view returns (uint256) {
-        return getPeggedTokenByShares(_sharesOf(_account));
+    function burnSharesFrom(address _account, uint256 _tokenAmount) external {
+        _spendAllowance(_account, msg.sender, _tokenAmount);
+        _burnShares(_account, _tokenAmount);
     }
 
     /**
@@ -243,15 +251,6 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     function transfer(address _recipient, uint256 _amount) external returns (bool) {
         _transfer(msg.sender, _recipient, _amount);
         return true;
-    }
-
-    /**
-     * @dev This value changes when `approve` or `transferFrom` is called.
-     * @return the remaining number of tokens that `_spender` is allowed to spend
-     * on behalf of `_owner` through `transferFrom`. This is zero by default.
-     */
-    function allowance(address _owner, address _spender) external view returns (uint256) {
-        return allowances[_owner][_spender];
     }
 
     /**
@@ -377,6 +376,61 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     }
 
     /**
+     * @dev Adds a pool to the list of pools.
+     * @param _pool The address of the pool to add.
+     */
+    function addPool(address _pool) external onlyOwner {
+        require(_pool != address(0), ZeroAddress());
+        require(!pools[_pool], PoolAlreadyAdded());
+        pools[_pool] = true;
+        emit PoolAdded(_pool);
+    }
+
+    /**
+     * @dev Removes a pool from the list of pools.
+     * @param _pool The address of the pool to remove.
+     */
+    function removePool(address _pool) external onlyOwner {
+        require(pools[_pool], PoolNotFound());
+        pools[_pool] = false;
+        emit PoolRemoved(_pool);
+    }
+
+    /**
+     * @dev Returns the name of the token.
+     * @return the name of the token.
+     */
+    function name() external view returns (string memory) {
+        return tokenName;
+    }
+
+    /**
+     * @dev Returns the symbol of the token.
+     * @return the symbol of the token.
+     */
+    function symbol() external view returns (string memory) {
+        return tokenSymbol;
+    }
+
+    /**
+     * @dev Balances are dynamic and equal the `_account`'s share in the amount of the
+     * total lpToken controlled by the protocol. See `sharesOf`.
+     * @return the amount of tokens owned by the `_account`.
+     */
+    function balanceOf(address _account) external view returns (uint256) {
+        return getPeggedTokenByShares(_sharesOf(_account));
+    }
+
+    /**
+     * @dev This value changes when `approve` or `transferFrom` is called.
+     * @return the remaining number of tokens that `_spender` is allowed to spend
+     * on behalf of `_owner` through `transferFrom`. This is zero by default.
+     */
+    function allowance(address _owner, address _spender) external view returns (uint256) {
+        return allowances[_owner][_spender];
+    }
+
+    /**
      * @return the amount of shares owned by `_account`.
      */
     function sharesOf(address _account) external view returns (uint256) {
@@ -384,14 +438,11 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     }
 
     /**
-     * @return the amount of shares that corresponds to `_lpTokenAmount` protocol-controlled lpToken.
+     * @dev Returns the decimals of the token.
+     * @return the number of decimals for getting user representation of a token amount.
      */
-    function getSharesByPeggedToken(uint256 _lpTokenAmount) public view returns (uint256) {
-        if (totalSupply == 0) {
-            return 0;
-        } else {
-            return (_lpTokenAmount * totalShares) / totalSupply;
-        }
+    function decimals() external pure returns (uint8) {
+        return 18;
     }
 
     /**
@@ -406,65 +457,14 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     }
 
     /**
-     * @notice Moves `_sharesAmount` token shares from the caller's account to the `_recipient` account.
-     * @dev The `_sharesAmount` argument is the amount of shares, not tokens.
-     * @return amount of transferred tokens.
-     * Emits a `TransferShares` event.
-     * Emits a `Transfer` event.
+     * @return the amount of shares that corresponds to `_lpTokenAmount` protocol-controlled lpToken.
      */
-    function transferShares(address _recipient, uint256 _sharesAmount) external returns (uint256) {
-        _transferShares(msg.sender, _recipient, _sharesAmount);
-        uint256 tokensAmount = getPeggedTokenByShares(_sharesAmount);
-        _emitTransferEvents(msg.sender, _recipient, tokensAmount, _sharesAmount);
-        return tokensAmount;
-    }
-
-    /**
-     * @notice Moves `_sharesAmount` token shares from the `_sender` account to the `_recipient` account.
-     * @dev The `_sharesAmount` argument is the amount of shares, not tokens.
-     * @return amount of transferred tokens.
-     * Emits a `TransferShares` event.
-     * Emits a `Transfer` event.
-     *
-     * Requirements:
-     * - the caller must have allowance for `_sender`'s tokens of at least `getPeggedTokenByShares(_sharesAmount)`.
-     */
-    function transferSharesFrom(
-        address _sender,
-        address _recipient,
-        uint256 _sharesAmount
-    )
-        external
-        returns (uint256)
-    {
-        uint256 tokensAmount = getPeggedTokenByShares(_sharesAmount);
-        _spendAllowance(_sender, msg.sender, tokensAmount);
-        _transferShares(_sender, _recipient, _sharesAmount);
-        _emitTransferEvents(_sender, _recipient, tokensAmount, _sharesAmount);
-        return tokensAmount;
-    }
-
-    /**
-     * @dev Mints shares for the `_account` and transfers them to the `_account`.
-     */
-    function mintShares(address _account, uint256 _tokenAmount) external {
-        require(pools[msg.sender], NoPool());
-        _mintShares(_account, _tokenAmount);
-    }
-
-    /**
-     * @dev Burns shares from the `_account`.
-     */
-    function burnShares(uint256 _tokenAmount) external {
-        _burnShares(msg.sender, _tokenAmount);
-    }
-
-    /**
-     * @dev Burns shares from the `_account`.
-     */
-    function burnSharesFrom(address _account, uint256 _tokenAmount) external {
-        _spendAllowance(_account, msg.sender, _tokenAmount);
-        _burnShares(_account, _tokenAmount);
+    function getSharesByPeggedToken(uint256 _lpTokenAmount) public view returns (uint256) {
+        if (totalSupply == 0) {
+            return 0;
+        } else {
+            return (_lpTokenAmount * totalShares) / totalSupply;
+        }
     }
 
     /**
@@ -508,13 +508,6 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
 
             _approve(_owner, _spender, currentAllowance - _amount);
         }
-    }
-
-    /**
-     * @return the amount of shares owned by `_account`.
-     */
-    function _sharesOf(address _account) internal view returns (uint256) {
-        return shares[_account];
     }
 
     /**
@@ -587,5 +580,12 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      */
     function _emitTransferAfterMintingShares(address _to, uint256 _sharesAmount) internal {
         _emitTransferEvents(address(0), _to, getPeggedTokenByShares(_sharesAmount), _sharesAmount);
+    }
+
+    /**
+     * @return the amount of shares owned by `_account`.
+     */
+    function _sharesOf(address _account) internal view returns (uint256) {
+        return shares[_account];
     }
 }

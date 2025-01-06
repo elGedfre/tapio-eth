@@ -34,7 +34,7 @@ contract WLPTokenTest is Test {
         vm.stopPrank();
     }
 
-    function test_Deposit() public {
+    function testDeposit() public {
         uint256 amount1 = 1_000_000_000_000_000_000_000;
         uint256 amount2 = 500_000_000_000_000_000_000;
         uint256 amountToWrap = 300_000_000_000_000_000_000;
@@ -71,7 +71,7 @@ contract WLPTokenTest is Test {
         assertEq(wlpToken.balanceOf(user), wlpTokenTargetAmount);
     }
 
-    function test_Redeem() public {
+    function testRedeem() public {
         uint256 amount1 = 1_000_000_000_000_000_000_000;
         uint256 amount2 = 500_000_000_000_000_000_000;
         uint256 amountToWrap = 300_000_000_000_000_000_000;
@@ -113,7 +113,7 @@ contract WLPTokenTest is Test {
         assertEq(wlpToken.totalAssets(), 0);
     }
 
-    function test_Withdraw() public {
+    function testWithdraw() public {
         uint256 amount1 = 1_000_000_000_000_000_000_000;
         uint256 amount2 = 500_000_000_000_000_000_000;
         uint256 amountToWrap = 300_000_000_000_000_000_000;

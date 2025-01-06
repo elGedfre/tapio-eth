@@ -9,7 +9,7 @@ import "../interfaces/IExchangeRateProvider.sol";
  */
 contract ERC4626ExchangeRate is IExchangeRateProvider {
     /// @dev ERC4626 token
-    IERC4626 token;
+    IERC4626 public token;
 
     /// @dev Initialize the contract
     constructor(IERC4626 _token) {

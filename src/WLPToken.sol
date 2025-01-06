@@ -34,24 +34,6 @@ contract WLPToken is ERC4626Upgradeable {
     }
 
     /**
-     * @dev Converts an amount of lpToken to the equivalent amount of shares.
-     * @param assets Amount of lpToken.
-     * @return The equivalent shares.
-     */
-    function convertToShares(uint256 assets) public view override returns (uint256) {
-        return lpToken.getSharesByPeggedToken(assets);
-    }
-
-    /**
-     * @dev Converts an amount of shares to the equivalent amount of lpToken.
-     * @param shares Amount of shares.
-     * @return The equivalent lpToken.
-     */
-    function convertToAssets(uint256 shares) public view override returns (uint256) {
-        return lpToken.getPeggedTokenByShares(shares);
-    }
-
-    /**
      * @dev Deposits lpToken into the vault in exchange for shares.
      * @param assets Amount of lpToken to deposit.
      * @param receiver Address to receive the minted shares.
@@ -119,6 +101,24 @@ contract WLPToken is ERC4626Upgradeable {
         }
         _burn(owner, shares);
         lpToken.transfer(receiver, assets);
+    }
+
+    /**
+     * @dev Converts an amount of lpToken to the equivalent amount of shares.
+     * @param assets Amount of lpToken.
+     * @return The equivalent shares.
+     */
+    function convertToShares(uint256 assets) public view override returns (uint256) {
+        return lpToken.getSharesByPeggedToken(assets);
+    }
+
+    /**
+     * @dev Converts an amount of shares to the equivalent amount of lpToken.
+     * @param shares Amount of shares.
+     * @return The equivalent lpToken.
+     */
+    function convertToAssets(uint256 shares) public view override returns (uint256) {
+        return lpToken.getPeggedTokenByShares(shares);
     }
 
     /**

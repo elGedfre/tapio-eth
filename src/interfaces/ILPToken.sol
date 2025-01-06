@@ -21,26 +21,11 @@ interface ILPToken is IERC20 {
     /// @dev Decrease the allowance of the spender
     function decreaseAllowance(address _spender, uint256 _subtractedValue) external returns (bool);
 
-    /// @dev Get the total amount of shares
-    function totalShares() external view returns (uint256);
-
-    /// @dev Get the total amount of rewards
-    function totalRewards() external view returns (uint256);
-
-    /// @dev Get the total shares of the account
-    function sharesOf(address _account) external view returns (uint256);
-
-    /// @dev Get the shares corresponding to the amount of pooled eth
-    function getSharesByPeggedToken(uint256 _ethAmount) external view returns (uint256);
-
     /// @dev Add the amount to the total supply
     function addTotalSupply(uint256 _amount) external;
 
     /// @dev Remove the amount from the total supply
     function removeTotalSupply(uint256 _amount) external;
-
-    /// @dev Add the amount of Eth corresponding to the shares
-    function getPeggedTokenByShares(uint256 _sharesAmount) external view returns (uint256);
 
     /// @dev Transfer the shares to the recipient
     function transferShares(address _recipient, uint256 _sharesAmount) external returns (uint256);
@@ -65,4 +50,19 @@ interface ILPToken is IERC20 {
 
     // @dev Add to buffer
     function addBuffer(uint256 _amount) external;
+
+    /// @dev Get the total amount of shares
+    function totalShares() external view returns (uint256);
+
+    /// @dev Get the total amount of rewards
+    function totalRewards() external view returns (uint256);
+
+    /// @dev Get the total shares of the account
+    function sharesOf(address _account) external view returns (uint256);
+
+    /// @dev Get the shares corresponding to the amount of pooled eth
+    function getSharesByPeggedToken(uint256 _ethAmount) external view returns (uint256);
+
+    /// @dev Add the amount of Eth corresponding to the shares
+    function getPeggedTokenByShares(uint256 _sharesAmount) external view returns (uint256);
 }

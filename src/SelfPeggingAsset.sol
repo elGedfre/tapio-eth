@@ -139,9 +139,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @param amounts is an array containing the amounts of each token received by the buyer.
      * @param feeAmount is the amount of transaction fee charged for the swap.
      */
-    event TokenSwapped(
-        address indexed buyer, uint256 swapAmount, uint256[] amounts, uint256 feeAmount
-    );
+    event TokenSwapped(address indexed buyer, uint256 swapAmount, uint256[] amounts, uint256 feeAmount);
 
     /**
      * @notice This event is emitted when liquidity is added to the SelfPeggingAsset contract.
@@ -382,128 +380,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     }
 
     /**
-     * @dev Computes D given token balances.
-     * @param _balances Normalized balance of each token.
-     * @return D The SelfPeggingAsset invariant.
-     */
-    function _getD(uint256[] memory _balances) internal view returns (uint256) {
-        uint256 sum = 0;
-        uint256 i = 0;
-        uint256 Ann = A;
-        /*
-     * We choose to implement n*n instead of n*(n-1) because it's
-     * clearer in code and A value across pool is comparable.
-     */
-        bool allZero = true;
-        for (i = 0; i < _balances.length; i++) {
-            uint256 correctedBalance = _balances[i];
-            if (correctedBalance != 0) {
-                allZero = false;
-            } else {
-                correctedBalance = 1;
-            }
-            sum = sum + correctedBalance;
-            Ann = Ann * _balances.length;
-        }
-        if (allZero) return 0;
-
-        uint256 prevD = 0;
-        uint256 D = sum;
-        for (i = 0; i < 255; i++) {
-            uint256 pD = D;
-            for (uint256 j = 0; j < _balances.length; j++) {
-                pD = (pD * D) / (_balances[j] * _balances.length);
-            }
-            prevD = D;
-            D = ((Ann * sum + pD * _balances.length) * D) / ((Ann - 1) * D + (_balances.length + 1) * pD);
-            if (D > prevD) {
-                if (D - prevD <= 1) break;
-            } else {
-                if (prevD - D <= 1) break;
-            }
-        }
-        if (i == 255) {
-            revert("doesn't converge");
-        }
-        return D;
-    }
-
-    /**
-     * @dev Computes token balance given D.
-     * @param _balances Converted balance of each token except token with index _j.
-     * @param _j Index of the token to calculate balance.
-     * @param _D The target D value.
-     * @return Converted balance of the token with index _j.
-     */
-    function _getY(uint256[] memory _balances, uint256 _j, uint256 _D) internal view returns (uint256) {
-        uint256 c = _D;
-        uint256 S_ = 0;
-        uint256 Ann = A;
-        uint256 i = 0;
-        for (i = 0; i < _balances.length; i++) {
-            Ann = Ann * _balances.length;
-            if (i == _j) continue;
-            S_ = S_ + _balances[i];
-            c = (c * _D) / (_balances[i] * _balances.length);
-        }
-        c = (c * _D) / (Ann * _balances.length);
-        uint256 b = S_ + (_D / Ann);
-        uint256 prevY = 0;
-        uint256 y = _D;
-
-        // 255 since the result is 256 digits
-        for (i = 0; i < 255; i++) {
-            prevY = y;
-            // y = (y * y + c) / (2 * y + b - D)
-            y = (y * y + c) / (y * 2 + b - _D);
-            if (y > prevY) {
-                if (y - prevY <= 1) break;
-            } else {
-                if (prevY - y <= 1) break;
-            }
-        }
-        if (i == 255) {
-            revert("doesn't converge");
-        }
-        return y;
-    }
-
-    /**
-     * @dev Compute the amount of pool token that can be minted.
-     * @param _amounts Unconverted token balances.
-     * @return The amount of pool tokens to be minted.
-     * @return The amount of fees charged.
-     */
-    function getMintAmount(uint256[] calldata _amounts) external view returns (uint256, uint256) {
-        uint256[] memory _balances;
-        uint256 _totalSupply;
-        (_balances, _totalSupply) = getPendingYieldAmount();
-        require(_amounts.length == _balances.length, InvalidAmount());
-
-        uint256 oldD = _totalSupply;
-        uint256 i = 0;
-        for (i = 0; i < _balances.length; i++) {
-            if (_amounts[i] == 0) continue;
-            uint256 balanceAmount = _amounts[i];
-            balanceAmount = (balanceAmount * exchangeRateProviders[i].exchangeRate())
-                / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
-            // balance = balance + amount * precision
-            _balances[i] = _balances[i] + (balanceAmount * precisions[i]);
-        }
-        uint256 newD = _getD(_balances);
-        // newD should be bigger than or equal to oldD
-        uint256 mintAmount = newD - oldD;
-        uint256 feeAmount = 0;
-
-        if (mintFee > 0) {
-            feeAmount = (mintAmount * mintFee) / FEE_DENOMINATOR;
-            mintAmount = mintAmount - feeAmount;
-        }
-
-        return (mintAmount, feeAmount);
-    }
-
-    /**
      * @dev Mints new pool token.
      * @param _amounts Unconverted token balances used to mint pool token.
      * @param _minMintAmount Minimum amount of pool token to mint.
@@ -556,49 +432,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         feeAmount = collectFeeOrYield(true);
         emit Minted(msg.sender, mintAmount, _amounts, feeAmount);
         return mintAmount;
-    }
-
-    /**
-     * @dev Computes the output amount after the swap.
-     * @param _i Token index to swap in.
-     * @param _j Token index to swap out.
-     * @param _dx Unconverted amount of token _i to swap in.
-     * @return Unconverted amount of token _j to swap out.
-     * @return The amount of fees charged.
-     */
-    function getSwapAmount(uint256 _i, uint256 _j, uint256 _dx) external view returns (uint256, uint256) {
-        uint256[] memory _balances;
-        uint256 _totalSupply;
-        (_balances, _totalSupply) = getPendingYieldAmount();
-        require(_i != _j, SameToken());
-        require(_i < _balances.length, InvalidIn());
-        require(_j < _balances.length, InvalidOut());
-        require(_dx > 0, InvalidAmount());
-
-        uint256 D = _totalSupply;
-        uint256 balanceAmount = _dx;
-        balanceAmount = (balanceAmount * exchangeRateProviders[_i].exchangeRate())
-            / (10 ** exchangeRateProviders[_i].exchangeRateDecimals());
-        // balance[i] = balance[i] + dx * precisions[i]
-        _balances[_i] = _balances[_i] + (balanceAmount * precisions[_i]);
-        uint256 y = _getY(_balances, _j, D);
-        // dy = (balance[j] - y - 1) / precisions[j] in case there was rounding errors
-        uint256 dy = (_balances[_j] - y - 1) / precisions[_j];
-        uint256 feeAmount = 0;
-
-        if (swapFee > 0) {
-            feeAmount = (dy * swapFee) / FEE_DENOMINATOR;
-            dy = dy - feeAmount;
-        }
-
-        uint256 transferAmountJ = dy;
-        uint256 feeAmountReturn = feeAmount;
-        transferAmountJ = (transferAmountJ * (10 ** exchangeRateProviders[_j].exchangeRateDecimals()))
-            / exchangeRateProviders[_j].exchangeRate();
-        feeAmountReturn = (feeAmountReturn * (10 ** exchangeRateProviders[_j].exchangeRateDecimals()))
-            / exchangeRateProviders[_j].exchangeRate();
-
-        return (transferAmountJ, feeAmountReturn);
     }
 
     /**
@@ -666,40 +499,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     }
 
     /**
-     * @dev Computes the amounts of underlying tokens when redeeming pool token.
-     * @param _amount Amount of pool tokens to redeem.
-     * @return An array of the amounts of each token to redeem.
-     * @return The amount of fee charged
-     */
-    function getRedeemProportionAmount(uint256 _amount) external view returns (uint256[] memory, uint256) {
-        uint256[] memory _balances;
-        uint256 _totalSupply;
-        (_balances, _totalSupply) = getPendingYieldAmount();
-        require(_amount != 0, ZeroAmount());
-
-        uint256 D = _totalSupply;
-        uint256[] memory amounts = new uint256[](_balances.length);
-        uint256 feeAmount;
-        uint256 redeemAmount = _amount;
-        if (redeemFee != 0) {
-            feeAmount = (_amount * redeemFee) / FEE_DENOMINATOR;
-            redeemAmount = _amount - feeAmount;
-        }
-
-        for (uint256 i = 0; i < _balances.length; i++) {
-            // We might choose to use poolToken.totalSupply to compute the amount, but decide to use
-            // D in case we have multiple minters on the pool token.
-            amounts[i] = (_balances[i] * redeemAmount) / D / precisions[i];
-            uint256 transferAmount = amounts[i];
-            transferAmount = (transferAmount * (10 ** exchangeRateProviders[i].exchangeRateDecimals()))
-                / exchangeRateProviders[i].exchangeRate();
-            amounts[i] = transferAmount;
-        }
-
-        return (amounts, feeAmount);
-    }
-
-    /**
      * @dev Redeems pool token to underlying tokens proportionally.
      * @param _amount Amount of pool token to redeem.
      * @param _minRedeemAmounts Minimum amount of underlying tokens to get.
@@ -759,39 +558,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     }
 
     /**
-     * @dev Computes the amount when redeeming pool token to one specific underlying token.
-     * @param _amount Amount of pool token to redeem.
-     * @param _i Index of the underlying token to redeem to.
-     * @return The amount of single token that will be redeemed.
-     * @return The amount of pool token charged for redemption fee.
-     */
-    function getRedeemSingleAmount(uint256 _amount, uint256 _i) external view returns (uint256, uint256) {
-        uint256[] memory _balances;
-        uint256 _totalSupply;
-        (_balances, _totalSupply) = getPendingYieldAmount();
-
-        require(_amount > 0, ZeroAmount());
-        require(_i < _balances.length, InvalidToken());
-
-        uint256 D = _totalSupply;
-        uint256 feeAmount = 0;
-        uint256 redeemAmount = _amount;
-        if (redeemFee > 0) {
-            feeAmount = (_amount * redeemFee) / FEE_DENOMINATOR;
-            redeemAmount = _amount - feeAmount;
-        }
-        // The pool token amount becomes D - redeemAmount
-        uint256 y = _getY(_balances, _i, D - redeemAmount);
-        // dy = (balance[i] - y - 1) / precisions[i] in case there was rounding errors
-        uint256 dy = (_balances[_i] - y - 1) / precisions[_i];
-        uint256 transferAmount = dy;
-        transferAmount = (transferAmount * (10 ** exchangeRateProviders[_i].exchangeRateDecimals()))
-            / exchangeRateProviders[_i].exchangeRate();
-
-        return (transferAmount, feeAmount);
-    }
-
-    /**
      * @dev Redeem pool token to one specific underlying token.
      * @param _amount Amount of pool token to redeem.
      * @param _i Index of the token to redeem to.
@@ -845,40 +611,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         feeAmount = collectFeeOrYield(true);
         emit Redeemed(msg.sender, _amount, amounts, feeAmount);
         return transferAmount;
-    }
-
-    /**
-     * @dev Compute the amount of pool token that needs to be redeemed.
-     * @param _amounts Unconverted token balances.
-     * @return The amount of pool token that needs to be redeemed.
-     * @return The amount of pool token charged for redemption fee.
-     */
-    function getRedeemMultiAmount(uint256[] calldata _amounts) external view returns (uint256, uint256) {
-        uint256[] memory _balances;
-        uint256 _totalSupply;
-        (_balances, _totalSupply) = getPendingYieldAmount();
-        require(_amounts.length == balances.length, InputMismatch());
-
-        uint256 oldD = _totalSupply;
-        for (uint256 i = 0; i < _balances.length; i++) {
-            if (_amounts[i] == 0) continue;
-            // balance = balance - amount * precision
-            uint256 balanceAmount = _amounts[i];
-            balanceAmount = (balanceAmount * exchangeRateProviders[i].exchangeRate())
-                / 10 ** exchangeRateProviders[i].exchangeRateDecimals();
-            _balances[i] = _balances[i] - (balanceAmount * precisions[i]);
-        }
-        uint256 newD = _getD(_balances);
-
-        // newD should be smaller than or equal to oldD
-        uint256 redeemAmount = oldD - newD;
-        uint256 feeAmount = 0;
-        if (redeemFee > 0) {
-            redeemAmount = (redeemAmount * FEE_DENOMINATOR) / (FEE_DENOMINATOR - redeemFee);
-            feeAmount = redeemAmount - (oldD - newD);
-        }
-
-        return (redeemAmount, feeAmount);
     }
 
     /**
@@ -936,80 +668,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         feeAmount = collectFeeOrYield(true);
         emit Redeemed(msg.sender, redeemAmount, amounts, feeAmount);
         return amounts;
-    }
-
-    /**
-     * @dev Return the amount of fee that's not collected.
-     * @return The balances of underlying tokens.
-     * @return The total supply of pool tokens.
-     */
-    function getPendingYieldAmount() internal view returns (uint256[] memory, uint256) {
-        uint256[] memory _balances = balances;
-
-        for (uint256 i = 0; i < _balances.length; i++) {
-            uint256 balanceI = IERC20(tokens[i]).balanceOf(address(this));
-            balanceI = (balanceI * exchangeRateProviders[i].exchangeRate())
-                / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
-            _balances[i] = balanceI * precisions[i];
-        }
-        uint256 newD = _getD(_balances);
-
-        return (_balances, newD);
-    }
-
-    /**
-     * @dev Collect fee or yield based on the token balance difference.
-     * @param isFee Whether to collect fee or yield.
-     * @return The amount of fee or yield collected.
-     */
-    function collectFeeOrYield(bool isFee) internal returns (uint256) {
-        uint256[] memory oldBalances = balances;
-        uint256[] memory _balances = balances;
-        uint256 oldD = totalSupply;
-
-        for (uint256 i = 0; i < _balances.length; i++) {
-            uint256 balanceI = IERC20(tokens[i]).balanceOf(address(this));
-            balanceI = (balanceI * (exchangeRateProviders[i].exchangeRate()))
-                / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
-            _balances[i] = balanceI * precisions[i];
-        }
-        uint256 newD = _getD(_balances);
-
-        balances = _balances;
-        totalSupply = newD;
-
-        if (isFee) {
-            if (oldD > newD && (oldD - newD) < feeErrorMargin) {
-                return 0;
-            } else if (oldD > newD) {
-                revert ImbalancedPool(oldD, newD);
-            }
-        } else {
-            if (oldD > newD && (oldD - newD) < yieldErrorMargin) {
-                return 0;
-            } else if (oldD > newD) {
-                revert ImbalancedPool(oldD, newD);
-            }
-        }
-        uint256 feeAmount = newD - oldD;
-        if (feeAmount == 0) {
-            return 0;
-        }
-        poolToken.addTotalSupply(feeAmount);
-
-        if (isFee) {
-            emit FeeCollected(feeAmount, totalSupply);
-        } else {
-            uint256[] memory amounts = new uint256[](_balances.length);
-            for (uint256 i = 0; i < _balances.length; i++) {
-                uint256 amount = _balances[i] - oldBalances[i];
-                amount = (amount * (10 ** exchangeRateProviders[i].exchangeRateDecimals()))
-                    / exchangeRateProviders[i].exchangeRate();
-                amounts[i] = amount / precisions[i];
-            }
-            emit YieldCollected(amounts, feeAmount, totalSupply);
-        }
-        return feeAmount;
     }
 
     /**
@@ -1183,13 +841,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     }
 
     /**
-     * @dev Returns the array of token addresses in the pool.
-     */
-    function getTokens() public view returns (address[] memory) {
-        return tokens;
-    }
-
-    /**
      * @notice This function allows to rebase LPToken by increasing his total supply
      * from the current stableSwap pool by the staking rewards and the swap fee.
      */
@@ -1214,5 +865,352 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             poolToken.addTotalSupply(_amount);
             return _amount;
         }
+    }
+
+    /**
+     * @dev Computes the amount when redeeming pool token to one specific underlying token.
+     * @param _amount Amount of pool token to redeem.
+     * @param _i Index of the underlying token to redeem to.
+     * @return The amount of single token that will be redeemed.
+     * @return The amount of pool token charged for redemption fee.
+     */
+    function getRedeemSingleAmount(uint256 _amount, uint256 _i) external view returns (uint256, uint256) {
+        uint256[] memory _balances;
+        uint256 _totalSupply;
+        (_balances, _totalSupply) = getPendingYieldAmount();
+
+        require(_amount > 0, ZeroAmount());
+        require(_i < _balances.length, InvalidToken());
+
+        uint256 D = _totalSupply;
+        uint256 feeAmount = 0;
+        uint256 redeemAmount = _amount;
+        if (redeemFee > 0) {
+            feeAmount = (_amount * redeemFee) / FEE_DENOMINATOR;
+            redeemAmount = _amount - feeAmount;
+        }
+        // The pool token amount becomes D - redeemAmount
+        uint256 y = _getY(_balances, _i, D - redeemAmount);
+        // dy = (balance[i] - y - 1) / precisions[i] in case there was rounding errors
+        uint256 dy = (_balances[_i] - y - 1) / precisions[_i];
+        uint256 transferAmount = dy;
+        transferAmount = (transferAmount * (10 ** exchangeRateProviders[_i].exchangeRateDecimals()))
+            / exchangeRateProviders[_i].exchangeRate();
+
+        return (transferAmount, feeAmount);
+    }
+
+    /**
+     * @dev Compute the amount of pool token that needs to be redeemed.
+     * @param _amounts Unconverted token balances.
+     * @return The amount of pool token that needs to be redeemed.
+     * @return The amount of pool token charged for redemption fee.
+     */
+    function getRedeemMultiAmount(uint256[] calldata _amounts) external view returns (uint256, uint256) {
+        uint256[] memory _balances;
+        uint256 _totalSupply;
+        (_balances, _totalSupply) = getPendingYieldAmount();
+        require(_amounts.length == balances.length, InputMismatch());
+
+        uint256 oldD = _totalSupply;
+        for (uint256 i = 0; i < _balances.length; i++) {
+            if (_amounts[i] == 0) continue;
+            // balance = balance - amount * precision
+            uint256 balanceAmount = _amounts[i];
+            balanceAmount = (balanceAmount * exchangeRateProviders[i].exchangeRate())
+                / 10 ** exchangeRateProviders[i].exchangeRateDecimals();
+            _balances[i] = _balances[i] - (balanceAmount * precisions[i]);
+        }
+        uint256 newD = _getD(_balances);
+
+        // newD should be smaller than or equal to oldD
+        uint256 redeemAmount = oldD - newD;
+        uint256 feeAmount = 0;
+        if (redeemFee > 0) {
+            redeemAmount = (redeemAmount * FEE_DENOMINATOR) / (FEE_DENOMINATOR - redeemFee);
+            feeAmount = redeemAmount - (oldD - newD);
+        }
+
+        return (redeemAmount, feeAmount);
+    }
+
+    /**
+     * @dev Compute the amount of pool token that can be minted.
+     * @param _amounts Unconverted token balances.
+     * @return The amount of pool tokens to be minted.
+     * @return The amount of fees charged.
+     */
+    function getMintAmount(uint256[] calldata _amounts) external view returns (uint256, uint256) {
+        uint256[] memory _balances;
+        uint256 _totalSupply;
+        (_balances, _totalSupply) = getPendingYieldAmount();
+        require(_amounts.length == _balances.length, InvalidAmount());
+
+        uint256 oldD = _totalSupply;
+        uint256 i = 0;
+        for (i = 0; i < _balances.length; i++) {
+            if (_amounts[i] == 0) continue;
+            uint256 balanceAmount = _amounts[i];
+            balanceAmount = (balanceAmount * exchangeRateProviders[i].exchangeRate())
+                / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
+            // balance = balance + amount * precision
+            _balances[i] = _balances[i] + (balanceAmount * precisions[i]);
+        }
+        uint256 newD = _getD(_balances);
+        // newD should be bigger than or equal to oldD
+        uint256 mintAmount = newD - oldD;
+        uint256 feeAmount = 0;
+
+        if (mintFee > 0) {
+            feeAmount = (mintAmount * mintFee) / FEE_DENOMINATOR;
+            mintAmount = mintAmount - feeAmount;
+        }
+
+        return (mintAmount, feeAmount);
+    }
+
+    /**
+     * @dev Computes the output amount after the swap.
+     * @param _i Token index to swap in.
+     * @param _j Token index to swap out.
+     * @param _dx Unconverted amount of token _i to swap in.
+     * @return Unconverted amount of token _j to swap out.
+     * @return The amount of fees charged.
+     */
+    function getSwapAmount(uint256 _i, uint256 _j, uint256 _dx) external view returns (uint256, uint256) {
+        uint256[] memory _balances;
+        uint256 _totalSupply;
+        (_balances, _totalSupply) = getPendingYieldAmount();
+        require(_i != _j, SameToken());
+        require(_i < _balances.length, InvalidIn());
+        require(_j < _balances.length, InvalidOut());
+        require(_dx > 0, InvalidAmount());
+
+        uint256 D = _totalSupply;
+        uint256 balanceAmount = _dx;
+        balanceAmount = (balanceAmount * exchangeRateProviders[_i].exchangeRate())
+            / (10 ** exchangeRateProviders[_i].exchangeRateDecimals());
+        // balance[i] = balance[i] + dx * precisions[i]
+        _balances[_i] = _balances[_i] + (balanceAmount * precisions[_i]);
+        uint256 y = _getY(_balances, _j, D);
+        // dy = (balance[j] - y - 1) / precisions[j] in case there was rounding errors
+        uint256 dy = (_balances[_j] - y - 1) / precisions[_j];
+        uint256 feeAmount = 0;
+
+        if (swapFee > 0) {
+            feeAmount = (dy * swapFee) / FEE_DENOMINATOR;
+            dy = dy - feeAmount;
+        }
+
+        uint256 transferAmountJ = dy;
+        uint256 feeAmountReturn = feeAmount;
+        transferAmountJ = (transferAmountJ * (10 ** exchangeRateProviders[_j].exchangeRateDecimals()))
+            / exchangeRateProviders[_j].exchangeRate();
+        feeAmountReturn = (feeAmountReturn * (10 ** exchangeRateProviders[_j].exchangeRateDecimals()))
+            / exchangeRateProviders[_j].exchangeRate();
+
+        return (transferAmountJ, feeAmountReturn);
+    }
+
+    /**
+     * @dev Computes the amounts of underlying tokens when redeeming pool token.
+     * @param _amount Amount of pool tokens to redeem.
+     * @return An array of the amounts of each token to redeem.
+     * @return The amount of fee charged
+     */
+    function getRedeemProportionAmount(uint256 _amount) external view returns (uint256[] memory, uint256) {
+        uint256[] memory _balances;
+        uint256 _totalSupply;
+        (_balances, _totalSupply) = getPendingYieldAmount();
+        require(_amount != 0, ZeroAmount());
+
+        uint256 D = _totalSupply;
+        uint256[] memory amounts = new uint256[](_balances.length);
+        uint256 feeAmount;
+        uint256 redeemAmount = _amount;
+        if (redeemFee != 0) {
+            feeAmount = (_amount * redeemFee) / FEE_DENOMINATOR;
+            redeemAmount = _amount - feeAmount;
+        }
+
+        for (uint256 i = 0; i < _balances.length; i++) {
+            // We might choose to use poolToken.totalSupply to compute the amount, but decide to use
+            // D in case we have multiple minters on the pool token.
+            amounts[i] = (_balances[i] * redeemAmount) / D / precisions[i];
+            uint256 transferAmount = amounts[i];
+            transferAmount = (transferAmount * (10 ** exchangeRateProviders[i].exchangeRateDecimals()))
+                / exchangeRateProviders[i].exchangeRate();
+            amounts[i] = transferAmount;
+        }
+
+        return (amounts, feeAmount);
+    }
+
+    /**
+     * @dev Returns the array of token addresses in the pool.
+     */
+    function getTokens() external view returns (address[] memory) {
+        return tokens;
+    }
+
+    /**
+     * @dev Collect fee or yield based on the token balance difference.
+     * @param isFee Whether to collect fee or yield.
+     * @return The amount of fee or yield collected.
+     */
+    function collectFeeOrYield(bool isFee) internal returns (uint256) {
+        uint256[] memory oldBalances = balances;
+        uint256[] memory _balances = balances;
+        uint256 oldD = totalSupply;
+
+        for (uint256 i = 0; i < _balances.length; i++) {
+            uint256 balanceI = IERC20(tokens[i]).balanceOf(address(this));
+            balanceI = (balanceI * (exchangeRateProviders[i].exchangeRate()))
+                / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
+            _balances[i] = balanceI * precisions[i];
+        }
+        uint256 newD = _getD(_balances);
+
+        balances = _balances;
+        totalSupply = newD;
+
+        if (isFee) {
+            if (oldD > newD && (oldD - newD) < feeErrorMargin) {
+                return 0;
+            } else if (oldD > newD) {
+                revert ImbalancedPool(oldD, newD);
+            }
+        } else {
+            if (oldD > newD && (oldD - newD) < yieldErrorMargin) {
+                return 0;
+            } else if (oldD > newD) {
+                revert ImbalancedPool(oldD, newD);
+            }
+        }
+        uint256 feeAmount = newD - oldD;
+        if (feeAmount == 0) {
+            return 0;
+        }
+        poolToken.addTotalSupply(feeAmount);
+
+        if (isFee) {
+            emit FeeCollected(feeAmount, totalSupply);
+        } else {
+            uint256[] memory amounts = new uint256[](_balances.length);
+            for (uint256 i = 0; i < _balances.length; i++) {
+                uint256 amount = _balances[i] - oldBalances[i];
+                amount = (amount * (10 ** exchangeRateProviders[i].exchangeRateDecimals()))
+                    / exchangeRateProviders[i].exchangeRate();
+                amounts[i] = amount / precisions[i];
+            }
+            emit YieldCollected(amounts, feeAmount, totalSupply);
+        }
+        return feeAmount;
+    }
+
+    /**
+     * @dev Return the amount of fee that's not collected.
+     * @return The balances of underlying tokens.
+     * @return The total supply of pool tokens.
+     */
+    function getPendingYieldAmount() internal view returns (uint256[] memory, uint256) {
+        uint256[] memory _balances = balances;
+
+        for (uint256 i = 0; i < _balances.length; i++) {
+            uint256 balanceI = IERC20(tokens[i]).balanceOf(address(this));
+            balanceI = (balanceI * exchangeRateProviders[i].exchangeRate())
+                / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
+            _balances[i] = balanceI * precisions[i];
+        }
+        uint256 newD = _getD(_balances);
+
+        return (_balances, newD);
+    }
+
+    /**
+     * @dev Computes D given token balances.
+     * @param _balances Normalized balance of each token.
+     * @return D The SelfPeggingAsset invariant.
+     */
+    function _getD(uint256[] memory _balances) internal view returns (uint256) {
+        uint256 sum = 0;
+        uint256 i = 0;
+        uint256 Ann = A;
+        /*
+     * We choose to implement n*n instead of n*(n-1) because it's
+     * clearer in code and A value across pool is comparable.
+     */
+        bool allZero = true;
+        for (i = 0; i < _balances.length; i++) {
+            uint256 correctedBalance = _balances[i];
+            if (correctedBalance != 0) {
+                allZero = false;
+            } else {
+                correctedBalance = 1;
+            }
+            sum = sum + correctedBalance;
+            Ann = Ann * _balances.length;
+        }
+        if (allZero) return 0;
+
+        uint256 prevD = 0;
+        uint256 D = sum;
+        for (i = 0; i < 255; i++) {
+            uint256 pD = D;
+            for (uint256 j = 0; j < _balances.length; j++) {
+                pD = (pD * D) / (_balances[j] * _balances.length);
+            }
+            prevD = D;
+            D = ((Ann * sum + pD * _balances.length) * D) / ((Ann - 1) * D + (_balances.length + 1) * pD);
+            if (D > prevD) {
+                if (D - prevD <= 1) break;
+            } else {
+                if (prevD - D <= 1) break;
+            }
+        }
+        if (i == 255) {
+            revert("doesn't converge");
+        }
+        return D;
+    }
+
+    /**
+     * @dev Computes token balance given D.
+     * @param _balances Converted balance of each token except token with index _j.
+     * @param _j Index of the token to calculate balance.
+     * @param _D The target D value.
+     * @return Converted balance of the token with index _j.
+     */
+    function _getY(uint256[] memory _balances, uint256 _j, uint256 _D) internal view returns (uint256) {
+        uint256 c = _D;
+        uint256 S_ = 0;
+        uint256 Ann = A;
+        uint256 i = 0;
+        for (i = 0; i < _balances.length; i++) {
+            Ann = Ann * _balances.length;
+            if (i == _j) continue;
+            S_ = S_ + _balances[i];
+            c = (c * _D) / (_balances[i] * _balances.length);
+        }
+        c = (c * _D) / (Ann * _balances.length);
+        uint256 b = S_ + (_D / Ann);
+        uint256 prevY = 0;
+        uint256 y = _D;
+
+        // 255 since the result is 256 digits
+        for (i = 0; i < 255; i++) {
+            prevY = y;
+            // y = (y * y + c) / (2 * y + b - D)
+            y = (y * y + c) / (y * 2 + b - _D);
+            if (y > prevY) {
+                if (y - prevY <= 1) break;
+            } else {
+                if (prevY - y <= 1) break;
+            }
+        }
+        if (i == 255) {
+            revert("doesn't converge");
+        }
+        return y;
     }
 }
