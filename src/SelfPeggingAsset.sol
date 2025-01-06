@@ -135,11 +135,12 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /**
      * @notice This event is emitted when a token swap occurs.
      * @param buyer is the address of the account that made the swap.
+     * @param swapAmount is the amount of the token swapped by the buyer.
      * @param amounts is an array containing the amounts of each token received by the buyer.
      * @param feeAmount is the amount of transaction fee charged for the swap.
      */
     event TokenSwapped(
-        address indexed buyer, uint256 swapAmount, uint256[] amounts, bool[] amountPositive, uint256 feeAmount
+        address indexed buyer, uint256 swapAmount, uint256[] amounts, uint256 feeAmount
     );
 
     /**
@@ -656,14 +657,11 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         IERC20(tokens[_j]).safeTransfer(msg.sender, transferAmountJ);
 
         uint256[] memory amounts = new uint256[](_balances.length);
-        bool[] memory amountPositive = new bool[](_balances.length);
         amounts[_i] = _dx;
         amounts[_j] = transferAmountJ;
-        amountPositive[_i] = false;
-        amountPositive[_j] = true;
 
         uint256 feeAmountActual = collectFeeOrYield(true);
-        emit TokenSwapped(msg.sender, transferAmountJ, amounts, amountPositive, feeAmountActual);
+        emit TokenSwapped(msg.sender, transferAmountJ, amounts, feeAmountActual);
         return transferAmountJ;
     }
 
