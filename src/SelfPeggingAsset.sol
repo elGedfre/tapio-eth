@@ -864,7 +864,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 oldD = _totalSupply;
         for (uint256 i = 0; i < _balances.length; i++) {
             if (_amounts[i] == 0) continue;
-            // balance = balance + amount * precision
+            // balance = balance - amount * precision
             uint256 balanceAmount = _amounts[i];
             balanceAmount = (balanceAmount * exchangeRateProviders[i].exchangeRate())
                 / 10 ** exchangeRateProviders[i].exchangeRateDecimals();
@@ -910,7 +910,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             uint256 balanceAmount = _amounts[i];
             balanceAmount = (balanceAmount * exchangeRateProviders[i].exchangeRate())
                 / 10 ** exchangeRateProviders[i].exchangeRateDecimals();
-            // balance = balance + amount * precision
+            // balance = balance - amount * precision
             _balances[i] = _balances[i] - (balanceAmount * precisions[i]);
         }
         uint256 newD = _getD(_balances);
