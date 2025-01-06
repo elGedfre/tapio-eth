@@ -3,7 +3,6 @@ pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -27,7 +26,7 @@ import "./interfaces/IExchangeRateProvider.sol";
  * pool tokens to underlying tokens.
  * This contract should never store assets.
  */
-contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
+contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
     /// @notice Token type enum
     enum TokenType {
         Standard,
@@ -173,7 +172,6 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, ReentrancyGuardUpgradeable,
         require(_wlpTokenBeacon != address(0), InvalidAddress());
         require(address(_constantExchangeRateProvider) != address(0), InvalidAddress());
 
-        __ReentrancyGuard_init();
         __Ownable_init(msg.sender);
 
         governor = _governor;
