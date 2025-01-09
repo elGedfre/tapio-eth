@@ -180,6 +180,33 @@ simply copy paste the path):
 $ yarn run test:coverage:report
 ```
 
+## Scope
+
+```
+src/
+├── LPToken.sol
+├── SelfPeggingAsset.sol
+├── SelfPeggingAssetFactory.sol
+├── WLPToken.sol
+├── interfaces
+│   ├── IExchangeRateProvider.sol
+│   └── ILPToken.sol
+├── misc
+│   ├── ConstantExchangeRateProvider.sol
+│   ├── ERC4626ExchangeRate.sol
+│   ├── OracleExchangeRate.sol
+│   └── reth
+│       ├── RocketTokenExchangeRateProvider.sol
+│       └── RocketTokenRETHInterface.sol
+└── mock
+    ├── MockERC4626Token.sol
+    ├── MockExchangeRateProvider.sol
+    ├── MockOracle.sol
+    ├── MockToken.sol
+    ├── MockTokenERC4626.sol
+    └── WETH.sol
+```
+
 ## License
 
 This project is licensed under MIT.
