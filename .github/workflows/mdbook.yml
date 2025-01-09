@@ -2,7 +2,7 @@ name: Deploy mdBook to Pages
 
 on:
   push:
-    branches: ["feat/new-features"]
+    branches: ["develop"]
   workflow_dispatch:
 
 permissions:
