@@ -15,8 +15,7 @@ import "./interfaces/ILPToken.sol";
  * @author Nuts Finance Developer
  * @notice The SelfPeggingAsset pool provides a way to swap between different tokens
  * @dev The SelfPeggingAsset contract allows users to trade between different tokens, with prices determined
- * algorithmically
- * based on the current supply and demand of each token
+ * algorithmically based on the current supply and demand of each token
  */
 contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
