@@ -25,9 +25,24 @@ contract WLPToken is ERC4626Upgradeable {
     error InsufficientAllowance();
 
     function initialize(ILPToken _lpToken) public initializer {
-        __ERC20_init("Wrapped LP Token", "wlpToken");
-        __ERC4626_init(IERC20(address(_lpToken)));
         lpToken = _lpToken;
+
+        __ERC20_init(name(), symbol());
+        __ERC4626_init(IERC20(address(_lpToken)));
+    }
+
+    function name() public view override(
+        ERC20Upgradeable,
+        IERC20Metadata
+    ) returns (string memory) {
+        return string(abi.encodePacked("Wrapped ", lpToken.name()));
+    }
+
+    function symbol() public view override(
+        ERC20Upgradeable,
+        IERC20Metadata
+    ) returns (string memory) {
+        return string(abi.encodePacked("w", lpToken.symbol()));
     }
 
     /**
