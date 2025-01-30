@@ -56,7 +56,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     /**
      * @dev The mapping of account allowances.
      */
-    mapping(address => mapping(address => uint256)) public allowances;
+    mapping(address => mapping(address => uint256)) private allowances;
 
     /**
      * @dev The mapping of pools.
