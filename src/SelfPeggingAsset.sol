@@ -855,7 +855,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         }
         uint256 newD = _getD(_balances);
 
-        if (oldD > newD) {
+        if (oldD > newD || oldD == newD) {
             return 0;
         } else {
             balances = _balances;
