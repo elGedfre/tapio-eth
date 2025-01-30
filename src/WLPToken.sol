@@ -31,17 +31,11 @@ contract WLPToken is ERC4626Upgradeable {
         __ERC4626_init(IERC20(address(_lpToken)));
     }
 
-    function name() public view override(
-        ERC20Upgradeable,
-        IERC20Metadata
-    ) returns (string memory) {
+    function name() public view override(ERC20Upgradeable, IERC20Metadata) returns (string memory) {
         return string(abi.encodePacked("Wrapped ", lpToken.name()));
     }
 
-    function symbol() public view override(
-        ERC20Upgradeable,
-        IERC20Metadata
-    ) returns (string memory) {
+    function symbol() public view override(ERC20Upgradeable, IERC20Metadata) returns (string memory) {
         return string(abi.encodePacked("w", lpToken.symbol()));
     }
 
