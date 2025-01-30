@@ -59,10 +59,10 @@ contract FactoryTest is Test {
             tokenB: address(tokenB),
             tokenAType: SelfPeggingAssetFactory.TokenType.Standard,
             tokenAOracle: address(0),
-            tokenAFunctionSig: "",
+            tokenAFunctionSig: new bytes(0),
             tokenBType: SelfPeggingAssetFactory.TokenType.Standard,
             tokenBOracle: address(0),
-            tokenBFunctionSig: ""
+            tokenBFunctionSig: new bytes(0)
         });
 
         vm.recordLogs();
@@ -121,10 +121,10 @@ contract FactoryTest is Test {
             tokenB: address(vaultTokenB),
             tokenAType: SelfPeggingAssetFactory.TokenType.ERC4626,
             tokenAOracle: address(0),
-            tokenAFunctionSig: "",
+            tokenAFunctionSig: new bytes(0),
             tokenBType: SelfPeggingAssetFactory.TokenType.ERC4626,
             tokenBOracle: address(0),
-            tokenBFunctionSig: ""
+            tokenBFunctionSig: new bytes(0)
         });
 
         vm.recordLogs();
@@ -185,10 +185,10 @@ contract FactoryTest is Test {
             tokenB: address(tokenB),
             tokenAType: SelfPeggingAssetFactory.TokenType.Oracle,
             tokenAOracle: address(oracle),
-            tokenAFunctionSig: "rate",
+            tokenAFunctionSig: abi.encodePacked(MockOracle.rate.selector),
             tokenBType: SelfPeggingAssetFactory.TokenType.Oracle,
             tokenBOracle: address(oracle),
-            tokenBFunctionSig: "rate"
+            tokenBFunctionSig: abi.encodePacked(MockOracle.rate.selector)
         });
 
         vm.recordLogs();

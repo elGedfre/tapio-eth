@@ -46,13 +46,13 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         /// @notice Address of the oracle for token A
         address tokenAOracle;
         /// @notice Function signature for token A
-        string tokenAFunctionSig;
+        bytes tokenAFunctionSig;
         /// @notice Type of token B
         TokenType tokenBType;
         /// @notice Address of the oracle for token B
         address tokenBOracle;
         /// @notice Function signature for token B
-        string tokenBFunctionSig;
+        bytes tokenBFunctionSig;
     }
 
     /**
