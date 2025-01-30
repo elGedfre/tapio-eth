@@ -876,7 +876,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     function getRedeemSingleAmount(uint256 _amount, uint256 _i) external view returns (uint256, uint256) {
         uint256[] memory _balances;
         uint256 _totalSupply;
-        (_balances, _totalSupply) = getPendingYieldAmount();
+        (_balances, _totalSupply) = getUpdatedBalancesAndD();
 
         require(_amount > 0, ZeroAmount());
         require(_i < _balances.length, InvalidToken());
@@ -908,7 +908,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     function getRedeemMultiAmount(uint256[] calldata _amounts) external view returns (uint256, uint256) {
         uint256[] memory _balances;
         uint256 _totalSupply;
-        (_balances, _totalSupply) = getPendingYieldAmount();
+        (_balances, _totalSupply) = getUpdatedBalancesAndD();
         require(_amounts.length == balances.length, InputMismatch());
 
         uint256 oldD = _totalSupply;
@@ -942,7 +942,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     function getMintAmount(uint256[] calldata _amounts) external view returns (uint256, uint256) {
         uint256[] memory _balances;
         uint256 _totalSupply;
-        (_balances, _totalSupply) = getPendingYieldAmount();
+        (_balances, _totalSupply) = getUpdatedBalancesAndD();
         require(_amounts.length == _balances.length, InvalidAmount());
 
         uint256 oldD = _totalSupply;
@@ -979,7 +979,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     function getSwapAmount(uint256 _i, uint256 _j, uint256 _dx) external view returns (uint256, uint256) {
         uint256[] memory _balances;
         uint256 _totalSupply;
-        (_balances, _totalSupply) = getPendingYieldAmount();
+        (_balances, _totalSupply) = getUpdatedBalancesAndD();
         require(_i != _j, SameToken());
         require(_i < _balances.length, InvalidIn());
         require(_j < _balances.length, InvalidOut());
@@ -1020,7 +1020,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     function getRedeemProportionAmount(uint256 _amount) external view returns (uint256[] memory, uint256) {
         uint256[] memory _balances;
         uint256 _totalSupply;
-        (_balances, _totalSupply) = getPendingYieldAmount();
+        (_balances, _totalSupply) = getUpdatedBalancesAndD();
         require(_amount != 0, ZeroAmount());
 
         uint256 D = _totalSupply;
@@ -1112,7 +1112,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @return The balances of underlying tokens.
      * @return The total supply of pool tokens.
      */
-    function getPendingYieldAmount() internal view returns (uint256[] memory, uint256) {
+    function getUpdatedBalancesAndD() internal view returns (uint256[] memory, uint256) {
         uint256[] memory _balances = balances;
 
         for (uint256 i = 0; i < _balances.length; i++) {
