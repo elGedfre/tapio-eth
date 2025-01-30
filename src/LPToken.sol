@@ -34,6 +34,11 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     uint256 public constant BUFFER_DENOMINATOR = 10 ** 10;
 
     /**
+     * @dev Constant value representing the number of dead shares.
+     */
+    uint256 public constant NUMBER_OF_DEAD_SHARES = 1000;
+
+    /**
      * @dev The total amount of shares.
      */
     uint256 public totalShares;
@@ -537,7 +542,9 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
         if (totalSupply != 0 && totalShares != 0) {
             _sharesAmount = getSharesByPeggedToken(_tokenAmount);
         } else {
-            _sharesAmount = _tokenAmount;
+            _sharesAmount = totalSupply + _tokenAmount - NUMBER_OF_DEAD_SHARES;
+            shares[address(0)] = NUMBER_OF_DEAD_SHARES;
+            totalShares += NUMBER_OF_DEAD_SHARES;
         }
         shares[_recipient] += _sharesAmount;
         totalShares += _sharesAmount;

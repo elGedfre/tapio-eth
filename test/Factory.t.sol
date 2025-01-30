@@ -102,7 +102,7 @@ contract FactoryTest is Test {
 
         selfPeggingAsset.mint(amounts, 0);
 
-        assertEq(poolToken.balanceOf(initialMinter), 200e18);
+        assertEq(poolToken.balanceOf(initialMinter), 200e18 - 1000 wei);
         assertNotEq(address(wrappedPoolToken), address(0));
     }
 
@@ -170,7 +170,7 @@ contract FactoryTest is Test {
 
         selfPeggingAsset.mint(amounts, 0);
 
-        assertEq(poolToken.balanceOf(initialMinter), 200e18);
+        assertEq(poolToken.balanceOf(initialMinter), 200e18 - 1000 wei);
         assertNotEq(address(wrappedPoolToken), address(0));
     }
 
@@ -228,7 +228,7 @@ contract FactoryTest is Test {
 
         selfPeggingAsset.mint(amounts, 0);
 
-        assertEq(poolToken.balanceOf(initialMinter), 200e18);
+        assertEq(poolToken.balanceOf(initialMinter), 200e18 - 1000 wei);
         assertNotEq(address(wrappedPoolToken), address(0));
     }
 }
