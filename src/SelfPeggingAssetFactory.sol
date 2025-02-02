@@ -76,6 +76,11 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
     uint256 public redeemFee;
 
     /**
+     * @dev Default off peg fee multiplier for the pool.
+     */
+    uint256 public offPegFeeMultiplier;
+
+    /**
      * @dev Default A parameter for the pool.
      */
     uint256 public A;
@@ -131,6 +136,12 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
     event RedeemFeeModified(uint256 redeemFee);
 
     /**
+     * @dev This event is emitted when the off peg fee multiplier is updated.
+     * @param offPegFeeMultiplier is the new value of the off peg fee multiplier.
+     */
+    event OffPegFeeMultiplierModified(uint256 offPegFeeMultiplier);
+
+    /**
      * @dev This event is emitted when the A parameter is updated.
      * @param A is the new value of the A parameter.
      */
@@ -156,6 +167,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         uint256 _mintFee,
         uint256 _swapFee,
         uint256 _redeemFee,
+        uint256 _offPegFeeMultiplier,
         uint256 _A,
         address _selfPeggingAssetBeacon,
         address _lpTokenBeacon,
@@ -185,6 +197,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         swapFee = _swapFee;
         redeemFee = _redeemFee;
         A = _A;
+        offPegFeeMultiplier = _offPegFeeMultiplier;
     }
 
     /**
@@ -218,6 +231,14 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
     function setRedeemFee(uint256 _redeemFee) external onlyOwner {
         redeemFee = _redeemFee;
         emit RedeemFeeModified(_redeemFee);
+    }
+
+    /**
+     * @dev Set the off peg fee multiplier.
+     */
+    function setOffPegFeeMultiplier(uint256 _offPegFeeMultiplier) external onlyOwner {
+        offPegFeeMultiplier = _offPegFeeMultiplier;
+        emit OffPegFeeMultiplierModified(_offPegFeeMultiplier);
     }
 
     /**
@@ -285,7 +306,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
 
         bytes memory selfPeggingAssetInit = abi.encodeCall(
             SelfPeggingAsset.initialize,
-            (tokens, precisions, fees, LPToken(address(lpTokenProxy)), A, exchangeRateProviders)
+            (tokens, precisions, fees, offPegFeeMultiplier, LPToken(address(lpTokenProxy)), A, exchangeRateProviders)
         );
         BeaconProxy selfPeggingAssetProxy = new BeaconProxy(selfPeggingAssetBeacon, selfPeggingAssetInit);
         SelfPeggingAsset selfPeggingAsset = SelfPeggingAsset(address(selfPeggingAssetProxy));

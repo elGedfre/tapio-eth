@@ -44,6 +44,7 @@ contract Deploy is Config {
                 0,
                 0,
                 0,
+                0,
                 100,
                 selfPeggingAssetBeacon,
                 lpTokenBeacon,

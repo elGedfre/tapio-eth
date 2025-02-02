@@ -86,6 +86,12 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     uint256 public redeemFee;
 
     /**
+     * @dev This is the off peg fee multiplier.
+     * offPegFeeMultiplier = offPegFeeMultiplier * FEE_DENOMINATOR
+     */
+    uint256 public offPegFeeMultiplier;
+
+    /**
      * @dev This is the address of the ERC20 token contract that represents the SelfPeggingAsset pool token.
      */
     ILPToken public poolToken;
@@ -206,6 +212,12 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     event RedeemFeeModified(uint256 redeemFee);
 
     /**
+     * @dev This event is emitted when the off peg fee multiplier is modified.
+     * @param offPegFeeMultiplier is the new value of the off peg fee multiplier.
+     */
+    event OffPegFeeMultiplierModified(uint256 offPegFeeMultiplier);
+
+    /**
      * @dev This event is emitted when the fee margin is modified.
      * @param margin is the new value of the margin.
      */
@@ -321,6 +333,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @param _tokens The tokens in the pool.
      * @param _precisions The precisions of each token (10 ** (18 - token decimals)).
      * @param _fees The fees for minting, swapping, and redeeming.
+     * @param _offPegFeeMultiplier The off peg fee multiplier.
      * @param _poolToken The address of the pool token.
      * @param _A The initial value of the amplification coefficient A for the pool.
      */
@@ -328,6 +341,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         address[] memory _tokens,
         uint256[] memory _precisions,
         uint256[] memory _fees,
+        uint256 _offPegFeeMultiplier,
         ILPToken _poolToken,
         uint256 _A,
         IExchangeRateProvider[] memory _exchangeRateProviders
@@ -369,6 +383,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         redeemFee = _fees[2];
         poolToken = _poolToken;
         exchangeRateProviders = _exchangeRateProviders;
+        offPegFeeMultiplier = _offPegFeeMultiplier;
 
         A = _A;
         feeErrorMargin = DEFAULT_FEE_ERROR_MARGIN;
@@ -412,7 +427,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
         uint256 feeAmount = 0;
         if (mintFee > 0) {
-            feeAmount = (mintAmount * mintFee) / FEE_DENOMINATOR;
+            uint256 dynamicFee = oldD == 0 ? mintFee : _dynamicFee(oldD, newD, mintFee);
+            feeAmount = (mintAmount * dynamicFee) / FEE_DENOMINATOR;
             mintAmount = mintAmount - feeAmount;
         }
         if (mintAmount < _minMintAmount) {
@@ -467,7 +483,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
         uint256 feeAmount = 0;
         if (swapFee > 0) {
-            feeAmount = (dy * swapFee) / FEE_DENOMINATOR;
+            uint256 dynamicFee = _dynamicFee(_balances[_i], _balances[_j], swapFee);
+            feeAmount = (dy * dynamicFee) / FEE_DENOMINATOR;
             dy = dy - feeAmount;
         }
         _minDy = (_minDy * exchangeRateProviders[_j].exchangeRate())
@@ -648,7 +665,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 redeemAmount = oldD - newD;
         uint256 feeAmount = 0;
         if (redeemFee > 0) {
-            redeemAmount = (redeemAmount * FEE_DENOMINATOR) / (FEE_DENOMINATOR - redeemFee);
+            uint256 dynamicFee = _dynamicFee(oldD, newD, redeemFee);
+            redeemAmount = (redeemAmount * FEE_DENOMINATOR) / (FEE_DENOMINATOR - dynamicFee);
             feeAmount = redeemAmount - (oldD - newD);
         }
         if (redeemAmount > _maxRedeemAmount) {
@@ -697,6 +715,15 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         require(_redeemFee < FEE_DENOMINATOR, LimitExceeded());
         redeemFee = _redeemFee;
         emit RedeemFeeModified(_redeemFee);
+    }
+
+    /**
+     * @dev Updates the off peg fee multiplier.
+     * @param _offPegFeeMultiplier The new off peg fee multiplier.
+     */
+    function setOffPegFeeMultiplier(uint256 _offPegFeeMultiplier) external onlyOwner {
+        offPegFeeMultiplier = _offPegFeeMultiplier;
+        emit OffPegFeeMultiplierModified(_offPegFeeMultiplier);
     }
 
     /**
@@ -961,7 +988,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 feeAmount = 0;
 
         if (mintFee > 0) {
-            feeAmount = (mintAmount * mintFee) / FEE_DENOMINATOR;
+            uint256 dynamicFee = _dynamicFee(oldD, newD, mintFee);
+            feeAmount = (mintAmount * dynamicFee) / FEE_DENOMINATOR;
             mintAmount = mintAmount - feeAmount;
         }
 
@@ -997,7 +1025,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 feeAmount = 0;
 
         if (swapFee > 0) {
-            feeAmount = (dy * swapFee) / FEE_DENOMINATOR;
+            uint256 dynamicFee = _dynamicFee(_balances[_i], _balances[_j], swapFee);
+            feeAmount = (dy * dynamicFee) / FEE_DENOMINATOR;
             dy = dy - feeAmount;
         }
 
@@ -1211,5 +1240,24 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             revert("doesn't converge");
         }
         return y;
+    }
+
+    /**
+     * @dev Calculates the dynamic fee based on liquidity imbalances.
+     * @param xpi The liquidity before or first asset liqidity.
+     * @param xpj The liqduity after or second asset liquidity.
+     * @param _fee The base fee value.
+     * @return The dynamically adjusted fee.
+     */
+    function _dynamicFee(uint256 xpi, uint256 xpj, uint256 _fee) internal view returns (uint256) {
+        uint256 _offpegFeeMultiplier = offPegFeeMultiplier;
+
+        if (_offpegFeeMultiplier <= FEE_DENOMINATOR) {
+            return _fee;
+        }
+
+        uint256 xps2 = (xpi + xpj) * (xpi + xpj);
+        return (_offpegFeeMultiplier * _fee)
+            / (((_offpegFeeMultiplier - FEE_DENOMINATOR) * 4 * xpi * xpj) / xps2 + FEE_DENOMINATOR);
     }
 }
