@@ -9,12 +9,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @notice Interface for LP Token
  */
 interface ILPToken is IERC20 {
-    /// @dev Name of the token
-    function name() external view returns (string memory);
-
-    /// @dev Symbol of the token
-    function symbol() external view returns (string memory);
-
     /// @dev Add a pool to the list of pools
     function addPool(address _pool) external;
 
@@ -56,6 +50,12 @@ interface ILPToken is IERC20 {
 
     // @dev Add to buffer
     function addBuffer(uint256 _amount) external;
+
+    /// @dev Name of the token
+    function name() external view returns (string memory);
+
+    /// @dev Symbol of the token
+    function symbol() external view returns (string memory);
 
     /// @dev Get the total amount of shares
     function totalShares() external view returns (uint256);

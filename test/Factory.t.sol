@@ -42,6 +42,7 @@ contract FactoryTest is Test {
             0,
             0,
             0,
+            0,
             100,
             selfPeggingAssetBeacon,
             lpTokenBeacon,

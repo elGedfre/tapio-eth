@@ -31,14 +31,6 @@ contract WLPToken is ERC4626Upgradeable {
         __ERC4626_init(IERC20(address(_lpToken)));
     }
 
-    function name() public view override(ERC20Upgradeable, IERC20Metadata) returns (string memory) {
-        return string(abi.encodePacked("Wrapped ", lpToken.name()));
-    }
-
-    function symbol() public view override(ERC20Upgradeable, IERC20Metadata) returns (string memory) {
-        return string(abi.encodePacked("w", lpToken.symbol()));
-    }
-
     /**
      * @dev Deposits lpToken into the vault in exchange for shares.
      * @param assets Amount of lpToken to deposit.
@@ -107,6 +99,22 @@ contract WLPToken is ERC4626Upgradeable {
         }
         _burn(owner, shares);
         lpToken.transfer(receiver, assets);
+    }
+
+    /**
+     * @dev Returns the name of the token.
+     * @return The name of the token.
+     */
+    function name() public view override(ERC20Upgradeable, IERC20Metadata) returns (string memory) {
+        return string(abi.encodePacked("Wrapped ", lpToken.name()));
+    }
+
+    /**
+     * @dev Returns the symbol of the token.
+     * @return The symbol of the token.
+     */
+    function symbol() public view override(ERC20Upgradeable, IERC20Metadata) returns (string memory) {
+        return string(abi.encodePacked("w", lpToken.symbol()));
     }
 
     /**
