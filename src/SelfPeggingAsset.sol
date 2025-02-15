@@ -880,7 +880,10 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         }
         uint256 newD = _getD(_balances);
 
-        if (oldD > newD || oldD == newD) {
+        if (oldD == newD) {
+            return 0;
+        } else if (oldD > newD) {
+            poolToken.removeTotalSupply(oldD - newD, true, true);
             return 0;
         } else {
             balances = _balances;
@@ -1105,7 +1108,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
                 return 0;
             } else if (oldD > newD) {
                 // Cover losses using the buffer
-                poolToken.removeTotalSupply(oldD - newD, false, true);
+                poolToken.removeTotalSupply(oldD - newD, true, true);
                 return 0;
             }
         } else {
@@ -1113,7 +1116,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
                 return 0;
             } else if (oldD > newD) {
                 // Cover losses using the buffer
-                poolToken.removeTotalSupply(oldD - newD, false, true);
+                poolToken.removeTotalSupply(oldD - newD, true, true);
                 return 0;
             }
         }
