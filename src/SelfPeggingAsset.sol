@@ -181,11 +181,10 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
     /**
      * @dev This event is emitted when yield is collected by the SelfPeggingAsset contract.
-     * @param amounts is an array containing the amounts of each token the yield receives.
      * @param feeAmount is the amount of yield collected.
      * @param totalSupply is the total supply of LP token.
      */
-    event YieldCollected(uint256[] amounts, uint256 feeAmount, uint256 totalSupply);
+    event YieldCollected(uint256 feeAmount, uint256 totalSupply);
 
     /**
      * @dev This event is emitted when the A parameter is modified.
@@ -297,9 +296,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
     /// @notice Error thrown when the block number is an past block
     error PastBlock();
-
-    /// @notice Error thrown when the pool is imbalanced
-    error PoolImbalanced();
 
     /// @notice Error thrown when there is no loss
     error NoLosses();
@@ -770,7 +766,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
         if (totalSupply > newD) {
             // A decreased
-            poolToken.removeTotalSupply(totalSupply - newD);
+            poolToken.removeTotalSupply(totalSupply - newD, true);
         }
 
         if (newD > totalSupply) {
@@ -845,7 +841,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     }
 
     /**
-     * @dev Distribute losses
+     * @dev Distribute losses by rebasing negatively
      */
     function distributeLoss() external onlyOwner {
         require(paused, NotPaused());
@@ -862,7 +858,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 newD = _getD(_balances);
 
         require(newD < oldD, NoLosses());
-        poolToken.removeTotalSupply(oldD - newD);
+        poolToken.removeTotalSupply(oldD - newD, false);
+
         balances = _balances;
         totalSupply = newD;
     }
@@ -1089,7 +1086,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @return The amount of fee or yield collected.
      */
     function collectFeeOrYield(bool isFee) internal returns (uint256) {
-        uint256[] memory oldBalances = balances;
         uint256[] memory _balances = balances;
         uint256 oldD = totalSupply;
 
@@ -1108,13 +1104,17 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             if (oldD > newD && (oldD - newD) < feeErrorMargin) {
                 return 0;
             } else if (oldD > newD) {
-                revert ImbalancedPool(oldD, newD);
+                // Cover losses using the buffer
+                poolToken.removeTotalSupply(oldD - newD, false);
+                return 0;
             }
         } else {
             if (oldD > newD && (oldD - newD) < yieldErrorMargin) {
                 return 0;
             } else if (oldD > newD) {
-                revert ImbalancedPool(oldD, newD);
+                // Cover losses using the buffer
+                poolToken.removeTotalSupply(oldD - newD, false);
+                return 0;
             }
         }
         uint256 feeAmount = newD - oldD;
@@ -1126,14 +1126,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         if (isFee) {
             emit FeeCollected(feeAmount, totalSupply);
         } else {
-            uint256[] memory amounts = new uint256[](_balances.length);
-            for (uint256 i = 0; i < _balances.length; i++) {
-                uint256 amount = _balances[i] - oldBalances[i];
-                amount = (amount * (10 ** exchangeRateProviders[i].exchangeRateDecimals()))
-                    / exchangeRateProviders[i].exchangeRate();
-                amounts[i] = amount / precisions[i];
-            }
-            emit YieldCollected(amounts, feeAmount, totalSupply);
+            emit YieldCollected(feeAmount, totalSupply);
         }
         return feeAmount;
     }
