@@ -288,8 +288,9 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
             require(argument.tokenAOracle != address(0), InvalidOracle());
             require(bytes(argument.tokenARateFunctionSig).length > 0, InvalidFunctionSig());
             require(bytes(argument.tokenADecimalsFunctionSig).length > 0, InvalidFunctionSig());
-            OracleExchangeRate oracleExchangeRate =
-                new OracleExchangeRate(argument.tokenAOracle, argument.tokenARateFunctionSig, argument.tokenADecimalsFunctionSig);
+            OracleExchangeRate oracleExchangeRate = new OracleExchangeRate(
+                argument.tokenAOracle, argument.tokenARateFunctionSig, argument.tokenADecimalsFunctionSig
+            );
             exchangeRateProviders[0] = IExchangeRateProvider(oracleExchangeRate);
         } else if (argument.tokenAType == TokenType.ERC4626) {
             ERC4626ExchangeRate erc4626ExchangeRate = new ERC4626ExchangeRate(IERC4626(argument.tokenA));
@@ -302,8 +303,9 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
             require(argument.tokenBOracle != address(0), InvalidOracle());
             require(bytes(argument.tokenBRateFunctionSig).length > 0, InvalidFunctionSig());
             require(bytes(argument.tokenBDecimalsFunctionSig).length > 0, InvalidFunctionSig());
-            OracleExchangeRate oracleExchangeRate =
-                new OracleExchangeRate(argument.tokenBOracle, argument.tokenBRateFunctionSig, argument.tokenBDecimalsFunctionSig);
+            OracleExchangeRate oracleExchangeRate = new OracleExchangeRate(
+                argument.tokenBOracle, argument.tokenBRateFunctionSig, argument.tokenBDecimalsFunctionSig
+            );
             exchangeRateProviders[1] = IExchangeRateProvider(oracleExchangeRate);
         } else if (argument.tokenBType == TokenType.ERC4626) {
             ERC4626ExchangeRate erc4626ExchangeRate = new ERC4626ExchangeRate(IERC4626(argument.tokenB));
