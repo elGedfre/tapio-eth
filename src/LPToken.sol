@@ -89,6 +89,11 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     string internal tokenSymbol;
 
     /**
+     * @dev The bad debt of the buffer.
+     */
+    uint256 public bufferBadDebt;
+
+    /**
      * @notice Emitted when shares are transferred.
      */
     event TransferShares(address indexed from, address indexed to, uint256 sharesValue);
@@ -343,6 +348,20 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     function addTotalSupply(uint256 _amount) external {
         require(pools[msg.sender], NoPool());
         require(_amount != 0, InvalidAmount());
+
+        if (bufferBadDebt >= _amount) {
+            bufferBadDebt -= _amount;
+            bufferAmount += _amount;
+            emit BufferIncreased(_amount, bufferAmount);
+            return;
+        }
+
+        uint256 prevAmount = _amount;
+        uint256 prevBufferBadDebt = bufferBadDebt;
+        _amount = _amount - bufferBadDebt;
+        bufferAmount += bufferBadDebt;
+        bufferBadDebt = 0;
+
         uint256 _deltaBuffer = (bufferPercent * _amount) / BUFFER_DENOMINATOR;
         uint256 actualAmount = _amount - _deltaBuffer;
 
@@ -350,8 +369,8 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
         totalRewards += actualAmount;
         bufferAmount += _deltaBuffer;
 
-        emit BufferIncreased(_deltaBuffer, bufferAmount);
-        emit RewardsMinted(_amount, actualAmount);
+        emit BufferIncreased(_deltaBuffer + prevBufferBadDebt, bufferAmount);
+        emit RewardsMinted(prevAmount, actualAmount);
     }
 
     /**
@@ -364,6 +383,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
         require(_amount <= bufferAmount, InsufficientBuffer());
 
         bufferAmount -= _amount;
+        bufferBadDebt += _amount;
 
         emit BufferDecreased(_amount, bufferAmount);
     }
