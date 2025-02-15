@@ -25,7 +25,7 @@ interface ILPToken is IERC20 {
     function addTotalSupply(uint256 _amount) external;
 
     /// @dev Remove the amount from the total supply
-    function removeTotalSupply(uint256 _amount, bool isBuffer) external;
+    function removeTotalSupply(uint256 _amount, bool isBuffer, bool withDebt) external;
 
     /// @dev Transfer the shares to the recipient
     function transferShares(address _recipient, uint256 _sharesAmount) external returns (uint256);
