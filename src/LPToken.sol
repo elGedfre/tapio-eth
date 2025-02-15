@@ -385,14 +385,16 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * @notice This function is called only by a stableSwap pool to decrease
      * the total supply of LPToken by lost amount.
      */
-    function removeTotalSupply(uint256 _amount, bool isBuffer) external {
+    function removeTotalSupply(uint256 _amount, bool isBuffer, bool withDebt) external {
         require(pools[msg.sender], NoPool());
         require(_amount != 0, InvalidAmount());
 
         if (isBuffer) {
             require(_amount <= bufferAmount, InsufficientBuffer());
             bufferAmount -= _amount;
-            bufferBadDebt += _amount;
+            if (withDebt) {
+                bufferBadDebt += _amount;
+            }
             emit BufferDecreased(_amount, bufferAmount);
         } else {
             require(_amount <= totalSupply, InsufficientSupply());
