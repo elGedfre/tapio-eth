@@ -60,10 +60,12 @@ contract FactoryTest is Test {
             tokenB: address(tokenB),
             tokenAType: SelfPeggingAssetFactory.TokenType.Standard,
             tokenAOracle: address(0),
-            tokenAFunctionSig: new bytes(0),
+            tokenARateFunctionSig: new bytes(0),
+            tokenADecimalsFunctionSig: new bytes(0),
             tokenBType: SelfPeggingAssetFactory.TokenType.Standard,
             tokenBOracle: address(0),
-            tokenBFunctionSig: new bytes(0)
+            tokenBRateFunctionSig: new bytes(0),
+            tokenBDecimalsFunctionSig: new bytes(0)
         });
 
         vm.recordLogs();
@@ -122,10 +124,12 @@ contract FactoryTest is Test {
             tokenB: address(vaultTokenB),
             tokenAType: SelfPeggingAssetFactory.TokenType.ERC4626,
             tokenAOracle: address(0),
-            tokenAFunctionSig: new bytes(0),
+            tokenARateFunctionSig: new bytes(0),
+            tokenADecimalsFunctionSig: new bytes(0),
             tokenBType: SelfPeggingAssetFactory.TokenType.ERC4626,
             tokenBOracle: address(0),
-            tokenBFunctionSig: new bytes(0)
+            tokenBRateFunctionSig: new bytes(0),
+            tokenBDecimalsFunctionSig: new bytes(0)
         });
 
         vm.recordLogs();
@@ -186,10 +190,12 @@ contract FactoryTest is Test {
             tokenB: address(tokenB),
             tokenAType: SelfPeggingAssetFactory.TokenType.Oracle,
             tokenAOracle: address(oracle),
-            tokenAFunctionSig: abi.encodePacked(MockOracle.rate.selector),
+            tokenARateFunctionSig: abi.encodePacked(MockOracle.rate.selector),
+            tokenADecimalsFunctionSig: abi.encodePacked(MockOracle.decimals.selector),
             tokenBType: SelfPeggingAssetFactory.TokenType.Oracle,
             tokenBOracle: address(oracle),
-            tokenBFunctionSig: abi.encodePacked(MockOracle.rate.selector)
+            tokenBRateFunctionSig: abi.encodePacked(MockOracle.rate.selector),
+            tokenBDecimalsFunctionSig: abi.encodePacked(MockOracle.decimals.selector)
         });
 
         vm.recordLogs();

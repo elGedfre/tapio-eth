@@ -20,10 +20,12 @@ contract Pool is Config {
             tokenB: usdt,
             tokenAType: SelfPeggingAssetFactory.TokenType.Standard,
             tokenAOracle: address(0),
-            tokenAFunctionSig: "",
+            tokenARateFunctionSig: "",
+            tokenADecimalsFunctionSig: "",
             tokenBType: SelfPeggingAssetFactory.TokenType.Standard,
             tokenBOracle: address(0),
-            tokenBFunctionSig: ""
+            tokenBRateFunctionSig: "",
+            tokenBDecimalsFunctionSig: ""
         });
 
         vm.recordLogs();
