@@ -640,6 +640,12 @@ contract SelfPeggingAssetTest is Test {
         _pool.distributeLoss();
 
         assertIsCloseTo(_lpToken.totalSupply(), 113e18, 1e18);
+
+        // Recover bad debt
+        assertNotEq(_lpToken.bufferBadDebt(), 0);
+        rETHExchangeRateProvider.newRate(1e18);
+        _pool.rebase();
+        assertEq(_lpToken.bufferBadDebt(), 0);
     }
 
     function assertFee(uint256 totalAmount, uint256 feeAmount, uint256 fee) internal view {
