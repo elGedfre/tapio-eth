@@ -543,6 +543,105 @@ contract SelfPeggingAssetTest is Test {
         assertLt(WETH.balanceOf(user2), exchangeAmount);
     }
 
+    function test_LossHandling() external {
+        MockExchangeRateProvider rETHExchangeRateProvider = new MockExchangeRateProvider(1e18, 18);
+        MockExchangeRateProvider wstETHExchangeRateProvider = new MockExchangeRateProvider(1e18, 18);
+
+        MockToken rETH = new MockToken("rETH", "rETH", 18);
+        MockToken wstETH = new MockToken("wstETH", "wstETH", 18);
+
+        address[] memory _tokens = new address[](2);
+        _tokens[0] = address(rETH);
+        _tokens[1] = address(wstETH);
+
+        IExchangeRateProvider[] memory exchangeRateProviders = new IExchangeRateProvider[](2);
+        exchangeRateProviders[0] = IExchangeRateProvider(rETHExchangeRateProvider);
+        exchangeRateProviders[1] = IExchangeRateProvider(wstETHExchangeRateProvider);
+
+        SelfPeggingAsset _pool = new SelfPeggingAsset();
+
+        LPToken _lpToken = new LPToken();
+        _lpToken.initialize("LP Token", "LPT");
+        _lpToken.transferOwnership(owner);
+
+        uint256[] memory _fees = new uint256[](3);
+        _fees[0] = 0;
+        _fees[1] = 0;
+        _fees[2] = 0;
+
+        uint256[] memory _precisions = new uint256[](2);
+        _precisions[0] = 1;
+        _precisions[1] = 1;
+
+        _pool.initialize(_tokens, _precisions, _fees, 0, _lpToken, A, exchangeRateProviders);
+        _pool.transferOwnership(owner);
+
+        vm.prank(owner);
+        _lpToken.addPool(address(_pool));
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 100e18;
+        amounts[1] = 100e18;
+
+        // Mint Liquidity
+        rETH.mint(user, 100e18);
+        wstETH.mint(user, 100e18);
+
+        vm.startPrank(user);
+        rETH.approve(address(_pool), 100e18);
+        wstETH.approve(address(_pool), 100e18);
+
+        _pool.mint(amounts, 0);
+        vm.stopPrank();
+
+        // swap 1 rETH to wstETH
+        rETH.mint(user2, 1e18);
+
+        vm.startPrank(user2);
+        rETH.approve(address(_pool), 1e18);
+        _pool.swap(0, 1, 1e18, 0);
+        vm.stopPrank();
+
+        uint256 rETHBalance = rETH.balanceOf(user2);
+        uint256 wstETHBalance = wstETH.balanceOf(user2);
+
+        assertEq(rETHBalance, 0);
+        assertIsCloseTo(wstETHBalance, 1e18, 0.00005 ether);
+
+        // Set buffer percentage to 5%
+        vm.prank(owner);
+        _lpToken.setBuffer(0.05e10);
+        vm.stopPrank();
+
+        // Add yield
+        rETHExchangeRateProvider.newRate(2e18);
+        _pool.rebase();
+
+        assertIsCloseTo(_lpToken.bufferAmount(), 5e18, 0.05 ether);
+        assertEq(_lpToken.bufferBadDebt(), 0);
+
+        // Drop the exchange rate by 1% so that the pool is in loss and buffer can cover the loss
+        rETHExchangeRateProvider.newRate(1.98e18);
+        _pool.rebase();
+
+        assertIsCloseTo(_lpToken.bufferAmount(), 3e18, 0.03 ether);
+        assertIsCloseTo(_lpToken.bufferBadDebt(), 2e18, 0.02 ether);
+
+        // Drop the exchange rate by 90% so that the pool is in loss and buffer can't cover the loss
+        rETHExchangeRateProvider.newRate(0.2e18);
+        vm.expectRevert();
+        _pool.rebase();
+
+        // Trigger negative rebase
+        assertIsCloseTo(_lpToken.totalSupply(), 295e18, 0.9e18);
+        vm.startPrank(owner);
+        _pool.setAdmin(owner, true);
+        _pool.pause();
+        _pool.distributeLoss();
+
+        assertIsCloseTo(_lpToken.totalSupply(), 113e18, 1e18);
+    }
+
     function assertFee(uint256 totalAmount, uint256 feeAmount, uint256 fee) internal view {
         uint256 expectedFee = totalAmount * fee / feeDenominator;
         assertEq(feeAmount, expectedFee);
