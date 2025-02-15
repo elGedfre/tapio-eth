@@ -139,6 +139,11 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     event BufferDecreased(uint256, uint256);
 
     /**
+     * @notice Emitted when there is negative rebase.
+     */
+    event NegativelyRebased(uint256, uint256);
+
+    /**
      * @notice Emitted when the symbol is modified.
      */
     event SymbolModified(string);
@@ -181,6 +186,9 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
 
     /// @notice Error thrown when the pool is not found.
     error PoolNotFound();
+
+    /// @notice Error thrown when the supply is insufficient.
+    error InsufficientSupply();
 
     function initialize(string memory _name, string memory _symbol) public initializer {
         tokenName = _name;
@@ -377,15 +385,20 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * @notice This function is called only by a stableSwap pool to decrease
      * the total supply of LPToken by lost amount.
      */
-    function removeTotalSupply(uint256 _amount) external {
+    function removeTotalSupply(uint256 _amount, bool isBuffer) external {
         require(pools[msg.sender], NoPool());
         require(_amount != 0, InvalidAmount());
-        require(_amount <= bufferAmount, InsufficientBuffer());
 
-        bufferAmount -= _amount;
-        bufferBadDebt += _amount;
-
-        emit BufferDecreased(_amount, bufferAmount);
+        if (isBuffer) {
+            require(_amount <= bufferAmount, InsufficientBuffer());
+            bufferAmount -= _amount;
+            bufferBadDebt += _amount;
+            emit BufferDecreased(_amount, bufferAmount);
+        } else {
+            require(_amount <= totalSupply, InsufficientSupply());
+            totalSupply -= _amount;
+            emit NegativelyRebased(_amount, totalSupply);
+        }
     }
 
     /**
