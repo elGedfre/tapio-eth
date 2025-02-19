@@ -15,6 +15,8 @@ contract Config is Script {
 
     address usdc;
     address usdt;
+    address weth;
+    address wstETH;
 
     SelfPeggingAssetFactory factory;
     address selfPeggingAssetBeacon;
@@ -27,6 +29,8 @@ contract Config is Script {
         address SelfPeggingAssetBeacon;
         address USDC;
         address USDT;
+        address WETH;
+        address wstETH;
         address WLPTokenBeacon;
     }
 

@@ -29,6 +29,10 @@ contract Testnet is Deploy, Setup {
 
         vm.writeJson(vm.serializeAddress("contracts", "USDT", usdt), "./broadcast/testnet.json");
 
+        vm.writeJson(vm.serializeAddress("contracts", "WETH", weth), "./broadcast/testnet.json");
+
+        vm.writeJson(vm.serializeAddress("contracts", "wstETH", wstETH), "./broadcast/testnet.json");
+
         vm.writeJson(vm.serializeAddress("contracts", "Factory", address(factory)), "./broadcast/testnet.json");
 
         vm.writeJson(

@@ -10,8 +10,12 @@ contract Setup is Config {
     function deployMocks() internal {
         MockToken tokenA = new MockToken("USDC", "USDC", 6);
         MockToken tokenB = new MockToken("USDT", "USDT", 6);
+        MockToken tokenC = new MockToken("WETH", "WETH", 18);
+        MockToken tokenD = new MockToken("wstETH", "wstETH", 18);
 
         usdc = address(tokenA);
         usdt = address(tokenB);
+        weth = address(tokenC);
+        wstETH = address(tokenD);
     }
 }
