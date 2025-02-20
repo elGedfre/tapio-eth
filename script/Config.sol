@@ -30,8 +30,8 @@ contract Config is Script {
         address USDC;
         address USDT;
         address WETH;
-        address wstETH;
         address WLPTokenBeacon;
+        address wstETH;
     }
 
     function loadConfig() internal {

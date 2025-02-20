@@ -41,15 +41,15 @@ contract Testnet is Deploy, Setup, Pool {
         selfPeggingAssetBeacon = jsonData.SelfPeggingAssetBeacon;
         lpTokenBeacon = jsonData.LPTokenBeacon;
         wlpTokenBeacon = jsonData.WLPTokenBeacon;
-        usdc = jsonData.USDC;
-        usdt = jsonData.USDT;
+        weth = jsonData.WETH;
+        wstETH = jsonData.wstETH;
 
-        (, address selfPeggingAsset,) = createStandardPool();
+        (, address selfPeggingAsset,) = createStandardAndExchangeRateTokenPool(1.19e18);
 
-        uint256 amount = 10_000e18;
+        uint256 amount = 100e18;
 
-        MockToken(usdc).mint(DEPLOYER, amount);
-        MockToken(usdt).mint(DEPLOYER, amount);
+        MockToken(weth).mint(DEPLOYER, amount);
+        MockToken(wstETH).mint(DEPLOYER, amount);
 
         initialMint(amount, amount, SelfPeggingAsset(selfPeggingAsset));
 

@@ -8,6 +8,7 @@ import { Config } from "script/Config.sol";
 import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
 import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
 import { MockToken } from "../src/mock/MockToken.sol";
+import { MockExchangeRateProvider } from "../src/mock/MockExchangeRateProvider.sol";
 
 contract Pool is Config {
     function createStandardPool() internal returns (address, address, address) {
@@ -49,17 +50,62 @@ contract Pool is Config {
         return (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken);
     }
 
-    function initialMint(uint256 usdcAmount, uint256 usdtAmount, SelfPeggingAsset selfPeggingAsset) internal {
+    function createStandardAndExchangeRateTokenPool(uint256 exchangeRate)
+        internal
+        returns (address, address, address)
+    {
+        console.log("---------------");
+        console.log("create-pool-logs");
+        console.log("---------------");
+
+        MockExchangeRateProvider exchangeRateProvider = new MockExchangeRateProvider(exchangeRate, 18);
+        address exchangeRateProviderAddress = address(exchangeRateProvider);
+
+        SelfPeggingAssetFactory.CreatePoolArgument memory arg = SelfPeggingAssetFactory.CreatePoolArgument({
+            tokenA: weth,
+            tokenB: wstETH,
+            tokenAType: SelfPeggingAssetFactory.TokenType.Standard,
+            tokenAOracle: address(0),
+            tokenARateFunctionSig: "",
+            tokenADecimalsFunctionSig: "",
+            tokenBType: SelfPeggingAssetFactory.TokenType.Oracle,
+            tokenBOracle: exchangeRateProviderAddress,
+            tokenBRateFunctionSig: abi.encodePacked(MockExchangeRateProvider.exchangeRate.selector),
+            tokenBDecimalsFunctionSig: abi.encodePacked(MockExchangeRateProvider.exchangeRateDecimals.selector)
+        });
+
+        vm.recordLogs();
+        factory.createPool(arg);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 eventSig = keccak256("PoolCreated(address,address,address)");
+
+        address decodedPoolToken;
+        address decodedSelfPeggingAsset;
+        address decodedWrappedPoolToken;
+
+        for (uint256 i = 0; i < entries.length; i++) {
+            Vm.Log memory log = entries[i];
+
+            if (log.topics[0] == eventSig) {
+                (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken) =
+                    abi.decode(log.data, (address, address, address));
+            }
+        }
+
+        return (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken);
+    }
+
+    function initialMint(uint256 wethAmount, uint256 wstETHAMount, SelfPeggingAsset selfPeggingAsset) internal {
         console.log("---------------");
         console.log("initial-mint-logs");
         console.log("---------------");
 
-        MockToken(usdc).approve(address(selfPeggingAsset), usdcAmount);
-        MockToken(usdt).approve(address(selfPeggingAsset), usdtAmount);
+        MockToken(weth).approve(address(selfPeggingAsset), wethAmount);
+        MockToken(wstETH).approve(address(selfPeggingAsset), wstETHAMount);
 
         uint256[] memory amounts = new uint256[](2);
-        amounts[0] = usdcAmount;
-        amounts[1] = usdtAmount;
+        amounts[0] = wethAmount;
+        amounts[1] = wstETHAMount;
 
         selfPeggingAsset.mint(amounts, 0);
     }
