@@ -42,6 +42,7 @@ contract FactoryTest is Test {
             0,
             0,
             0,
+            0,
             100,
             selfPeggingAssetBeacon,
             lpTokenBeacon,
@@ -59,10 +60,12 @@ contract FactoryTest is Test {
             tokenB: address(tokenB),
             tokenAType: SelfPeggingAssetFactory.TokenType.Standard,
             tokenAOracle: address(0),
-            tokenAFunctionSig: "",
+            tokenARateFunctionSig: new bytes(0),
+            tokenADecimalsFunctionSig: new bytes(0),
             tokenBType: SelfPeggingAssetFactory.TokenType.Standard,
             tokenBOracle: address(0),
-            tokenBFunctionSig: ""
+            tokenBRateFunctionSig: new bytes(0),
+            tokenBDecimalsFunctionSig: new bytes(0)
         });
 
         vm.recordLogs();
@@ -102,7 +105,7 @@ contract FactoryTest is Test {
 
         selfPeggingAsset.mint(amounts, 0);
 
-        assertEq(poolToken.balanceOf(initialMinter), 200e18);
+        assertEq(poolToken.balanceOf(initialMinter), 200e18 - 1000 wei);
         assertNotEq(address(wrappedPoolToken), address(0));
     }
 
@@ -121,10 +124,12 @@ contract FactoryTest is Test {
             tokenB: address(vaultTokenB),
             tokenAType: SelfPeggingAssetFactory.TokenType.ERC4626,
             tokenAOracle: address(0),
-            tokenAFunctionSig: "",
+            tokenARateFunctionSig: new bytes(0),
+            tokenADecimalsFunctionSig: new bytes(0),
             tokenBType: SelfPeggingAssetFactory.TokenType.ERC4626,
             tokenBOracle: address(0),
-            tokenBFunctionSig: ""
+            tokenBRateFunctionSig: new bytes(0),
+            tokenBDecimalsFunctionSig: new bytes(0)
         });
 
         vm.recordLogs();
@@ -170,7 +175,7 @@ contract FactoryTest is Test {
 
         selfPeggingAsset.mint(amounts, 0);
 
-        assertEq(poolToken.balanceOf(initialMinter), 200e18);
+        assertEq(poolToken.balanceOf(initialMinter), 200e18 - 1000 wei);
         assertNotEq(address(wrappedPoolToken), address(0));
     }
 
@@ -185,10 +190,12 @@ contract FactoryTest is Test {
             tokenB: address(tokenB),
             tokenAType: SelfPeggingAssetFactory.TokenType.Oracle,
             tokenAOracle: address(oracle),
-            tokenAFunctionSig: "rate",
+            tokenARateFunctionSig: abi.encodePacked(MockOracle.rate.selector),
+            tokenADecimalsFunctionSig: abi.encodePacked(MockOracle.decimals.selector),
             tokenBType: SelfPeggingAssetFactory.TokenType.Oracle,
             tokenBOracle: address(oracle),
-            tokenBFunctionSig: "rate"
+            tokenBRateFunctionSig: abi.encodePacked(MockOracle.rate.selector),
+            tokenBDecimalsFunctionSig: abi.encodePacked(MockOracle.decimals.selector)
         });
 
         vm.recordLogs();
@@ -228,7 +235,7 @@ contract FactoryTest is Test {
 
         selfPeggingAsset.mint(amounts, 0);
 
-        assertEq(poolToken.balanceOf(initialMinter), 200e18);
+        assertEq(poolToken.balanceOf(initialMinter), 200e18 - 1000 wei);
         assertNotEq(address(wrappedPoolToken), address(0));
     }
 }

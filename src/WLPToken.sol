@@ -8,7 +8,7 @@ import "./interfaces/ILPToken.sol";
 
 /**
  * @title LPToken token wrapper with static balances.
- * @dev It's an ERC20 token that represents the account's share of the total
+ * @dev It's an ERC4626 standard token that represents the account's share of the total
  * supply of lpToken tokens. WLPToken token's balance only changes on transfers,
  * unlike lpToken that is also changed when staking rewards and swap fee are generated.
  * It's a "power user" token for DeFi protocols which don't
@@ -16,9 +16,6 @@ import "./interfaces/ILPToken.sol";
  * The contract is also a trustless wrapper that accepts lpToken tokens and mints
  * wlpToken in return. Then the user unwraps, the contract burns user's wlpToken
  * and sends user locked lpToken in return.
- * The contract provides the staking shortcut: user can send ETH with regular
- * transfer and get wlpToken in return. The contract will send ETH to Tapio
- * staking it and wrapping the received lpToken.
  *
  */
 contract WLPToken is ERC4626Upgradeable {
@@ -28,9 +25,10 @@ contract WLPToken is ERC4626Upgradeable {
     error InsufficientAllowance();
 
     function initialize(ILPToken _lpToken) public initializer {
-        __ERC20_init("Wrapped LP Token", "wlpToken");
-        __ERC4626_init(IERC20(address(_lpToken)));
         lpToken = _lpToken;
+
+        __ERC20_init(name(), symbol());
+        __ERC4626_init(IERC20(address(_lpToken)));
     }
 
     /**
@@ -101,6 +99,22 @@ contract WLPToken is ERC4626Upgradeable {
         }
         _burn(owner, shares);
         lpToken.transfer(receiver, assets);
+    }
+
+    /**
+     * @dev Returns the name of the token.
+     * @return The name of the token.
+     */
+    function name() public view override(ERC20Upgradeable, IERC20Metadata) returns (string memory) {
+        return string(abi.encodePacked("Wrapped ", lpToken.name()));
+    }
+
+    /**
+     * @dev Returns the symbol of the token.
+     * @return The symbol of the token.
+     */
+    function symbol() public view override(ERC20Upgradeable, IERC20Metadata) returns (string memory) {
+        return string(abi.encodePacked("w", lpToken.symbol()));
     }
 
     /**

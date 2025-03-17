@@ -15,8 +15,7 @@ import "./interfaces/ILPToken.sol";
  * @author Nuts Finance Developer
  * @notice The SelfPeggingAsset pool provides a way to swap between different tokens
  * @dev The SelfPeggingAsset contract allows users to trade between different tokens, with prices determined
- * algorithmically
- * based on the current supply and demand of each token
+ * algorithmically based on the current supply and demand of each token
  */
 contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
@@ -85,6 +84,12 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * redeemFee = redeemFee * FEE_DENOMINATOR
      */
     uint256 public redeemFee;
+
+    /**
+     * @dev This is the off peg fee multiplier.
+     * offPegFeeMultiplier = offPegFeeMultiplier * FEE_DENOMINATOR
+     */
+    uint256 public offPegFeeMultiplier;
 
     /**
      * @dev This is the address of the ERC20 token contract that represents the SelfPeggingAsset pool token.
@@ -176,11 +181,10 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
     /**
      * @dev This event is emitted when yield is collected by the SelfPeggingAsset contract.
-     * @param amounts is an array containing the amounts of each token the yield receives.
      * @param feeAmount is the amount of yield collected.
      * @param totalSupply is the total supply of LP token.
      */
-    event YieldCollected(uint256[] amounts, uint256 feeAmount, uint256 totalSupply);
+    event YieldCollected(uint256 feeAmount, uint256 totalSupply);
 
     /**
      * @dev This event is emitted when the A parameter is modified.
@@ -205,6 +209,12 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @param redeemFee is the new value of the redeem fee.
      */
     event RedeemFeeModified(uint256 redeemFee);
+
+    /**
+     * @dev This event is emitted when the off peg fee multiplier is modified.
+     * @param offPegFeeMultiplier is the new value of the off peg fee multiplier.
+     */
+    event OffPegFeeMultiplierModified(uint256 offPegFeeMultiplier);
 
     /**
      * @dev This event is emitted when the fee margin is modified.
@@ -287,9 +297,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /// @notice Error thrown when the block number is an past block
     error PastBlock();
 
-    /// @notice Error thrown when the pool is imbalanced
-    error PoolImbalanced();
-
     /// @notice Error thrown when there is no loss
     error NoLosses();
 
@@ -322,6 +329,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @param _tokens The tokens in the pool.
      * @param _precisions The precisions of each token (10 ** (18 - token decimals)).
      * @param _fees The fees for minting, swapping, and redeeming.
+     * @param _offPegFeeMultiplier The off peg fee multiplier.
      * @param _poolToken The address of the pool token.
      * @param _A The initial value of the amplification coefficient A for the pool.
      */
@@ -329,6 +337,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         address[] memory _tokens,
         uint256[] memory _precisions,
         uint256[] memory _fees,
+        uint256 _offPegFeeMultiplier,
         ILPToken _poolToken,
         uint256 _A,
         IExchangeRateProvider[] memory _exchangeRateProviders
@@ -370,6 +379,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         redeemFee = _fees[2];
         poolToken = _poolToken;
         exchangeRateProviders = _exchangeRateProviders;
+        offPegFeeMultiplier = _offPegFeeMultiplier;
 
         A = _A;
         feeErrorMargin = DEFAULT_FEE_ERROR_MARGIN;
@@ -413,7 +423,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
         uint256 feeAmount = 0;
         if (mintFee > 0) {
-            feeAmount = (mintAmount * mintFee) / FEE_DENOMINATOR;
+            uint256 dynamicFee = oldD == 0 ? mintFee : _dynamicFee(oldD, newD, mintFee);
+            feeAmount = (mintAmount * dynamicFee) / FEE_DENOMINATOR;
             mintAmount = mintAmount - feeAmount;
         }
         if (mintAmount < _minMintAmount) {
@@ -454,6 +465,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
         collectFeeOrYield(false);
         uint256[] memory _balances = balances;
+        uint256 prevBalanceI = _balances[_i];
         uint256 balanceAmount = _dx;
         balanceAmount = (balanceAmount * exchangeRateProviders[_i].exchangeRate())
             / (10 ** exchangeRateProviders[_i].exchangeRateDecimals());
@@ -468,7 +480,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
         uint256 feeAmount = 0;
         if (swapFee > 0) {
-            feeAmount = (dy * swapFee) / FEE_DENOMINATOR;
+            uint256 dynamicFee = _dynamicFee(prevBalanceI, _balances[_j], swapFee);
+            feeAmount = (dy * dynamicFee) / FEE_DENOMINATOR;
             dy = dy - feeAmount;
         }
         _minDy = (_minDy * exchangeRateProviders[_j].exchangeRate())
@@ -649,7 +662,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 redeemAmount = oldD - newD;
         uint256 feeAmount = 0;
         if (redeemFee > 0) {
-            redeemAmount = (redeemAmount * FEE_DENOMINATOR) / (FEE_DENOMINATOR - redeemFee);
+            uint256 dynamicFee = _dynamicFee(oldD, newD, redeemFee);
+            redeemAmount = (redeemAmount * FEE_DENOMINATOR) / (FEE_DENOMINATOR - dynamicFee);
             feeAmount = redeemAmount - (oldD - newD);
         }
         if (redeemAmount > _maxRedeemAmount) {
@@ -701,6 +715,15 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     }
 
     /**
+     * @dev Updates the off peg fee multiplier.
+     * @param _offPegFeeMultiplier The new off peg fee multiplier.
+     */
+    function setOffPegFeeMultiplier(uint256 _offPegFeeMultiplier) external onlyOwner {
+        offPegFeeMultiplier = _offPegFeeMultiplier;
+        emit OffPegFeeMultiplierModified(_offPegFeeMultiplier);
+    }
+
+    /**
      * @dev Pause mint/swap/redeem actions. Can unpause later.
      */
     function pause() external {
@@ -743,7 +766,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
         if (totalSupply > newD) {
             // A decreased
-            poolToken.removeTotalSupply(totalSupply - newD);
+            poolToken.removeTotalSupply(totalSupply - newD, true, false);
         }
 
         if (newD > totalSupply) {
@@ -818,7 +841,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     }
 
     /**
-     * @dev Distribute losses
+     * @dev Distribute losses by rebasing negatively
      */
     function distributeLoss() external onlyOwner {
         require(paused, NotPaused());
@@ -835,7 +858,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 newD = _getD(_balances);
 
         require(newD < oldD, NoLosses());
-        poolToken.removeTotalSupply(oldD - newD);
+        poolToken.removeTotalSupply(oldD - newD, false, false);
+
         balances = _balances;
         totalSupply = newD;
     }
@@ -856,7 +880,10 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         }
         uint256 newD = _getD(_balances);
 
-        if (oldD > newD) {
+        if (oldD == newD) {
+            return 0;
+        } else if (oldD > newD) {
+            poolToken.removeTotalSupply(oldD - newD, true, true);
             return 0;
         } else {
             balances = _balances;
@@ -877,7 +904,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     function getRedeemSingleAmount(uint256 _amount, uint256 _i) external view returns (uint256, uint256) {
         uint256[] memory _balances;
         uint256 _totalSupply;
-        (_balances, _totalSupply) = getPendingYieldAmount();
+        (_balances, _totalSupply) = getUpdatedBalancesAndD();
 
         require(_amount > 0, ZeroAmount());
         require(_i < _balances.length, InvalidToken());
@@ -909,7 +936,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     function getRedeemMultiAmount(uint256[] calldata _amounts) external view returns (uint256, uint256) {
         uint256[] memory _balances;
         uint256 _totalSupply;
-        (_balances, _totalSupply) = getPendingYieldAmount();
+        (_balances, _totalSupply) = getUpdatedBalancesAndD();
         require(_amounts.length == balances.length, InputMismatch());
 
         uint256 oldD = _totalSupply;
@@ -943,7 +970,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     function getMintAmount(uint256[] calldata _amounts) external view returns (uint256, uint256) {
         uint256[] memory _balances;
         uint256 _totalSupply;
-        (_balances, _totalSupply) = getPendingYieldAmount();
+        (_balances, _totalSupply) = getUpdatedBalancesAndD();
         require(_amounts.length == _balances.length, InvalidAmount());
 
         uint256 oldD = _totalSupply;
@@ -962,7 +989,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 feeAmount = 0;
 
         if (mintFee > 0) {
-            feeAmount = (mintAmount * mintFee) / FEE_DENOMINATOR;
+            uint256 dynamicFee = _dynamicFee(oldD, newD, mintFee);
+            feeAmount = (mintAmount * dynamicFee) / FEE_DENOMINATOR;
             mintAmount = mintAmount - feeAmount;
         }
 
@@ -980,12 +1008,13 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     function getSwapAmount(uint256 _i, uint256 _j, uint256 _dx) external view returns (uint256, uint256) {
         uint256[] memory _balances;
         uint256 _totalSupply;
-        (_balances, _totalSupply) = getPendingYieldAmount();
+        (_balances, _totalSupply) = getUpdatedBalancesAndD();
         require(_i != _j, SameToken());
         require(_i < _balances.length, InvalidIn());
         require(_j < _balances.length, InvalidOut());
         require(_dx > 0, InvalidAmount());
 
+        uint256 prevBalanceI = _balances[_i];
         uint256 D = _totalSupply;
         uint256 balanceAmount = _dx;
         balanceAmount = (balanceAmount * exchangeRateProviders[_i].exchangeRate())
@@ -998,7 +1027,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 feeAmount = 0;
 
         if (swapFee > 0) {
-            feeAmount = (dy * swapFee) / FEE_DENOMINATOR;
+            uint256 dynamicFee = _dynamicFee(prevBalanceI, _balances[_j], swapFee);
+            feeAmount = (dy * dynamicFee) / FEE_DENOMINATOR;
             dy = dy - feeAmount;
         }
 
@@ -1021,7 +1051,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     function getRedeemProportionAmount(uint256 _amount) external view returns (uint256[] memory, uint256) {
         uint256[] memory _balances;
         uint256 _totalSupply;
-        (_balances, _totalSupply) = getPendingYieldAmount();
+        (_balances, _totalSupply) = getUpdatedBalancesAndD();
         require(_amount != 0, ZeroAmount());
 
         uint256 D = _totalSupply;
@@ -1059,7 +1089,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @return The amount of fee or yield collected.
      */
     function collectFeeOrYield(bool isFee) internal returns (uint256) {
-        uint256[] memory oldBalances = balances;
         uint256[] memory _balances = balances;
         uint256 oldD = totalSupply;
 
@@ -1074,19 +1103,19 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         balances = _balances;
         totalSupply = newD;
 
-        if (isFee) {
-            if (oldD > newD && (oldD - newD) < feeErrorMargin) {
+        if (oldD > newD) {
+            uint256 delta = oldD - newD;
+            uint256 margin = isFee ? feeErrorMargin : yieldErrorMargin;
+
+            if (delta < margin) {
                 return 0;
-            } else if (oldD > newD) {
-                revert ImbalancedPool(oldD, newD);
             }
-        } else {
-            if (oldD > newD && (oldD - newD) < yieldErrorMargin) {
-                return 0;
-            } else if (oldD > newD) {
-                revert ImbalancedPool(oldD, newD);
-            }
+
+            // Cover losses using the buffer
+            poolToken.removeTotalSupply(delta, true, true);
+            return 0;
         }
+
         uint256 feeAmount = newD - oldD;
         if (feeAmount == 0) {
             return 0;
@@ -1096,14 +1125,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         if (isFee) {
             emit FeeCollected(feeAmount, totalSupply);
         } else {
-            uint256[] memory amounts = new uint256[](_balances.length);
-            for (uint256 i = 0; i < _balances.length; i++) {
-                uint256 amount = _balances[i] - oldBalances[i];
-                amount = (amount * (10 ** exchangeRateProviders[i].exchangeRateDecimals()))
-                    / exchangeRateProviders[i].exchangeRate();
-                amounts[i] = amount / precisions[i];
-            }
-            emit YieldCollected(amounts, feeAmount, totalSupply);
+            emit YieldCollected(feeAmount, totalSupply);
         }
         return feeAmount;
     }
@@ -1113,7 +1135,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @return The balances of underlying tokens.
      * @return The total supply of pool tokens.
      */
-    function getPendingYieldAmount() internal view returns (uint256[] memory, uint256) {
+    function getUpdatedBalancesAndD() internal view returns (uint256[] memory, uint256) {
         uint256[] memory _balances = balances;
 
         for (uint256 i = 0; i < _balances.length; i++) {
@@ -1212,5 +1234,24 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             revert("doesn't converge");
         }
         return y;
+    }
+
+    /**
+     * @dev Calculates the dynamic fee based on liquidity imbalances.
+     * @param xpi The liquidity before or first asset liqidity.
+     * @param xpj The liqduity after or second asset liquidity.
+     * @param _fee The base fee value.
+     * @return The dynamically adjusted fee.
+     */
+    function _dynamicFee(uint256 xpi, uint256 xpj, uint256 _fee) internal view returns (uint256) {
+        uint256 _offpegFeeMultiplier = offPegFeeMultiplier;
+
+        if (_offpegFeeMultiplier <= FEE_DENOMINATOR) {
+            return _fee;
+        }
+
+        uint256 xps2 = (xpi + xpj) * (xpi + xpj);
+        return (_offpegFeeMultiplier * _fee)
+            / (((_offpegFeeMultiplier - FEE_DENOMINATOR) * 4 * xpi * xpj) / xps2 + FEE_DENOMINATOR);
     }
 }

@@ -34,6 +34,11 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     uint256 public constant BUFFER_DENOMINATOR = 10 ** 10;
 
     /**
+     * @dev Constant value representing the number of dead shares.
+     */
+    uint256 public constant NUMBER_OF_DEAD_SHARES = 1000;
+
+    /**
      * @dev The total amount of shares.
      */
     uint256 public totalShares;
@@ -56,7 +61,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     /**
      * @dev The mapping of account allowances.
      */
-    mapping(address => mapping(address => uint256)) public allowances;
+    mapping(address => mapping(address => uint256)) private allowances;
 
     /**
      * @dev The mapping of pools.
@@ -82,6 +87,11 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * @dev The token symbol.
      */
     string internal tokenSymbol;
+
+    /**
+     * @dev The bad debt of the buffer.
+     */
+    uint256 public bufferBadDebt;
 
     /**
      * @notice Emitted when shares are transferred.
@@ -129,6 +139,11 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     event BufferDecreased(uint256, uint256);
 
     /**
+     * @notice Emitted when there is negative rebase.
+     */
+    event NegativelyRebased(uint256, uint256);
+
+    /**
      * @notice Emitted when the symbol is modified.
      */
     event SymbolModified(string);
@@ -171,6 +186,9 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
 
     /// @notice Error thrown when the pool is not found.
     error PoolNotFound();
+
+    /// @notice Error thrown when the supply is insufficient.
+    error InsufficientSupply();
 
     function initialize(string memory _name, string memory _symbol) public initializer {
         tokenName = _name;
@@ -338,6 +356,20 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     function addTotalSupply(uint256 _amount) external {
         require(pools[msg.sender], NoPool());
         require(_amount != 0, InvalidAmount());
+
+        if (bufferBadDebt >= _amount) {
+            bufferBadDebt -= _amount;
+            bufferAmount += _amount;
+            emit BufferIncreased(_amount, bufferAmount);
+            return;
+        }
+
+        uint256 prevAmount = _amount;
+        uint256 prevBufferBadDebt = bufferBadDebt;
+        _amount = _amount - bufferBadDebt;
+        bufferAmount += bufferBadDebt;
+        bufferBadDebt = 0;
+
         uint256 _deltaBuffer = (bufferPercent * _amount) / BUFFER_DENOMINATOR;
         uint256 actualAmount = _amount - _deltaBuffer;
 
@@ -345,22 +377,33 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
         totalRewards += actualAmount;
         bufferAmount += _deltaBuffer;
 
-        emit BufferIncreased(_deltaBuffer, bufferAmount);
-        emit RewardsMinted(_amount, actualAmount);
+        emit BufferIncreased(_deltaBuffer + prevBufferBadDebt, bufferAmount);
+        emit RewardsMinted(prevAmount, actualAmount);
     }
 
     /**
      * @notice This function is called only by a stableSwap pool to decrease
      * the total supply of LPToken by lost amount.
+     * @param _amount The amount of lost tokens.
+     * @param isBuffer The flag to indicate whether to use the buffer or not.
+     * @param withDebt The flag to indicate whether to add the lost amount to the buffer bad debt or not.
      */
-    function removeTotalSupply(uint256 _amount) external {
+    function removeTotalSupply(uint256 _amount, bool isBuffer, bool withDebt) external {
         require(pools[msg.sender], NoPool());
         require(_amount != 0, InvalidAmount());
-        require(_amount <= bufferAmount, InsufficientBuffer());
 
-        bufferAmount -= _amount;
-
-        emit BufferDecreased(_amount, bufferAmount);
+        if (isBuffer) {
+            require(_amount <= bufferAmount, InsufficientBuffer());
+            bufferAmount -= _amount;
+            if (withDebt) {
+                bufferBadDebt += _amount;
+            }
+            emit BufferDecreased(_amount, bufferAmount);
+        } else {
+            require(_amount <= totalSupply, InsufficientSupply());
+            totalSupply -= _amount;
+            emit NegativelyRebased(_amount, totalSupply);
+        }
     }
 
     /**
@@ -537,7 +580,9 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
         if (totalSupply != 0 && totalShares != 0) {
             _sharesAmount = getSharesByPeggedToken(_tokenAmount);
         } else {
-            _sharesAmount = _tokenAmount;
+            _sharesAmount = totalSupply + _tokenAmount - NUMBER_OF_DEAD_SHARES;
+            shares[address(0)] = NUMBER_OF_DEAD_SHARES;
+            totalShares += NUMBER_OF_DEAD_SHARES;
         }
         shares[_recipient] += _sharesAmount;
         totalShares += _sharesAmount;

@@ -25,7 +25,7 @@ interface ILPToken is IERC20 {
     function addTotalSupply(uint256 _amount) external;
 
     /// @dev Remove the amount from the total supply
-    function removeTotalSupply(uint256 _amount) external;
+    function removeTotalSupply(uint256 _amount, bool isBuffer, bool withDebt) external;
 
     /// @dev Transfer the shares to the recipient
     function transferShares(address _recipient, uint256 _sharesAmount) external returns (uint256);
@@ -50,6 +50,12 @@ interface ILPToken is IERC20 {
 
     // @dev Add to buffer
     function addBuffer(uint256 _amount) external;
+
+    /// @dev Name of the token
+    function name() external view returns (string memory);
+
+    /// @dev Symbol of the token
+    function symbol() external view returns (string memory);
 
     /// @dev Get the total amount of shares
     function totalShares() external view returns (uint256);

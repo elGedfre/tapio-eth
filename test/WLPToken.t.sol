@@ -65,7 +65,7 @@ contract WLPTokenTest is Test {
         // Assertions
         assertEq(lpToken.totalSupply(), targetTotalSupply);
         assertEq(lpToken.totalShares(), amount1);
-        assertEq(lpToken.sharesOf(user), amount1 - wlpTokenTargetAmount);
+        assertEq(lpToken.sharesOf(user), amount1 - wlpTokenTargetAmount - lpToken.NUMBER_OF_DEAD_SHARES());
         assertEq(lpToken.sharesOf(address(wlpToken)), wlpTokenTargetAmount);
         assertEq(lpToken.balanceOf(address(wlpToken)), amountToWrap);
         assertEq(wlpToken.balanceOf(user), wlpTokenTargetAmount);
@@ -106,7 +106,7 @@ contract WLPTokenTest is Test {
         // Assertions
         assertEq(lpToken.totalSupply(), targetTotalSupply);
         assertEq(lpToken.totalShares(), amount1);
-        assertEq(lpToken.sharesOf(user), amount1);
+        assertEq(lpToken.sharesOf(user), amount1 - lpToken.NUMBER_OF_DEAD_SHARES());
         assertEq(lpToken.sharesOf(address(wlpToken)), 0);
         assertEq(lpToken.balanceOf(address(wlpToken)), 0);
         assertEq(wlpToken.balanceOf(user), 0);
@@ -149,7 +149,7 @@ contract WLPTokenTest is Test {
         // Assertions
         assertEq(lpToken.totalSupply(), targetTotalSupply);
         assertEq(lpToken.totalShares(), amount1);
-        assertEq(lpToken.sharesOf(user), amount1);
+        assertEq(lpToken.sharesOf(user), amount1 - lpToken.NUMBER_OF_DEAD_SHARES());
         assertEq(lpToken.sharesOf(address(wlpToken)), 0);
         assertEq(lpToken.balanceOf(address(wlpToken)), 0);
         assertEq(wlpToken.balanceOf(user), 0);
