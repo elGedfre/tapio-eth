@@ -32,8 +32,26 @@ contract Config is Script {
 
     function loadConfig() internal {
         if (!testnet) {
-            usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-            usdt = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+            // POPULATE ADDRESSES BASED ON CHAIN ID
+            // usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+            // usdt = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
         }
+    }
+
+    function getNetworkName(uint256 chainId) internal view returns (string memory) {
+        if (chainId == 84_532) {
+            return "basesepolia";
+        } else if (chainId == 421_614) {
+            return "arbitrumsepolia";
+        } else if (chainId == 11_155_420) {
+            return "opsepolia";
+        } else if (chainId == 10_143) {
+            return "monadtestnet";
+        }
+    }
+
+    function getChainId() public view returns (uint256) {
+        uint256 chainId = block.chainid;
+        return chainId;
     }
 }

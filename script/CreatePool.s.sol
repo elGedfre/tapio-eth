@@ -26,11 +26,8 @@ contract Testnet is Deploy, Setup, Pool {
 
         string memory root = vm.projectRoot();
         string memory path;
-        if (testnet) {
-            path = string.concat(root, "/broadcast/testnet.json");
-        } else {
-            path = string.concat(root, "/broadcast/mainnet.json");
-        }
+        string memory networkName = getNetworkName(getChainId());
+        path = string.concat(root, "/broadcast/", networkName, ".json");
 
         string memory json = vm.readFile(path);
         bytes memory data = vm.parseJson(json);

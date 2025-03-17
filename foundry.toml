@@ -48,3 +48,6 @@
   polygon = "https://polygon-mainnet.infura.io/v3/${API_KEY_INFURA}"
   sepolia = "https://sepolia.infura.io/v3/${API_KEY_INFURA}"
   basesepolia = "https://sepolia.base.org"
+  arbitrumsepolia = "https://sepolia-rollup.arbitrum.io/rpc"
+  optimismsepolia = "https://sepolia.optimism.io"
+  monadtestnet = "https://testnet-rpc.monad.xyz"
