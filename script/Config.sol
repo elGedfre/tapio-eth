@@ -39,15 +39,13 @@ contract Config is Script {
     }
 
     function getNetworkName(uint256 chainId) internal view returns (string memory) {
-        if (chainId == 84_532) {
-            return "basesepolia";
-        } else if (chainId == 421_614) {
-            return "arbitrumsepolia";
-        } else if (chainId == 11_155_420) {
-            return "opsepolia";
-        } else if (chainId == 10_143) {
-            return "monadtestnet";
-        }
+        if (chainId == 84_532) return "basesepolia";
+        else if (chainId == 421_614) return "arbitrumsepolia";
+        else if (chainId == 11_155_420) return "opsepolia";
+        else if (chainId == 10_143) return "monadtestnet";
+        else if (chainId == 80_069) return "bera-bepolia";
+        else if (chainId == 998) return "hyper-testnet";
+        else revert("Invalid chain ID");
     }
 
     function getChainId() public view returns (uint256) {
