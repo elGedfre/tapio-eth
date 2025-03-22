@@ -639,7 +639,7 @@ contract SelfPeggingAssetTest is Test {
         _pool.pause();
         _pool.distributeLoss();
 
-        assertIsCloseTo(_lpToken.totalSupply(), 113e18, 1e18);
+        assertIsCloseTo(_lpToken.totalSupply(), 115e18, 1e18);
 
         // Recover bad debt
         assertNotEq(_lpToken.bufferBadDebt(), 0);
