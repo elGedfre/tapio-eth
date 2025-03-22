@@ -433,10 +433,23 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 mintAmount = newD - oldD;
 
         uint256 feeAmount = 0;
-        if (mintFee > 0) {
-            uint256 dynamicFee = oldD == 0 ? mintFee : _dynamicFee(oldD, newD, mintFee);
-            feeAmount = (mintAmount * dynamicFee) / FEE_DENOMINATOR;
-            mintAmount = mintAmount - feeAmount;
+        uint256 ys = (newD + oldD) / _balances.length;
+        if (mintFee > 0 && oldD != 0) {
+            for (i = 0; i < _balances.length; i++) {
+                uint256 idealBalance = newD * balances[i] / oldD;
+                uint256 difference = 0;
+
+                if (idealBalance > _balances[i]) {
+                    difference = idealBalance - _balances[i];
+                } else {
+                    difference = _balances[i] - idealBalance;
+                }
+
+                uint256 xs = ((balances[i] + _balances[i]) * exchangeRateProviders[i].exchangeRate())
+                    / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
+                uint256 dynamicFee = _dynamicFee(xs, ys, mintFee);
+                mintAmount = mintAmount - ((difference * dynamicFee) / FEE_DENOMINATOR);
+            }
         }
         if (mintAmount < _minMintAmount) {
             revert InsufficientMintAmount(mintAmount, _minMintAmount);
@@ -1000,11 +1013,26 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         // newD should be bigger than or equal to oldD
         uint256 mintAmount = newD - oldD;
         uint256 feeAmount = 0;
+        uint256 ys = (newD + oldD) / _balances.length;
 
-        if (mintFee > 0) {
-            uint256 dynamicFee = _dynamicFee(oldD, newD, mintFee);
-            feeAmount = (mintAmount * dynamicFee) / FEE_DENOMINATOR;
-            mintAmount = mintAmount - feeAmount;
+        if (mintFee > 0 && oldD != 0) {
+            for (i = 0; i < _balances.length; i++) {
+                uint256 idealBalance = newD * balances[i] / oldD;
+                uint256 difference = 0;
+
+                if (idealBalance > _balances[i]) {
+                    difference = idealBalance - _balances[i];
+                } else {
+                    difference = _balances[i] - idealBalance;
+                }
+
+                uint256 xs = ((balances[i] + _balances[i]) * exchangeRateProviders[i].exchangeRate())
+                    / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
+                uint256 dynamicFee = _dynamicFee(xs, ys, mintFee);
+                uint256 fee = (difference * dynamicFee) / FEE_DENOMINATOR;
+                mintAmount = mintAmount - fee;
+                feeAmount += fee;
+            }
         }
 
         return (mintAmount, feeAmount);

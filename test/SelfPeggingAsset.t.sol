@@ -91,8 +91,6 @@ contract SelfPeggingAssetTest is Test {
         uint256 totalAmount = lpTokensMinted + feesCharged;
         assertEq(totalAmount, 200e18);
 
-        assertFee(totalAmount, feesCharged, mintFee);
-
         assertEq(100e18, WETH.balanceOf(user));
         assertEq(100e18, frxETH.balanceOf(user));
         assertEq(0, lpToken.balanceOf(user));
@@ -108,16 +106,6 @@ contract SelfPeggingAssetTest is Test {
         assertIsCloseTo(totalAmount, lpToken.balanceOf(user) + lpToken.NUMBER_OF_DEAD_SHARES(), 2 wei);
         assertEq(lpTokensMinted, lpToken.sharesOf(user) + lpToken.NUMBER_OF_DEAD_SHARES());
         assertEq(totalAmount, lpToken.totalSupply());
-    }
-
-    function test_CorrectMintAmount_UnequalTokenAmounts() external view {
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = 110e18;
-        amounts[1] = 90e18;
-
-        (uint256 lpTokensMinted, uint256 feesCharged) = pool.getMintAmount(amounts);
-
-        assertFee(lpTokensMinted + feesCharged, feesCharged, mintFee);
     }
 
     function test_Pegging_UnderlyingToken() external {
@@ -669,9 +657,32 @@ contract SelfPeggingAssetTest is Test {
         assertEq(_lpToken.bufferBadDebt(), 0);
     }
 
-    function assertFee(uint256 totalAmount, uint256 feeAmount, uint256 fee) internal view {
-        uint256 expectedFee = totalAmount * fee / feeDenominator;
-        assertEq(feeAmount, expectedFee);
+    function test_MintDynamicFee() external {
+        WETH.mint(user, 105e18);
+        frxETH.mint(user, 85e18);
+
+        vm.startPrank(user);
+        WETH.approve(address(pool), 105e18);
+        frxETH.approve(address(pool), 85e18);
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 105e18;
+        amounts[1] = 85e18;
+
+        pool.mint(amounts, 0);
+
+        WETH.mint(user, 100e18);
+        frxETH.mint(user, 100e18);
+
+        WETH.approve(address(pool), 100e18);
+        frxETH.approve(address(pool), 100e18);
+
+        amounts = new uint256[](2);
+        amounts[0] = 100e18;
+        amounts[1] = 100e18;
+
+        uint256 minted = pool.mint(amounts, 0);
+        assertEq(minted, 199.981683679524876704e18);
     }
 
     function assertAlmostTheSame(uint256 num1, uint256 num2) internal view {
