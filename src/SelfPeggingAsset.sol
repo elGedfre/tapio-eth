@@ -404,6 +404,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256[] memory _balances = balances;
         uint256 oldD = totalSupply;
         uint256 i = 0;
+        uint256 totalAmount;
         for (i = 0; i < _balances.length; i++) {
             if (_amounts[i] < INITIAL_MINT_MIN) {
                 // Initial deposit requires all tokens provided!
@@ -412,11 +413,17 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             if (_amounts[i] == 0) {
                 continue;
             }
+            totalAmount += _amounts[i];
             uint256 balanceAmount = _amounts[i];
             balanceAmount = (balanceAmount * exchangeRateProviders[i].exchangeRate())
                 / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
             _balances[i] = _balances[i] + (balanceAmount * precisions[i]);
         }
+
+        if (totalAmount == 0) {
+            revert ZeroAmount();
+        }
+
         uint256 newD = _getD(_balances);
         // newD should be bigger than or equal to oldD
         uint256 mintAmount = newD - oldD;
