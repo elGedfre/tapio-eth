@@ -99,16 +99,6 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     event TransferShares(address indexed from, address indexed to, uint256 sharesValue);
 
     /**
-     * @notice Emitted when shares are minted.
-     */
-    event SharesMinted(address indexed account, uint256 tokenAmount, uint256 sharesAmount);
-
-    /**
-     * @notice Emitted when shares are burnt.
-     */
-    event SharesBurnt(address indexed account, uint256 tokenAmount, uint256 sharesAmount);
-
-    /**
      * @notice Emitted when rewards are minted.
      */
     event RewardsMinted(uint256 amount, uint256 actualAmount);
@@ -589,7 +579,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
         newTotalShares = totalShares;
         totalSupply += _tokenAmount;
 
-        emit SharesMinted(_recipient, _tokenAmount, _sharesAmount);
+        _emitTransferAfterMintingShares(_recipient, _sharesAmount);
     }
 
     /**
@@ -609,7 +599,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
         newTotalShares = totalShares;
         totalSupply -= _tokenAmount;
 
-        emit SharesBurnt(_account, _tokenAmount, _sharesAmount);
+        _emitTransferAfterBurningShares(_account, _sharesAmount);
     }
 
     /**
@@ -625,6 +615,13 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      */
     function _emitTransferAfterMintingShares(address _to, uint256 _sharesAmount) internal {
         _emitTransferEvents(address(0), _to, getPeggedTokenByShares(_sharesAmount), _sharesAmount);
+    }
+
+    /**
+     * @notice Emits Transfer and TransferShares events after burning shares.
+     */
+    function _emitTransferAfterBurningShares(address _from, uint256 _sharesAmount) internal {
+        _emitTransferEvents(_from, address(0), getPeggedTokenByShares(_sharesAmount), _sharesAmount);
     }
 
     /**
