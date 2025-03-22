@@ -1068,7 +1068,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 feeAmount = 0;
 
         if (swapFee > 0) {
-            uint256 dynamicFee = _dynamicFee(prevBalanceI, _balances[_j], swapFee);
+            uint256 dynamicFee = _dynamicFee((prevBalanceI + _balances[_i]) / 2, (_balances[_j] + y) / 2, swapFee);
             feeAmount = (dy * dynamicFee) / FEE_DENOMINATOR;
             dy = dy - feeAmount;
         }
