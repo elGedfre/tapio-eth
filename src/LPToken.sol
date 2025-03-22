@@ -180,6 +180,10 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     /// @notice Error thrown when the supply is insufficient.
     error InsufficientSupply();
 
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(string memory _name, string memory _symbol) public initializer {
         tokenName = _name;
         tokenSymbol = _symbol;

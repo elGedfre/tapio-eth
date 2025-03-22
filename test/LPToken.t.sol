@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import "forge-std/Test.sol";
 import "../src/LPToken.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract LPTokenTest is Test {
     LPToken public lpToken;
@@ -21,8 +22,11 @@ contract LPTokenTest is Test {
         user2 = makeAddr("user2");
         user3 = makeAddr("user3");
 
-        lpToken = new LPToken();
-        lpToken.initialize("Tapio ETH", "lpToken");
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("Tapio ETH", "lpToken"));
+
+        ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), data);
+
+        lpToken = LPToken(address(proxy));
         lpToken.transferOwnership(governance);
     }
 

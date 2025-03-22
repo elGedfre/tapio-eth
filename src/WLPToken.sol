@@ -24,6 +24,10 @@ contract WLPToken is ERC4626Upgradeable {
     error ZeroAmount();
     error InsufficientAllowance();
 
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(ILPToken _lpToken) public initializer {
         lpToken = _lpToken;
 

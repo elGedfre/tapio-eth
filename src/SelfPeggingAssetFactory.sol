@@ -163,6 +163,10 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
     /// @dev Error thrown when the function signature is invalid
     error InvalidFunctionSig();
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /**
      * @dev Initializes the StableSwap Application contract.
      */

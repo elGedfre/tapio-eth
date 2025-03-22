@@ -15,6 +15,7 @@ import { WLPToken } from "../src/WLPToken.sol";
 import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import "../src/misc/ConstantExchangeRateProvider.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract FactoryTest is Test {
     SelfPeggingAssetFactory internal factory;
@@ -22,8 +23,6 @@ contract FactoryTest is Test {
     address initialMinter = address(0x02);
 
     function setUp() public virtual {
-        factory = new SelfPeggingAssetFactory();
-
         address selfPeggingAssetImplentation = address(new SelfPeggingAsset());
         address lpTokenImplentation = address(new LPToken());
         address wlpTokenImplentation = address(new WLPToken());
@@ -37,18 +36,23 @@ contract FactoryTest is Test {
         beacon = new UpgradeableBeacon(wlpTokenImplentation, governor);
         address wlpTokenBeacon = address(beacon);
 
-        factory.initialize(
-            governor,
-            0,
-            0,
-            0,
-            0,
-            100,
-            selfPeggingAssetBeacon,
-            lpTokenBeacon,
-            wlpTokenBeacon,
-            new ConstantExchangeRateProvider()
+        bytes memory data = abi.encodeCall(
+            SelfPeggingAssetFactory.initialize,
+            (
+                governor,
+                0,
+                0,
+                0,
+                0,
+                100,
+                selfPeggingAssetBeacon,
+                lpTokenBeacon,
+                wlpTokenBeacon,
+                new ConstantExchangeRateProvider()
+            )
         );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(new SelfPeggingAssetFactory()), data);
+        factory = SelfPeggingAssetFactory(address(proxy));
     }
 
     function test_CreatePoolConstantExchangeRate() external {
@@ -237,5 +241,29 @@ contract FactoryTest is Test {
 
         assertEq(poolToken.balanceOf(initialMinter), 200e18 - 1000 wei);
         assertNotEq(address(wrappedPoolToken), address(0));
+    }
+
+    function test_disableDirectInitialisation() external {
+        SelfPeggingAssetFactory factory = new SelfPeggingAssetFactory();
+        ConstantExchangeRateProvider exchangeRateProvider = new ConstantExchangeRateProvider();
+
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        factory.initialize(governor, 0, 0, 0, 0, 100, address(0), address(0), address(0), exchangeRateProvider);
+
+        SelfPeggingAsset selfPeggingAsset = new SelfPeggingAsset();
+        address[] memory _tokens;
+        uint256[] memory _precisions;
+        uint256[] memory _fees;
+        IExchangeRateProvider[] memory _exchangeRateProviders;
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        selfPeggingAsset.initialize(_tokens, _precisions, _fees, 0, LPToken(address(0)), 0, _exchangeRateProviders);
+
+        LPToken lpToken = new LPToken();
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        lpToken.initialize("", "");
+
+        WLPToken wlpToken = new WLPToken();
+        vm.expectRevert(Initializable.InvalidInitialization.selector);
+        wlpToken.initialize(LPToken(address(0)));
     }
 }

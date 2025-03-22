@@ -13,6 +13,7 @@ import { WLPToken } from "../src/WLPToken.sol";
 import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import "../src/misc/ConstantExchangeRateProvider.sol";
 import "../src/mock/MockExchangeRateProvider.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract SelfPeggingAssetTest is Test {
     address owner = address(0x01);
@@ -33,13 +34,14 @@ contract SelfPeggingAssetTest is Test {
         WETH = new MockToken("WETH", "WETH", 18);
         frxETH = new MockToken("frxETH", "frxETH", 18);
 
-        lpToken = new LPToken();
-        lpToken.initialize("LP Token", "LPT");
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("LP Token", "LPT"));
+
+        ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), data);
+
+        lpToken = LPToken(address(proxy));
         lpToken.transferOwnership(owner);
 
         ConstantExchangeRateProvider exchangeRateProvider = new ConstantExchangeRateProvider();
-
-        pool = new SelfPeggingAsset();
 
         address[] memory tokens = new address[](2);
         tokens[0] = address(WETH);
@@ -58,7 +60,13 @@ contract SelfPeggingAssetTest is Test {
         exchangeRateProviders[0] = exchangeRateProvider;
         exchangeRateProviders[1] = exchangeRateProvider;
 
-        pool.initialize(tokens, precisions, fees, 0, lpToken, A, exchangeRateProviders);
+        data = abi.encodeCall(
+            SelfPeggingAsset.initialize, (tokens, precisions, fees, 0, lpToken, A, exchangeRateProviders)
+        );
+
+        proxy = new ERC1967Proxy(address(new SelfPeggingAsset()), data);
+
+        pool = SelfPeggingAsset(address(proxy));
         pool.transferOwnership(owner);
 
         vm.prank(owner);
@@ -127,10 +135,13 @@ contract SelfPeggingAssetTest is Test {
         exchangeRateProviders[0] = IExchangeRateProvider(rETHExchangeRateProvider);
         exchangeRateProviders[1] = IExchangeRateProvider(wstETHExchangeRateProvider);
 
-        SelfPeggingAsset _pool = new SelfPeggingAsset();
+        // SelfPeggingAsset _pool = new SelfPeggingAsset();
+        // LPToken _lpToken = new LPToken();
 
-        LPToken _lpToken = new LPToken();
-        _lpToken.initialize("LP Token", "LPT");
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("LP Token", "LPT"));
+
+        ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), data);
+        LPToken _lpToken = LPToken(address(proxy));
         _lpToken.transferOwnership(owner);
 
         uint256[] memory _fees = new uint256[](3);
@@ -142,7 +153,12 @@ contract SelfPeggingAssetTest is Test {
         _precisions[0] = 1;
         _precisions[1] = 1;
 
-        _pool.initialize(_tokens, _precisions, _fees, 0, _lpToken, A, exchangeRateProviders);
+        data = abi.encodeCall(
+            SelfPeggingAsset.initialize, (_tokens, _precisions, _fees, 0, _lpToken, A, exchangeRateProviders)
+        );
+
+        proxy = new ERC1967Proxy(address(new SelfPeggingAsset()), data);
+        SelfPeggingAsset _pool = SelfPeggingAsset(address(proxy));
 
         vm.prank(owner);
         _lpToken.addPool(address(_pool));
@@ -558,10 +574,10 @@ contract SelfPeggingAssetTest is Test {
         exchangeRateProviders[0] = IExchangeRateProvider(rETHExchangeRateProvider);
         exchangeRateProviders[1] = IExchangeRateProvider(wstETHExchangeRateProvider);
 
-        SelfPeggingAsset _pool = new SelfPeggingAsset();
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("LP Token", "LPT"));
 
-        LPToken _lpToken = new LPToken();
-        _lpToken.initialize("LP Token", "LPT");
+        ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), data);
+        LPToken _lpToken = LPToken(address(proxy));
         _lpToken.transferOwnership(owner);
 
         uint256[] memory _fees = new uint256[](3);
@@ -573,7 +589,12 @@ contract SelfPeggingAssetTest is Test {
         _precisions[0] = 1;
         _precisions[1] = 1;
 
-        _pool.initialize(_tokens, _precisions, _fees, 0, _lpToken, A, exchangeRateProviders);
+        data = abi.encodeCall(
+            SelfPeggingAsset.initialize, (_tokens, _precisions, _fees, 0, _lpToken, A, exchangeRateProviders)
+        );
+        proxy = new ERC1967Proxy(address(new SelfPeggingAsset()), data);
+        SelfPeggingAsset _pool = SelfPeggingAsset(address(proxy));
+
         _pool.transferOwnership(owner);
 
         vm.prank(owner);

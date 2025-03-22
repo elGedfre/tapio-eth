@@ -324,6 +324,10 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /// @notice Error thrown when the pool is imbalanced
     error ImbalancedPool(uint256 oldD, uint256 newD);
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /**
      * @dev Initializes the SelfPeggingAsset contract with the given parameters.
      * @param _tokens The tokens in the pool.

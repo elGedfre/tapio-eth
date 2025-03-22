@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import "forge-std/Test.sol";
 import "../src/LPToken.sol";
 import "../src/WLPToken.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract WLPTokenTest is Test {
     LPToken public lpToken;
@@ -24,12 +25,16 @@ contract WLPTokenTest is Test {
 
         vm.startPrank(owner);
 
-        lpToken = new LPToken();
-        lpToken.initialize("Tapio ETH", "TapETH");
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("Tapio ETH", "TapETH"));
+
+        ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), data);
+        lpToken = LPToken(address(proxy));
         lpToken.transferOwnership(governance);
 
-        wlpToken = new WLPToken();
-        wlpToken.initialize(lpToken);
+        data = abi.encodeCall(WLPToken.initialize, (lpToken));
+
+        proxy = new ERC1967Proxy(address(new WLPToken()), data);
+        wlpToken = WLPToken(address(proxy));
 
         vm.stopPrank();
     }
