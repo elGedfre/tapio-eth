@@ -682,7 +682,7 @@ contract SelfPeggingAssetTest is Test {
         amounts[1] = 100e18;
 
         uint256 minted = pool.mint(amounts, 0);
-        assertEq(minted, 199.981683679524876704e18);
+        assertEq(minted, 199.981683542835615016e18);
     }
 
     function assertAlmostTheSame(uint256 num1, uint256 num2) internal view {

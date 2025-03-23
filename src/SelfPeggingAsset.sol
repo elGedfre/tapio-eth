@@ -434,6 +434,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
         uint256 feeAmount = 0;
         uint256 ys = (newD + oldD) / _balances.length;
+        uint256[] memory fees = new uint256[](_balances.length);
         if (mintFee > 0 && oldD != 0) {
             for (i = 0; i < _balances.length; i++) {
                 uint256 idealBalance = newD * balances[i] / oldD;
@@ -448,9 +449,14 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
                 uint256 xs = ((balances[i] + _balances[i]) * exchangeRateProviders[i].exchangeRate())
                     / (10 ** exchangeRateProviders[i].exchangeRateDecimals());
                 uint256 dynamicFee = _dynamicFee(xs, ys, mintFee);
-                mintAmount = mintAmount - ((difference * dynamicFee) / FEE_DENOMINATOR);
+                fees[i] = (difference * dynamicFee) / FEE_DENOMINATOR;
+                _balances[i] = _balances[i] - fees[i];
             }
+
+            newD = _getD(_balances);
+            mintAmount = newD - oldD;
         }
+
         if (mintAmount < _minMintAmount) {
             revert InsufficientMintAmount(mintAmount, _minMintAmount);
         }
@@ -459,7 +465,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         for (i = 0; i < _amounts.length; i++) {
             if (_amounts[i] == 0) continue;
             // Update the balance in storage
-            balances[i] = _balances[i];
+            balances[i] = _balances[i] + fees[i];
             IERC20(tokens[i]).safeTransferFrom(msg.sender, address(this), _amounts[i]);
         }
         totalSupply = oldD + mintAmount;
