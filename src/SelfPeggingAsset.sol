@@ -623,21 +623,27 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
         collectFeeOrYield(false);
         uint256[] memory _balances = balances;
-        uint256 D = totalSupply;
+        uint256 oldD = totalSupply;
+        uint256 oldBalanceI = _balances[_i];
+
+        uint256 newD = oldD - _amount;
+        // y is converted(18 decimals)
+        uint256 y = _getY(_balances, _i, newD);
+        // dy is not converted
+        // dy = (balance[i] - y - 1) / precisions[i] in case there was rounding errors
+        uint256 dy = (_balances[_i] - y - 1) / precisions[_i];
         uint256 feeAmount = 0;
-        uint256 redeemAmount = _amount;
         if (redeemFee > 0) {
-            feeAmount = (_amount * redeemFee) / FEE_DENOMINATOR;
-            redeemAmount = _amount - feeAmount;
+            uint256 xs = ((oldBalanceI + y) * exchangeRateProviders[_i].exchangeRate())
+                / (10 ** exchangeRateProviders[_i].exchangeRateDecimals()) / 2;
+            uint256 ys = (oldD + newD) / _balances.length;
+            uint256 dynamicFee = _dynamicFee(xs, ys, redeemFee);
+            feeAmount = (dy * dynamicFee) / FEE_DENOMINATOR;
+            dy -= feeAmount;
         }
         _minRedeemAmount = (_minRedeemAmount * exchangeRateProviders[_i].exchangeRate())
             / (10 ** exchangeRateProviders[_i].exchangeRateDecimals());
 
-        // y is converted(18 decimals)
-        uint256 y = _getY(_balances, _i, D - redeemAmount);
-        // dy is not converted
-        // dy = (balance[i] - y - 1) / precisions[i] in case there was rounding errors
-        uint256 dy = (_balances[_i] - y - 1) / precisions[_i];
         if (dy < _minRedeemAmount) {
             revert InsufficientRedeemAmount(dy, _minRedeemAmount);
         }
@@ -649,7 +655,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             / exchangeRateProviders[_i].exchangeRate();
         amounts[_i] = transferAmount;
         IERC20(tokens[_i]).safeTransfer(msg.sender, transferAmount);
-        totalSupply = D - _amount;
+        totalSupply = newD;
         poolToken.burnSharesFrom(msg.sender, _amount);
         feeAmount = collectFeeOrYield(true);
         emit Redeemed(msg.sender, _amount, amounts, feeAmount);
