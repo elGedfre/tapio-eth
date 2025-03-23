@@ -465,7 +465,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         for (i = 0; i < _amounts.length; i++) {
             if (_amounts[i] == 0) continue;
             // Update the balance in storage
-            balances[i] = _balances[i] + fees[i];
+            balances[i] = _balances[i];
             IERC20(tokens[i]).safeTransferFrom(msg.sender, address(this), _amounts[i]);
         }
         totalSupply = oldD + mintAmount;
@@ -726,7 +726,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             if (_amounts[i] == 0) continue;
 
             // Updates token balances in storage.
-            balances[i] = _balances[i] + fees[i];
+            balances[i] = _balances[i];
 
             IERC20(tokens[i]).safeTransfer(msg.sender, _amounts[i]);
         }
