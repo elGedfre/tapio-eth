@@ -969,16 +969,20 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         require(_i < _balances.length, InvalidToken());
 
         uint256 D = _totalSupply;
-        uint256 feeAmount = 0;
-        uint256 redeemAmount = _amount;
-        if (redeemFee > 0) {
-            feeAmount = (_amount * redeemFee) / FEE_DENOMINATOR;
-            redeemAmount = _amount - feeAmount;
-        }
-        // The pool token amount becomes D - redeemAmount
-        uint256 y = _getY(_balances, _i, D - redeemAmount);
-        // dy = (balance[i] - y - 1) / precisions[i] in case there was rounding errors
+        uint256 oldBalanceI = _balances[_i];
+        uint256 newD = D - _amount;
+        uint256 y = _getY(_balances, _i, newD);
         uint256 dy = (_balances[_i] - y - 1) / precisions[_i];
+        uint256 feeAmount = 0;
+        if (redeemFee > 0) {
+            uint256 xs = ((oldBalanceI + y) * exchangeRateProviders[_i].exchangeRate())
+                / (10 ** exchangeRateProviders[_i].exchangeRateDecimals()) / 2;
+            uint256 ys = (D + newD) / _balances.length;
+            uint256 dynamicFee = _dynamicFee(xs, ys, redeemFee);
+            feeAmount = (dy * dynamicFee) / FEE_DENOMINATOR;
+            dy -= feeAmount;
+        }
+
         uint256 transferAmount = dy;
         transferAmount = (transferAmount * (10 ** exchangeRateProviders[_i].exchangeRateDecimals()))
             / exchangeRateProviders[_i].exchangeRate();
