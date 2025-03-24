@@ -51,3 +51,5 @@
   arbitrumsepolia = "https://sepolia-rollup.arbitrum.io/rpc"
   optimismsepolia = "https://sepolia.optimism.io"
   monadtestnet = "https://testnet-rpc.monad.xyz"
+  bera-bepolia = "https://bepolia.rpc.berachain.com"
+  hyper-testnet = "https://rpc.hyperliquid-testnet.xyz/evm"
