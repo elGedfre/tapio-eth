@@ -20,6 +20,7 @@ contract Config is Script {
     address selfPeggingAssetBeacon;
     address lpTokenBeacon;
     address wlpTokenBeacon;
+    address zap;
 
     struct JSONData {
         address Factory;
@@ -28,6 +29,7 @@ contract Config is Script {
         address USDC;
         address USDT;
         address WLPTokenBeacon;
+        address Zap;
     }
 
     function loadConfig() internal {

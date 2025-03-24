@@ -24,6 +24,7 @@ contract Testnet is Deploy, Setup {
         deployMocks();
         deployBeacons();
         deployFactory();
+        deployZap();
 
         string memory networkName = getNetworkName(getChainId());
         string memory path = string.concat("./broadcast/", networkName, ".json");
@@ -39,6 +40,8 @@ contract Testnet is Deploy, Setup {
         vm.writeJson(vm.serializeAddress("contracts", "LPTokenBeacon", lpTokenBeacon), path);
 
         vm.writeJson(vm.serializeAddress("contracts", "WLPTokenBeacon", wlpTokenBeacon), path);
+
+        vm.writeJson(vm.serializeAddress("contracts", "Zap", zap), path);
 
         vm.stopBroadcast();
     }

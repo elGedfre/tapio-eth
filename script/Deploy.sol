@@ -11,6 +11,7 @@ import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
 import { Config } from "script/Config.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "../src/misc/ConstantExchangeRateProvider.sol";
+import { Zap } from "../src/periphery/Zap.sol";
 
 contract Deploy is Config {
     function deployBeacons() internal {
@@ -56,5 +57,13 @@ contract Deploy is Config {
 
         factory = SelfPeggingAssetFactory(address(proxy));
         factory.transferOwnership(GOVERNOR);
+    }
+
+    function deployZap() internal {
+        console.log("---------------");
+        console.log("deploy-zap-logs");
+        console.log("---------------");
+
+        zap = address(new Zap());
     }
 }
