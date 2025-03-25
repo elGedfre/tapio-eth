@@ -12,6 +12,7 @@ import { WLPToken } from "../src/WLPToken.sol";
 import { ConstantExchangeRateProvider } from "../src/misc/ConstantExchangeRateProvider.sol";
 import { IExchangeRateProvider } from "../src/interfaces/IExchangeRateProvider.sol";
 import { LPToken } from "../src/LPToken.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract ZapTest is Test {
     using Math for uint256;
@@ -49,8 +50,10 @@ contract ZapTest is Test {
         tokens[0] = address(token1);
         tokens[1] = address(token2);
 
-        lpToken = new LPToken();
-        lpToken.initialize("Tapio LP Token", "tLP");
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("Tapio ETH", "TapETH"));
+        ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), data);
+
+        lpToken = LPToken(address(proxy));
         lpToken.transferOwnership(governance);
 
         IExchangeRateProvider[] memory providers = new IExchangeRateProvider[](2);
@@ -66,8 +69,12 @@ contract ZapTest is Test {
         fees[1] = 0;
         fees[2] = 0;
 
-        spa = new SelfPeggingAsset();
-        spa.initialize(tokens, precisions, fees, 0, lpToken, 100, providers);
+        data = abi.encodeWithSelector(
+            SelfPeggingAsset.initialize.selector, tokens, precisions, fees, 0, lpToken, 100, providers
+        );
+        proxy = new ERC1967Proxy(address(new SelfPeggingAsset()), data);
+
+        spa = SelfPeggingAsset(address(proxy));
 
         vm.stopPrank();
 
@@ -76,8 +83,10 @@ contract ZapTest is Test {
 
         vm.startPrank(admin);
 
-        wlpToken = new WLPToken();
-        wlpToken.initialize(lpToken);
+        data = abi.encodeCall(WLPToken.initialize, (lpToken));
+        proxy = new ERC1967Proxy(address(new WLPToken()), data);
+
+        wlpToken = WLPToken(address(proxy));
 
         zap = new Zap();
 
@@ -374,14 +383,12 @@ contract ZapTest is Test {
     }
 
     function testZapIn_CrossPoolMismatch() public {
-        SelfPeggingAsset secondSpa = new SelfPeggingAsset();
-        LPToken secondLpToken = new LPToken();
-        WLPToken secondWlpToken = new WLPToken();
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("Second LP Token", "LP2"));
+        ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), data);
+        LPToken secondLpToken = LPToken(address(proxy));
+        secondLpToken.transferOwnership(governance);
 
         vm.startPrank(admin);
-
-        secondLpToken.initialize("Second LP Token", "LP2");
-        secondLpToken.transferOwnership(governance);
 
         IExchangeRateProvider[] memory providers = new IExchangeRateProvider[](2);
         providers[0] = new ConstantExchangeRateProvider();
@@ -396,7 +403,11 @@ contract ZapTest is Test {
         fees[1] = 0;
         fees[2] = 0;
 
-        secondSpa.initialize(tokens, precisions, fees, 0, secondLpToken, 100, providers);
+        data = abi.encodeWithSelector(
+            SelfPeggingAsset.initialize.selector, tokens, precisions, fees, 0, secondLpToken, 100, providers
+        );
+        proxy = new ERC1967Proxy(address(new SelfPeggingAsset()), data);
+        SelfPeggingAsset secondSpa = SelfPeggingAsset(address(proxy));
 
         vm.stopPrank();
 
@@ -405,9 +416,10 @@ contract ZapTest is Test {
 
         vm.startPrank(admin);
 
-        secondWlpToken.initialize(secondLpToken);
+        data = abi.encodeCall(WLPToken.initialize, (secondLpToken));
+        proxy = new ERC1967Proxy(address(new WLPToken()), data);
+        WLPToken secondWlpToken = WLPToken(address(proxy));
 
-        vm.startPrank(admin);
         token1.mint(admin, ADD_LIQUIDITY_AMOUNT * 4);
         token2.mint(admin, ADD_LIQUIDITY_AMOUNT * 4 / 10 ** 12);
         vm.stopPrank();
