@@ -47,6 +47,9 @@ contract Config is Script {
         else if (chainId == 10_143) return "monadtestnet";
         else if (chainId == 80_069) return "bera-bepolia";
         else if (chainId == 998) return "hyper-testnet";
+        else if (chainId == 42161) return "arbitrum";
+        else if (chainId == 5) return "base";
+        else if (optimism == 10) return "optimism";
         else revert("Invalid chain ID");
     }
 
