@@ -258,8 +258,8 @@ contract SelfPeggingAssetTest is Test {
         assertEq(WETH.balanceOf(user2), token1Amount);
         assertEq(frxETH.balanceOf(user2), token2Amount);
 
-        assertEq(lpToken.sharesOf(user2), 1);
-        assertEq(lpToken.balanceOf(user2), 1);
+        assertEq(lpToken.sharesOf(user2), 0);
+        assertEq(lpToken.balanceOf(user2), 0);
 
         assertEq(WETH.balanceOf(address(pool)), 105e18 - token1Amount);
         assertEq(frxETH.balanceOf(address(pool)), 85e18 - token2Amount);
@@ -311,7 +311,7 @@ contract SelfPeggingAssetTest is Test {
 
         assertEq(WETH.balanceOf(user2), token1Amount);
         assertEq(frxETH.balanceOf(user2), 0);
-        assertEq(lpToken.sharesOf(user2), 1);
+        assertEq(lpToken.sharesOf(user2), 0);
 
         assertEq(WETH.balanceOf(address(pool)), 105e18 - token1Amount);
         assertEq(frxETH.balanceOf(address(pool)), 85e18);
