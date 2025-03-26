@@ -10,8 +10,14 @@ import { Pool } from "script/Pool.sol";
 import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
 import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
 import { MockToken } from "../src/mock/MockToken.sol";
+import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
+import { LPToken } from "../src/LPToken.sol";
+import { WLPToken } from "../src/WLPToken.sol";
+import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-contract Testnet is Deploy, Setup, Pool {
+contract Upgrade is Deploy, Setup, Pool {
     function init() internal {
         if (vm.envUint("HEX_PRIV_KEY") == 0) revert("No private key found");
         deployerPrivateKey = vm.envUint("HEX_PRIV_KEY");
@@ -38,17 +44,17 @@ contract Testnet is Deploy, Setup, Pool {
         selfPeggingAssetBeacon = jsonData.SelfPeggingAssetBeacon;
         lpTokenBeacon = jsonData.LPTokenBeacon;
         wlpTokenBeacon = jsonData.WLPTokenBeacon;
-        usdc = jsonData.USDC;
-        usdt = jsonData.USDT;
 
-        (, address selfPeggingAsset,) = createStandardPool();
+        // Upgrade
+        LPToken lpTokenImpl = new LPToken();
+        WLPToken wlpTokenImpl = new WLPToken();
+        SelfPeggingAsset selfPeggingAssetImpl = new SelfPeggingAsset();
+        SelfPeggingAssetFactory factoryImpl = SelfPeggingAssetFactory(factory);
 
-        uint256 amount = 10_000e18;
-
-        MockToken(usdc).mint(DEPLOYER, amount);
-        MockToken(usdt).mint(DEPLOYER, amount);
-
-        initialMint(amount, amount, SelfPeggingAsset(selfPeggingAsset));
+        UpgradeableBeacon(lpTokenBeacon).upgradeTo(address(lpTokenImpl));
+        UpgradeableBeacon(wlpTokenBeacon).upgradeTo(address(wlpTokenImpl));
+        UpgradeableBeacon(selfPeggingAssetBeacon).upgradeTo(address(selfPeggingAssetImpl));
+        factory.upgradeToAndCall(address(factoryImpl), bytes(""));
 
         vm.stopBroadcast();
     }

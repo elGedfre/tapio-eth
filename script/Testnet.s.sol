@@ -24,21 +24,24 @@ contract Testnet is Deploy, Setup {
         deployMocks();
         deployBeacons();
         deployFactory();
+        deployZap();
 
-        vm.writeJson(vm.serializeAddress("contracts", "USDC", usdc), "./broadcast/testnet.json");
+        string memory networkName = getNetworkName(getChainId());
+        string memory path = string.concat("./broadcast/", networkName, ".json");
 
-        vm.writeJson(vm.serializeAddress("contracts", "USDT", usdt), "./broadcast/testnet.json");
+        vm.writeJson(vm.serializeAddress("contracts", "USDC", usdc), path);
 
-        vm.writeJson(vm.serializeAddress("contracts", "Factory", address(factory)), "./broadcast/testnet.json");
+        vm.writeJson(vm.serializeAddress("contracts", "USDT", usdt), path);
 
-        vm.writeJson(
-            vm.serializeAddress("contracts", "SelfPeggingAssetBeacon", selfPeggingAssetBeacon),
-            "./broadcast/testnet.json"
-        );
+        vm.writeJson(vm.serializeAddress("contracts", "Factory", address(factory)), path);
 
-        vm.writeJson(vm.serializeAddress("contracts", "LPTokenBeacon", lpTokenBeacon), "./broadcast/testnet.json");
+        vm.writeJson(vm.serializeAddress("contracts", "SelfPeggingAssetBeacon", selfPeggingAssetBeacon), path);
 
-        vm.writeJson(vm.serializeAddress("contracts", "WLPTokenBeacon", wlpTokenBeacon), "./broadcast/testnet.json");
+        vm.writeJson(vm.serializeAddress("contracts", "LPTokenBeacon", lpTokenBeacon), path);
+
+        vm.writeJson(vm.serializeAddress("contracts", "WLPTokenBeacon", wlpTokenBeacon), path);
+
+        vm.writeJson(vm.serializeAddress("contracts", "Zap", zap), path);
 
         vm.stopBroadcast();
     }

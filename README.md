@@ -113,18 +113,18 @@ Get a test coverage report:
 $ forge coverage
 ```
 
-### Deploy to Testnet
+### Deploy to Testnet and Verify
 
-Deploy to Base Testnet:
+Deploy to Base Testnet and automatically verify contracts:
 
 ```sh
-$ forge script ./script/Testnet.s.sol -vvv --rpc-url basesepolia --broadcast
+$ forge script ./script/Testnet.s.sol -vvv --rpc-url basesepolia --broadcast --verify
 ```
 
 Before deploying make sure you configure the neccessary variables in `.env` file. To just test the scripts with just a
 dry run remove the `--broadcast` flag.
 
-### Verifying Contracts on Testnet Explorer
+### Manually Verifying Contracts on Testnet Explorer
 
 Here is an example on how to verify a contract on base sepolia:
 

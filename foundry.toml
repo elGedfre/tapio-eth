@@ -37,15 +37,23 @@
   wrap_comments = true
 
 [rpc_endpoints]
-  arbitrum = "https://arbitrum-mainnet.infura.io/v3/${API_KEY_INFURA}"
-  avalanche = "https://avalanche-mainnet.infura.io/v3/${API_KEY_INFURA}"
+  arbitrum = "https://arb1.arbitrum.io/rpc"
   base = "https://mainnet.base.org"
-  bnb_smart_chain = "https://bsc-dataseed.binance.org"
-  gnosis_chain = "https://rpc.gnosischain.com"
-  goerli = "https://goerli.infura.io/v3/${API_KEY_INFURA}"
-  localhost = "http://localhost:8545"
-  mainnet = "https://eth-mainnet.g.alchemy.com/v2/${API_KEY_ALCHEMY}"
-  optimism = "https://optimism-mainnet.infura.io/v3/${API_KEY_INFURA}"
-  polygon = "https://polygon-mainnet.infura.io/v3/${API_KEY_INFURA}"
-  sepolia = "https://sepolia.infura.io/v3/${API_KEY_INFURA}"
+  mainnet = "https://ethereum.blockpi.network/v1/rpc/public"
+  optimism = "https://mainnet.optimism.io"
+  sepolia = "https://ethereum-sepolia.blockpi.network/v1/rpc/public"
   basesepolia = "https://sepolia.base.org"
+  arbitrumsepolia = "https://sepolia-rollup.arbitrum.io/rpc"
+  opsepolia = "https://sepolia.optimism.io"
+  monadtestnet = "https://testnet-rpc.monad.xyz"
+  bera-bepolia = "https://bepolia.rpc.berachain.com"
+  hyper-testnet = "https://rpc.hyperliquid-testnet.xyz/evm"
+
+[etherscan]
+  arbitrumsepolia =  { key = "${ETHERSCAN_ARBITRUM_KEY}", chain = 421614 }
+  basesepolia = { key = "${ETHERSCAN_BASE_KEY}", chain = 84532 }
+  opsepolia = { key = "${ETHERSCAN_OP_KEY}", chain = 11155420 }
+  arbitrum =  { key = "${ETHERSCAN_ARBITRUM_KEY}", chain = 42161 }
+  base = { key = "${ETHERSCAN_BASE_KEY}", chain = 8453 }
+  optimism = { key = "${ETHERSCAN_OP_KEY}", chain = 10 }
+  
