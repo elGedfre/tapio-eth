@@ -43,7 +43,7 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
         nonReentrant
         returns (uint256 wlpAmount)
     {
-        require(spa != address(0) && wlp != address(0), InvalidParameters());
+        require(spa != address(0) && wlp != address(0) && receiver != address(this), InvalidParameters());
         require(amounts.length > 0, InvalidParameters());
         address[] memory tokens = _getTokens(spa);
         require(amounts.length == tokens.length, InvalidParameters());
@@ -57,9 +57,19 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
 
         uint256 lpAmount = _mint(spa, amounts, minMintAmount);
 
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (amounts[i] > 0) {
+                IERC20(tokens[i]).forceApprove(spa, 0);
+                assert(IERC20(tokens[i]).balanceOf(address(this)) == 0);
+            }
+        }
+
         address lpToken = _getPoolToken(spa);
         IERC20(lpToken).forceApprove(wlp, lpAmount);
         wlpAmount = _deposit(wlp, lpAmount, receiver);
+
+        IERC20(lpToken).forceApprove(wlp, 0);
+        assert(IERC20(lpToken).balanceOf(address(this)) == 0);
 
         emit ZapIn(spa, msg.sender, receiver, wlpAmount, amounts);
         return wlpAmount;
@@ -87,7 +97,7 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
         nonReentrant
         returns (uint256[] memory amounts)
     {
-        require(spa != address(0) && wlp != address(0), InvalidParameters());
+        require(spa != address(0) && wlp != address(0) && receiver != address(this), InvalidParameters());
         require(wlpAmount > 0, ZeroAmount());
         address[] memory tokens = _getTokens(spa);
         require(minAmountsOut.length == tokens.length, InvalidParameters());
@@ -95,11 +105,14 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
         IERC20(wlp).safeTransferFrom(msg.sender, address(this), wlpAmount);
 
         uint256 lpAmount = _redeem(wlp, wlpAmount, address(this));
+        assert(IERC20(wlp).balanceOf(address(this)) == 0);
 
         address lpToken = _getPoolToken(spa);
         IERC20(lpToken).forceApprove(spa, lpAmount);
         if (proportional) amounts = _redeemProportion(spa, lpAmount, minAmountsOut);
         else amounts = _redeemMulti(spa, minAmountsOut, lpAmount);
+
+        IERC20(lpToken).forceApprove(spa, 0);
 
         for (uint256 i = 0; i < tokens.length; i++) {
             if (amounts[i] > 0) IERC20(tokens[i]).safeTransfer(receiver, amounts[i]);
@@ -131,7 +144,7 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
         nonReentrant
         returns (uint256 amount)
     {
-        require(spa != address(0) && wlp != address(0), InvalidParameters());
+        require(spa != address(0) && wlp != address(0) && receiver != address(this), InvalidParameters());
         require(wlpAmount > 0, ZeroAmount());
         address[] memory tokens = _getTokens(spa);
         require(tokenIndex < tokens.length, InvalidParameters());
@@ -139,10 +152,13 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
         IERC20(wlp).safeTransferFrom(msg.sender, address(this), wlpAmount);
 
         uint256 lpAmount = _redeem(wlp, wlpAmount, address(this));
+        assert(IERC20(wlp).balanceOf(address(this)) == 0);
 
         address lpToken = _getPoolToken(spa);
         IERC20(lpToken).forceApprove(spa, lpAmount);
         amount = _redeemSingle(spa, lpAmount, tokenIndex, minAmountOut);
+
+        IERC20(lpToken).forceApprove(spa, 0);
 
         IERC20(tokens[tokenIndex]).safeTransfer(receiver, amount);
 
