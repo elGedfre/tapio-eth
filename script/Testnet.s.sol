@@ -5,9 +5,12 @@ import { stdJson } from "forge-std/StdJson.sol";
 import { console } from "forge-std/console.sol";
 
 import { Deploy } from "script/Deploy.sol";
-import { Setup } from "script/Setup.sol";
+import { Mocks } from "script/Mocks.sol";
+import { Pool } from "script/Pool.sol";
+import { MockToken } from "../src/mock/MockToken.sol";
+import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
 
-contract Testnet is Deploy, Setup {
+contract Testnet is Deploy, Mocks, Pool {
     function init() internal {
         if (vm.envUint("HEX_PRIV_KEY") == 0) revert("No private key found");
         deployerPrivateKey = vm.envUint("HEX_PRIV_KEY");
@@ -21,17 +24,31 @@ contract Testnet is Deploy, Setup {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        deployMocks();
+        deployAssets();
         deployBeacons();
         deployFactory();
         deployZap();
 
+        (, address selfPeggingAsset,) = createStandardPool(
+            usdc,
+            usdt
+        );
+
+        uint256 amount = 10_000e6;
+
+        MockToken(usdc).mint(DEPLOYER, amount);
+        MockToken(usdt).mint(DEPLOYER, amount);
+
+        initialMint(
+            usdc,
+            usdt,
+            amount, 
+            amount, 
+            SelfPeggingAsset(selfPeggingAsset)
+        );
+
         string memory networkName = getNetworkName(getChainId());
         string memory path = string.concat("./broadcast/", networkName, ".json");
-
-        vm.writeJson(vm.serializeAddress("contracts", "USDC", usdc), path);
-
-        vm.writeJson(vm.serializeAddress("contracts", "USDT", usdt), path);
 
         vm.writeJson(vm.serializeAddress("contracts", "Factory", address(factory)), path);
 

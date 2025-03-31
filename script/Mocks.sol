@@ -6,8 +6,11 @@ import { console } from "forge-std/console.sol";
 import { MockToken } from "../src/mock/MockToken.sol";
 import { Config } from "script/Config.sol";
 
-contract Setup is Config {
-    function deployMocks() internal {
+contract Mocks is Config {
+    address usdc;
+    address usdt;
+
+    function deployAssets() internal {
         MockToken tokenA = new MockToken("USDC", "USDC", 6);
         MockToken tokenB = new MockToken("USDT", "USDT", 6);
 

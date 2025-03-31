@@ -13,9 +13,6 @@ contract Config is Script {
     address GOVERNOR;
     address DEPLOYER;
 
-    address usdc;
-    address usdt;
-
     SelfPeggingAssetFactory factory;
     address selfPeggingAssetBeacon;
     address lpTokenBeacon;
@@ -27,8 +24,6 @@ contract Config is Script {
         address Factory;
         address LPTokenBeacon;
         address SelfPeggingAssetBeacon;
-        address USDC;
-        address USDT;
         address WLPTokenBeacon;
         address Zap;
     }
@@ -51,6 +46,7 @@ contract Config is Script {
         else if (chainId == 42_161) return "arbitrum";
         else if (chainId == 5) return "base";
         else if (chainId == 10) return "optimism";
+        else if (chainId == 8453) return "basemainnet";
         else revert("Invalid chain ID");
     }
 

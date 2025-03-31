@@ -5,7 +5,6 @@ import { stdJson } from "forge-std/StdJson.sol";
 import { console } from "forge-std/console.sol";
 
 import { Deploy } from "script/Deploy.sol";
-import { Setup } from "script/Setup.sol";
 import { Pool } from "script/Pool.sol";
 import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
 import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
@@ -17,7 +16,7 @@ import { WLPToken } from "../src/WLPToken.sol";
 import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-contract Upgrade is Deploy, Setup, Pool {
+contract Upgrade is Deploy, Pool {
     function init() internal {
         if (vm.envUint("HEX_PRIV_KEY") == 0) revert("No private key found");
         deployerPrivateKey = vm.envUint("HEX_PRIV_KEY");
