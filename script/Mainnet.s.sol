@@ -23,7 +23,7 @@ contract Testnet is Deploy, Pool {
         init();
         loadConfig();
 
-        vm.startBroadcast(deployerPrivateKey);
+        vm.startPrank(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
 
         deployBeacons();
         deployFactory();
@@ -62,59 +62,41 @@ contract Testnet is Deploy, Pool {
             address sequencer = 0xBCF85224fc0756B9Fa45aA7892530B47e10b6433;
 
             // create chainlink oracle
-            address wstETHOracle = address(new ChainlinkOracleProvider(
-                AggregatorV3Interface(sequencer),
-                AggregatorV3Interface(wstETHFeed),
-                24 hours
-            ));
-
-            address weETHOracle = address(new ChainlinkOracleProvider(
-                AggregatorV3Interface(sequencer),
-                AggregatorV3Interface(weETHFeed),
-                24 hours
-            ));
-
-            address cbETHOracle = address(new ChainlinkOracleProvider(
-                AggregatorV3Interface(sequencer),
-                AggregatorV3Interface(cbETHFeed),
-                24 hours
-            ));
-
-
-            (, address pool,) = createChainlinkPool(
-                weth,
-                wstETH,
-                wstETHOracle
+            address wstETHOracle = address(
+                new ChainlinkOracleProvider(
+                    AggregatorV3Interface(sequencer), AggregatorV3Interface(wstETHFeed), 24 hours
+                )
             );
 
-            initialMint(
-                weth,
-                wstETH,
-                ethAmount, 
-                ethAmount, 
-                SelfPeggingAsset(pool)
+            address weETHOracle = address(
+                new ChainlinkOracleProvider(
+                    AggregatorV3Interface(sequencer), AggregatorV3Interface(weETHFeed), 24 hours
+                )
             );
+
+            address cbETHOracle = address(
+                new ChainlinkOracleProvider(
+                    AggregatorV3Interface(sequencer), AggregatorV3Interface(cbETHFeed), 24 hours
+                )
+            );
+
+            (, address pool,,) = createChainlinkPool(weth, wstETH, wstETHOracle);
+
+            initialMint(weth, wstETH, ethAmount, ethAmount, SelfPeggingAsset(pool));
+
+            (, pool,,) = createChainlinkPool(weth, weETH, weETHOracle);
+
+            initialMint(weth, weETH, ethAmount, ethAmount, SelfPeggingAsset(pool));
+
+            (, pool,,) = createChainlinkPool(weth, cbETH, cbETHOracle);
+
+            initialMint(weth, cbETH, ethAmount, ethAmount, SelfPeggingAsset(pool));
+
+            (, pool,,) = createStandardPool(usdc, usdt);
+
+            initialMint(usdc, usdt, usdAmount, usdAmount, SelfPeggingAsset(pool));
         }
 
-        // (, address selfPeggingAsset,) = createStandardPool(
-        //     usdc,
-        //     usdt
-        // );
-
-        // uint256 amount = 10_000e18;
-
-        // MockToken(usdc).mint(DEPLOYER, amount);
-        // MockToken(usdt).mint(DEPLOYER, amount);
-
-        // initialMint(
-        //     usdc,
-        //     usdt,
-        //     amount, 
-        //     amount, 
-        //     SelfPeggingAsset(selfPeggingAsset)
-        // );
-
-    
-        vm.stopBroadcast();
+        vm.stopPrank();
     }
 }

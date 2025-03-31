@@ -46,7 +46,7 @@ contract Config is Script {
         else if (chainId == 42_161) return "arbitrum";
         else if (chainId == 5) return "base";
         else if (chainId == 10) return "optimism";
-        else if (chainId == 8453) return "basemainnet";
+        else if (chainId == 8453) return "base";
         else revert("Invalid chain ID");
     }
 

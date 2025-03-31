@@ -3,8 +3,7 @@ pragma solidity 0.8.28;
 
 import "@chainlink/contracts/shared/interfaces/AggregatorV3Interface.sol";
 
-contract ChainlinkOracleProvider
-{   
+contract ChainlinkOracleProvider {
     /**
      * @notice Grace period time after the sequencer is back up
      */
@@ -16,13 +15,13 @@ contract ChainlinkOracleProvider
     AggregatorV3Interface public immutable sequencerUptimeFeed;
 
     /**
-      * @notice Chainlink feed for the asset
-      */
+     * @notice Chainlink feed for the asset
+     */
     AggregatorV3Interface public immutable feed;
 
     /**
-      * @notice Maximum stale period for the price feed
-      */
+     * @notice Maximum stale period for the price feed
+     */
     uint256 public immutable maxStalePeriod;
 
     /**
@@ -54,19 +53,15 @@ contract ChainlinkOracleProvider
      * @notice Contract constructor
      * @param _sequencerUptimeFeed L2 Sequencer uptime feed
      */
-    constructor(
-      AggregatorV3Interface _sequencerUptimeFeed,
-      AggregatorV3Interface _feed,
-      uint256 _maxStalePeriod
-    ) {
-        if (address(feed) == address(0)) {
+    constructor(AggregatorV3Interface _sequencerUptimeFeed, AggregatorV3Interface _feed, uint256 _maxStalePeriod) {
+        if (address(_feed) == address(0)) {
             revert InvalidFeed();
         }
 
-        if (maxStalePeriod == 0) {
+        if (_maxStalePeriod == 0) {
             revert InvalidStalePeriod();
         }
-  
+
         sequencerUptimeFeed = _sequencerUptimeFeed;
         feed = _feed;
         maxStalePeriod = _maxStalePeriod;

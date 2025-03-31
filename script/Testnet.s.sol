@@ -29,23 +29,14 @@ contract Testnet is Deploy, Mocks, Pool {
         deployFactory();
         deployZap();
 
-        (, address selfPeggingAsset,) = createStandardPool(
-            usdc,
-            usdt
-        );
+        (, address selfPeggingAsset,,) = createStandardPool(usdc, usdt);
 
         uint256 amount = 10_000e6;
 
         MockToken(usdc).mint(DEPLOYER, amount);
         MockToken(usdt).mint(DEPLOYER, amount);
 
-        initialMint(
-            usdc,
-            usdt,
-            amount, 
-            amount, 
-            SelfPeggingAsset(selfPeggingAsset)
-        );
+        initialMint(usdc, usdt, amount, amount, SelfPeggingAsset(selfPeggingAsset));
 
         string memory networkName = getNetworkName(getChainId());
         string memory path = string.concat("./broadcast/", networkName, ".json");
