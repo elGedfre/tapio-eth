@@ -69,7 +69,6 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
         wlpAmount = _deposit(wlp, lpAmount, receiver);
 
         IERC20(lpToken).forceApprove(wlp, 0);
-        assert(IERC20(lpToken).balanceOf(address(this)) == 0);
 
         emit ZapIn(spa, msg.sender, receiver, wlpAmount, amounts);
         return wlpAmount;
@@ -113,6 +112,9 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
         else amounts = _redeemMulti(spa, minAmountsOut, lpAmount);
 
         IERC20(lpToken).forceApprove(spa, 0);
+        // repay remaining
+        ILPToken(lpToken).transferShares(receiver, ILPToken(lpToken).sharesOf(address(this)));
+        assert(ILPToken(lpToken).sharesOf(address(this)) == 0);
 
         for (uint256 i = 0; i < tokens.length; i++) {
             if (amounts[i] > 0) IERC20(tokens[i]).safeTransfer(receiver, amounts[i]);
@@ -159,6 +161,9 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
         amount = _redeemSingle(spa, lpAmount, tokenIndex, minAmountOut);
 
         IERC20(lpToken).forceApprove(spa, 0);
+        // repay remaining
+        ILPToken(lpToken).transferShares(receiver, ILPToken(lpToken).sharesOf(address(this)));
+        assert(ILPToken(lpToken).sharesOf(address(this)) == 0);
 
         IERC20(tokens[tokenIndex]).safeTransfer(receiver, amount);
 
