@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { MockToken } from "../src/mock/MockToken.sol";
+import { MaliciousSPA } from "./utils/MaliciousSPA.sol";
 import { Zap } from "../src/periphery/Zap.sol";
 import { RampAController } from "../src/periphery/RampAController.sol";
 import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
@@ -20,6 +21,7 @@ contract ZapTest is Test {
 
     Zap public zap;
     SelfPeggingAsset public spa;
+    MaliciousSPA public maliciousSPA;
     LPToken public lpToken;
     WLPToken public wlpToken;
     RampAController public rampAController;
@@ -28,6 +30,7 @@ contract ZapTest is Test {
     address public admin;
     address public user1;
     address public user2;
+    address public targetToken;
 
     MockToken public token1;
     MockToken public token2;
@@ -103,6 +106,8 @@ contract ZapTest is Test {
         wlpToken = WLPToken(address(proxy));
 
         zap = new Zap();
+        targetToken = address(token1);
+        maliciousSPA = new MaliciousSPA(targetToken, tokens);
 
         token1.mint(user1, INITIAL_BALANCE);
         token2.mint(user1, INITIAL_BALANCE);
@@ -529,5 +534,31 @@ contract ZapTest is Test {
         zap.zapOut(address(spa), address(wlpToken), user1, wlpAmount, wrongAmountsOut, true);
 
         vm.stopPrank();
+    }
+
+    function testZapInApprovalExploit() public {
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 100e18;
+        amounts[1] = 100e18;
+
+        address attacker = makeAddr("attacker");
+
+        deal(address(token1), attacker, amounts[0]);
+        deal(address(token2), attacker, amounts[1]);
+
+        deal(targetToken, attacker, amounts[0]);
+
+        vm.startPrank(attacker);
+        MockToken(targetToken).approve(address(zap), type(uint256).max);
+        MockToken(token1).approve(address(zap), type(uint256).max);
+        MockToken(token2).approve(address(zap), type(uint256).max);
+        zap.zapIn(address(maliciousSPA), address(maliciousSPA), attacker, 0, amounts);
+        vm.stopPrank();
+
+        assertEq(
+            MockToken(targetToken).allowance(address(zap), address(maliciousSPA)),
+            0,
+            "Exploit successful: Zap contract approved attacker for target token"
+        );
     }
 }
