@@ -23,7 +23,7 @@ contract Testnet is Deploy, Pool {
         init();
         loadConfig();
 
-        vm.startPrank(0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb);
+        vm.startBroadcast(deployerPrivateKey);
 
         deployBeacons();
         deployFactory();
@@ -97,6 +97,6 @@ contract Testnet is Deploy, Pool {
             initialMint(usdc, usdt, usdAmount, usdAmount, SelfPeggingAsset(pool));
         }
 
-        vm.stopPrank();
+        vm.stopBroadcast();
     }
 }
