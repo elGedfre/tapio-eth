@@ -644,7 +644,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 feeAmount = 0;
         if (redeemFee > 0) {
             uint256 xs =
-                ((oldBalanceI + y) * exchangeRateProviders[_i].exchangeRate()) / (10 ** exchangeRateDecimals[_i]) / 2;
+                ((oldBalanceI + y) * exchangeRateProviders[_i].exchangeRate()) / (10 ** exchangeRateDecimals[_i]);
             uint256 ys = (oldD + newD) / _balances.length;
             uint256 dynamicFee = _dynamicFee(xs, ys, redeemFee);
             feeAmount = (dy * dynamicFee) / FEE_DENOMINATOR;
@@ -938,7 +938,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 feeAmount = 0;
         if (redeemFee > 0) {
             uint256 xs =
-                ((oldBalanceI + y) * exchangeRateProviders[_i].exchangeRate()) / (10 ** exchangeRateDecimals[_i]) / 2;
+                ((oldBalanceI + y) * exchangeRateProviders[_i].exchangeRate()) / (10 ** exchangeRateDecimals[_i]);
             uint256 ys = (D + newD) / _balances.length;
             uint256 dynamicFee = _dynamicFee(xs, ys, redeemFee);
             feeAmount = (dy * dynamicFee) / FEE_DENOMINATOR;
