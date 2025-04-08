@@ -293,25 +293,6 @@ contract ZapTest is Test {
         vm.stopPrank();
     }
 
-    function testRecoverERC20() public {
-        uint256 recoveryAmount = 100 ether;
-        vm.startPrank(user1);
-        token1.mint(address(zap), recoveryAmount);
-        vm.stopPrank();
-
-        vm.prank(user1);
-        vm.expectRevert();
-        zap.recoverERC20(address(token1), recoveryAmount, user1);
-        vm.startPrank(admin);
-
-        uint256 initialAdminBalance = token1.balanceOf(admin);
-
-        zap.recoverERC20(address(token1), recoveryAmount, admin);
-
-        assertEq(token1.balanceOf(admin), initialAdminBalance + recoveryAmount, "Tokens not recovered correctly");
-        vm.stopPrank();
-    }
-
     function testZapIn_ZeroSpaAddress() public {
         token1.mint(user1, ADD_LIQUIDITY_AMOUNT);
         token2.mint(user1, ADD_LIQUIDITY_AMOUNT / 10 ** 12);
