@@ -60,7 +60,6 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
         for (uint256 i = 0; i < tokens.length; i++) {
             if (amounts[i] > 0) {
                 IERC20(tokens[i]).forceApprove(spa, 0);
-                assert(IERC20(tokens[i]).balanceOf(address(this)) == 0);
             }
         }
 
@@ -104,7 +103,6 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
         IERC20(wlp).safeTransferFrom(msg.sender, address(this), wlpAmount);
 
         uint256 lpAmount = _redeem(wlp, wlpAmount, address(this));
-        assert(IERC20(wlp).balanceOf(address(this)) == 0);
 
         address lpToken = _getPoolToken(spa);
         IERC20(lpToken).forceApprove(spa, lpAmount);
@@ -114,7 +112,6 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
         IERC20(lpToken).forceApprove(spa, 0);
         // repay remaining
         ILPToken(lpToken).transferShares(receiver, ILPToken(lpToken).sharesOf(address(this)));
-        assert(ILPToken(lpToken).sharesOf(address(this)) == 0);
 
         for (uint256 i = 0; i < tokens.length; i++) {
             if (amounts[i] > 0) IERC20(tokens[i]).safeTransfer(receiver, amounts[i]);
@@ -154,7 +151,6 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
         IERC20(wlp).safeTransferFrom(msg.sender, address(this), wlpAmount);
 
         uint256 lpAmount = _redeem(wlp, wlpAmount, address(this));
-        assert(IERC20(wlp).balanceOf(address(this)) == 0);
 
         address lpToken = _getPoolToken(spa);
         IERC20(lpToken).forceApprove(spa, lpAmount);
@@ -163,7 +159,6 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
         IERC20(lpToken).forceApprove(spa, 0);
         // repay remaining
         ILPToken(lpToken).transferShares(receiver, ILPToken(lpToken).sharesOf(address(this)));
-        assert(ILPToken(lpToken).sharesOf(address(this)) == 0);
 
         IERC20(tokens[tokenIndex]).safeTransfer(receiver, amount);
 
