@@ -3,7 +3,6 @@ pragma solidity 0.8.28;
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { ILPToken } from "../interfaces/ILPToken.sol";
 import { IZap } from "../interfaces/IZap.sol";
@@ -14,14 +13,12 @@ import { IZap } from "../interfaces/IZap.sol";
  * @dev Allows users to add/remove liquidity with automatic wrapping/unwrapping in 1 tx
  * @dev SPA and wLP addresses are passed as parameters to each function
  */
-contract Zap is IZap, Ownable, ReentrancyGuard {
+contract Zap is IZap, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     error ZeroAmount();
     error InvalidParameters();
     error CallFailed();
-
-    constructor() Ownable(msg.sender) { }
 
     /**
      * @notice Add liquidity to SPA and automatically wrap LP tokens
@@ -60,7 +57,6 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
         for (uint256 i = 0; i < tokens.length; i++) {
             if (amounts[i] > 0) {
                 IERC20(tokens[i]).forceApprove(spa, 0);
-                assert(IERC20(tokens[i]).balanceOf(address(this)) == 0);
             }
         }
 
@@ -104,7 +100,6 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
         IERC20(wlp).safeTransferFrom(msg.sender, address(this), wlpAmount);
 
         uint256 lpAmount = _redeem(wlp, wlpAmount, address(this));
-        assert(IERC20(wlp).balanceOf(address(this)) == 0);
 
         address lpToken = _getPoolToken(spa);
         IERC20(lpToken).forceApprove(spa, lpAmount);
@@ -114,7 +109,6 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
         IERC20(lpToken).forceApprove(spa, 0);
         // repay remaining
         ILPToken(lpToken).transferShares(receiver, ILPToken(lpToken).sharesOf(address(this)));
-        assert(ILPToken(lpToken).sharesOf(address(this)) == 0);
 
         for (uint256 i = 0; i < tokens.length; i++) {
             if (amounts[i] > 0) IERC20(tokens[i]).safeTransfer(receiver, amounts[i]);
@@ -154,7 +148,6 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
         IERC20(wlp).safeTransferFrom(msg.sender, address(this), wlpAmount);
 
         uint256 lpAmount = _redeem(wlp, wlpAmount, address(this));
-        assert(IERC20(wlp).balanceOf(address(this)) == 0);
 
         address lpToken = _getPoolToken(spa);
         IERC20(lpToken).forceApprove(spa, lpAmount);
@@ -163,7 +156,6 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
         IERC20(lpToken).forceApprove(spa, 0);
         // repay remaining
         ILPToken(lpToken).transferShares(receiver, ILPToken(lpToken).sharesOf(address(this)));
-        assert(ILPToken(lpToken).sharesOf(address(this)) == 0);
 
         IERC20(tokens[tokenIndex]).safeTransfer(receiver, amount);
 
@@ -172,16 +164,6 @@ contract Zap is IZap, Ownable, ReentrancyGuard {
 
         emit ZapOut(spa, msg.sender, receiver, wlpAmount, amounts, false);
         return amount;
-    }
-
-    /**
-     * @notice Recover tokens accidentally sent to this contract
-     * @param token Address of the token to recover
-     * @param amount Amount to recover
-     * @param to Address to send the tokens to
-     */
-    function recoverERC20(address token, uint256 amount, address to) external onlyOwner {
-        IERC20(token).safeTransfer(to, amount);
     }
 
     // ============ Internal Functions ============

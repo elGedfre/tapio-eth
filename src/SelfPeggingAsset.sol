@@ -276,6 +276,9 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /// @notice Error thrown when the controller is in a ramp
     error CannotChangeControllerDuringRamp();
 
+    /// @notice Error thrown when the controller initial A not match
+    error InitialANotMatchCurrentA();
+
     /// @notice Error thrown when the amount is invalid.
     error InvalidAmount();
 
@@ -812,6 +815,9 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         if (address(rampAController) != address(0) && rampAController.isRamping()) {
             revert CannotChangeControllerDuringRamp();
         }
+        if (IRampAController(_rampAController).initialA() != A) {
+            revert InitialANotMatchCurrentA();
+        }
         rampAController = IRampAController(_rampAController);
         emit RampAControllerUpdated(_rampAController);
     }
@@ -1113,7 +1119,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     }
 
     function _syncTotalSupply() internal {
-        uint256 newD = _getD(balances, getCurrentA());
+        uint256 newD = _getD(balances, A);
 
         if (totalSupply > newD) {
             // A decreased
