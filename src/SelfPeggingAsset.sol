@@ -480,6 +480,10 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         require(!paused || admins[msg.sender], Paused());
         require(balances.length == _amounts.length, InvalidAmount());
 
+        for (uint256 i = 0; i < _amounts.length; i++) {
+            _updateMultiplierForToken(i);
+        }
+
         collectFeeOrYield(false);
         uint256[] memory _balances = balances;
         uint256 oldD = totalSupply;
@@ -505,7 +509,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
                     idealBalance > _balances[i] ? idealBalance - _balances[i] : _balances[i] - idealBalance;
                 uint256 xs = ((balances[i] + _balances[i]) * exchangeRateProviders[i].exchangeRate())
                     / (10 ** exchangeRateDecimals[i]);
-                fees[i] = (difference * _dynamicFee(xs, ys, mintFee)) / FEE_DENOMINATOR;
+                fees[i] = (difference * (_dynamicFee(xs, ys, mintFee) + _volatilityFee(i, mintFee))) / FEE_DENOMINATOR;
                 _balances[i] -= fees[i];
             }
 
@@ -1261,6 +1265,15 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 worstMult = (multI > multJ) ? multI : multJ;
         if (worstMult <= FEE_DENOMINATOR) return 0;
         uint256 diff = worstMult - FEE_DENOMINATOR;
+        return (_baseFee * diff) / FEE_DENOMINATOR;
+    }
+
+    /**
+     * @dev Calculate extra fee from volatility for i
+     */
+    function _volatilityFee(uint256 _i, uint256 _baseFee) internal view returns (uint256) {
+        uint256 multI = _currentMultiplier(_i);
+        uint256 diff = multI - FEE_DENOMINATOR;
         return (_baseFee * diff) / FEE_DENOMINATOR;
     }
 
