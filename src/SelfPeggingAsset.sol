@@ -459,7 +459,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         require(hasNonZero, ZeroAmount());
 
         _balances = _updateBalancesForDeposit(_balances, _amounts);
-        uint256 newD = _getD(_balances, getCurrentA());
+        uint256 newD = _getD(_balances, A);
         // newD should be bigger than or equal to oldD
         uint256 mintAmount = newD - oldD;
 
@@ -477,7 +477,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
                 _balances[i] -= fees[i];
             }
 
-            newD = _getD(_balances, getCurrentA());
+            newD = _getD(_balances, A);
             mintAmount = newD - oldD;
         }
 
@@ -528,7 +528,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 prevBalanceI = _balances[_i];
         _balances[_i] +=
             (_dx * exchangeRateProviders[_i].exchangeRate() * precisions[_i]) / (10 ** exchangeRateDecimals[_i]);
-        uint256 y = _getY(_balances, _j, totalSupply, getCurrentA());
+        uint256 y = _getY(_balances, _j, totalSupply, A);
         // dy = (balance[j] - y - 1) / precisions[j] in case there was rounding errors
         uint256 dy = (_balances[_j] - y - 1) / precisions[_j];
         // Update token balance in storage
@@ -646,7 +646,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
         uint256 newD = oldD - _amount;
         // y is converted(18 decimals)
-        uint256 y = _getY(_balances, _i, newD, getCurrentA());
+        uint256 y = _getY(_balances, _i, newD, A);
         // dy is not converted
         // dy = (balance[i] - y - 1) / precisions[i] in case there was rounding errors
         uint256 dy = (_balances[_i] - y - 1) / precisions[_i];
@@ -699,7 +699,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256[] memory _balances = balances;
         uint256 oldD = totalSupply;
         _balances = _updateBalancesForWithdrawal(_balances, _amounts);
-        uint256 newD = _getD(_balances, getCurrentA());
+        uint256 newD = _getD(_balances, A);
 
         // newD should be smaller than or equal to oldD
         uint256 redeemAmount = oldD - newD;
@@ -717,7 +717,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
                 _balances[i] -= fees[i];
             }
 
-            newD = _getD(_balances, getCurrentA());
+            newD = _getD(_balances, A);
             redeemAmount = oldD - newD;
         }
 
@@ -839,7 +839,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256[] memory _balances = balances;
         uint256 oldD = totalSupply;
         _balances = _updateBalancesForDeposit(_balances, _amounts);
-        uint256 newD = _getD(_balances, getCurrentA());
+        uint256 newD = _getD(_balances, A);
         // newD should be bigger than or equal to oldD
         uint256 donationAmount = newD - oldD;
         require(donationAmount >= _minDonationAmount, InsufficientDonationAmount());
