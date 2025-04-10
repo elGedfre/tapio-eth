@@ -79,12 +79,4 @@ interface IZap {
     )
         external
         returns (uint256 amount);
-
-    /**
-     * @notice Recover tokens accidentally sent to this contract
-     * @param token Address of the token to recover
-     * @param amount Amount to recover
-     * @param to Address to send the tokens to
-     */
-    function recoverERC20(address token, uint256 amount, address to) external;
 }
