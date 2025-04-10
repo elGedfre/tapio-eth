@@ -861,4 +861,155 @@ contract SelfPeggingAssetTest is Test {
 
         assertGt(rETHBalance1, rETHBalance2);
     }
+
+    function testFuzz_ExchangeRateFee(
+        uint256 initialLiquidity,
+        uint256 swapAmount,
+        uint256 newRatePercent,
+        uint256 exchangeRateFeeFactor,
+        uint256 timeElapsed
+    )
+        public
+    {
+        initialLiquidity = bound(initialLiquidity, 100e18, 1000e18);
+        swapAmount = bound(swapAmount, 1e18, initialLiquidity / 10);
+        newRatePercent = bound(newRatePercent, 80, 120);
+        uint256 newRate = (1e18 * newRatePercent) / 100;
+
+        exchangeRateFeeFactor = bound(exchangeRateFeeFactor, 1e10, 5e10);
+        timeElapsed = bound(timeElapsed, 0, 30 days);
+
+        MockToken rETH1 = new MockToken("rETH1", "rETH1", 18);
+        MockToken wstETH1 = new MockToken("wstETH1", "wstETH1", 18);
+        MockToken rETH2 = new MockToken("rETH2", "rETH2", 18);
+        MockToken wstETH2 = new MockToken("wstETH2", "wstETH2", 18);
+        MockExchangeRateProvider rETHProvider1 = new MockExchangeRateProvider(1e18, 18);
+        MockExchangeRateProvider wstETHProvider1 = new MockExchangeRateProvider(1e18, 18);
+        MockExchangeRateProvider rETHProvider2 = new MockExchangeRateProvider(1e18, 18);
+        MockExchangeRateProvider wstETHProvider2 = new MockExchangeRateProvider(1e18, 18);
+
+        address[] memory tokens1 = new address[](2);
+        tokens1[0] = address(rETH1);
+        tokens1[1] = address(wstETH1);
+
+        address[] memory tokens2 = new address[](2);
+        tokens2[0] = address(rETH2);
+        tokens2[1] = address(wstETH2);
+
+        IExchangeRateProvider[] memory providers1 = new IExchangeRateProvider[](2);
+        providers1[0] = IExchangeRateProvider(rETHProvider1);
+        providers1[1] = IExchangeRateProvider(wstETHProvider1);
+
+        IExchangeRateProvider[] memory providers2 = new IExchangeRateProvider[](2);
+        providers2[0] = IExchangeRateProvider(rETHProvider2);
+        providers2[1] = IExchangeRateProvider(wstETHProvider2);
+
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("LP Token 1", "LPT1"));
+        ERC1967Proxy proxy1 = new ERC1967Proxy(address(new LPToken()), data);
+        LPToken lpToken1 = LPToken(address(proxy1));
+        lpToken1.transferOwnership(owner);
+
+        data = abi.encodeCall(LPToken.initialize, ("LP Token 2", "LPT2"));
+        ERC1967Proxy proxy2 = new ERC1967Proxy(address(new LPToken()), data);
+        LPToken lpToken2 = LPToken(address(proxy2));
+        lpToken2.transferOwnership(owner);
+
+        uint256[] memory fees = new uint256[](3);
+        fees[0] = 0;
+        fees[1] = 0.00001e10;
+        fees[2] = 0;
+        precisions[0] = 1;
+        precisions[1] = 1;
+
+        data = abi.encodeCall(
+            SelfPeggingAsset.initialize, (tokens1, precisions, fees, 0, lpToken1, A, providers1, address(0), 0)
+        );
+        proxy1 = new ERC1967Proxy(address(new SelfPeggingAsset()), data);
+        SelfPeggingAsset pool1 = SelfPeggingAsset(address(proxy1));
+        pool1.transferOwnership(owner);
+
+        data = abi.encodeCall(
+            SelfPeggingAsset.initialize,
+            (tokens2, precisions, fees, 0, lpToken2, A, providers2, address(0), exchangeRateFeeFactor)
+        );
+        proxy2 = new ERC1967Proxy(address(new SelfPeggingAsset()), data);
+        SelfPeggingAsset pool2 = SelfPeggingAsset(address(proxy2));
+        pool2.transferOwnership(owner);
+
+        vm.startPrank(owner);
+        lpToken1.addPool(address(pool1));
+        lpToken2.addPool(address(pool2));
+        vm.stopPrank();
+
+        uint256 bufferSize = initialLiquidity * 3;
+        vm.prank(address(pool1));
+        lpToken1.addBuffer(bufferSize);
+
+        vm.prank(address(pool2));
+        lpToken2.addBuffer(bufferSize);
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = initialLiquidity;
+        amounts[1] = initialLiquidity;
+
+        rETH1.mint(user, initialLiquidity);
+        wstETH1.mint(user, initialLiquidity);
+        rETH2.mint(user, initialLiquidity);
+        wstETH2.mint(user, initialLiquidity);
+
+        vm.startPrank(user);
+        rETH1.approve(address(pool1), initialLiquidity);
+        wstETH1.approve(address(pool1), initialLiquidity);
+        rETH2.approve(address(pool2), initialLiquidity);
+        wstETH2.approve(address(pool2), initialLiquidity);
+
+        pool1.mint(amounts, 0);
+        pool2.mint(amounts, 0);
+        vm.stopPrank();
+
+        rETH1.mint(user2, swapAmount);
+        rETH2.mint(user2, swapAmount);
+
+        vm.startPrank(user2);
+        rETH1.approve(address(pool1), swapAmount);
+        rETH2.approve(address(pool2), swapAmount);
+
+        pool1.swap(0, 1, swapAmount, 0);
+        pool2.swap(0, 1, swapAmount, 0);
+        vm.stopPrank();
+
+        uint256 wstETHBalance1 = wstETH1.balanceOf(user2);
+        uint256 wstETHBalance2 = wstETH2.balanceOf(user2);
+
+        assertApproxEqRel(wstETHBalance1, wstETHBalance2, 0.01e18);
+
+        rETHProvider1.setExchangeRate(newRate);
+        rETHProvider2.setExchangeRate(newRate);
+
+        if (timeElapsed > 0) vm.warp(block.timestamp + timeElapsed);
+
+        vm.startPrank(user2);
+        wstETH1.approve(address(pool1), wstETHBalance1);
+        wstETH2.approve(address(pool2), wstETHBalance2);
+
+        uint256 rETHBalanceBefore1 = rETH1.balanceOf(user2);
+        uint256 rETHBalanceBefore2 = rETH2.balanceOf(user2);
+
+        pool1.swap(1, 0, wstETHBalance1, 0);
+        uint256 rETHBalance1 = rETH1.balanceOf(user2) - rETHBalanceBefore1;
+
+        pool2.swap(1, 0, wstETHBalance2, 0);
+        uint256 rETHBalance2 = rETH2.balanceOf(user2) - rETHBalanceBefore2;
+        vm.stopPrank();
+
+        int256 profit1 = int256(rETHBalance1) - int256(swapAmount);
+        int256 profit2 = int256(rETHBalance2) - int256(swapAmount);
+
+        bool isSignificantRateChange = newRatePercent <= 95 || newRatePercent >= 105;
+        bool isFreshRate = timeElapsed <= 1 days;
+
+        if (isSignificantRateChange && isFreshRate && exchangeRateFeeFactor > 1e10) {
+            assertLt(profit2, profit1, "Protected pool should yield less profit on rate exploit");
+        }
+    }
 }
