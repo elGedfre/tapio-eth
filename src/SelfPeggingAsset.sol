@@ -623,23 +623,18 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         require(_amount != 0, ZeroAmount());
         require(balances.length == _minRedeemAmounts.length, InvalidMins());
 
-        for (uint256 i = 0; i < _minRedeemAmounts.length; i++) {
-            _updateMultiplierForToken(i);
-        }
-
         collectFeeOrYield(false);
         uint256[] memory _balances = balances;
         uint256 D = totalSupply;
         uint256[] memory amounts = new uint256[](_balances.length);
         uint256 feeAmount = 0;
         uint256 redeemAmount = _amount;
+        if (redeemFee > 0) {
+            feeAmount = (_amount * redeemFee) / FEE_DENOMINATOR;
+            redeemAmount = _amount - feeAmount;
+        }
 
         for (uint256 i = 0; i < _balances.length; i++) {
-            if (redeemFee > 0) {
-                feeAmount = (_amount * (redeemFee + _volatilityFee(i, redeemFee))) / FEE_DENOMINATOR;
-                redeemAmount = _amount - feeAmount;
-            }
-
             // We might choose to use poolToken.totalSupply to compute the amount, but decide to use
             // D in case we have multiple minters on the pool token.
             uint256 tokenAmount = (_balances[i] * redeemAmount) / D;
@@ -685,6 +680,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         require(!paused || admins[msg.sender], Paused());
         require(_amount > 0, ZeroAmount());
         require(_i < balances.length, InvalidToken());
+
+        _updateMultiplierForToken(_i);
 
         collectFeeOrYield(false);
         uint256[] memory _balances = balances;
@@ -741,6 +738,10 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         require(_amounts.length == balances.length, InputMismatch());
         // If swap is paused, only admins can redeem.
         require(!paused || admins[msg.sender], Paused());
+
+        for (uint256 i = 0; i < _amounts.length; i++) {
+            _updateMultiplierForToken(i);
+        }
 
         collectFeeOrYield(false);
         uint256[] memory _balances = balances;
@@ -1131,13 +1132,12 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256[] memory amounts = new uint256[](_balances.length);
         uint256 feeAmount;
         uint256 redeemAmount = _amount;
+        if (redeemFee != 0) {
+            feeAmount = (_amount * redeemFee) / FEE_DENOMINATOR;
+            redeemAmount = _amount - feeAmount;
+        }
 
         for (uint256 i = 0; i < _balances.length; i++) {
-            if (redeemFee > 0) {
-                feeAmount = (_amount * (redeemFee + _volatilityFee(i, redeemFee))) / FEE_DENOMINATOR;
-                redeemAmount = _amount - feeAmount;
-            }
-
             // We might choose to use poolToken.totalSupply to compute the amount, but decide to use
             // D in case we have multiple minters on the pool token.
             amounts[i] = (_balances[i] * redeemAmount) / D / precisions[i];
