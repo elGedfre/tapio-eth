@@ -28,7 +28,7 @@ contract ChainlinkCompositeOracleProvider {
     /**
      * @notice Array of 3 configs
      */
-    Config[3] public configs;
+    Config[] public configs;
 
     /**
      * @notice Error emitted when feed is invalid
@@ -56,10 +56,15 @@ contract ChainlinkCompositeOracleProvider {
     error GracePeriodNotOver();
 
     /**
+     * @notice Error emitted when price from feed is invalid
+     */
+    error InvalidFeedPrice();
+
+    /**
      * @notice Contract constructor
      * @param _sequencerUptimeFeed L2 Sequencer uptime feed
      */
-    constructor(AggregatorV3Interface _sequencerUptimeFeed, Config[3] memory _configs) {
+    constructor(AggregatorV3Interface _sequencerUptimeFeed, Config[] memory _configs) {
         for (uint256 i = 0; i < _configs.length; i++) {
             if (i == 0 && address(_configs[i].feed) == address(0)) {
                 revert InvalidFeed();
@@ -69,7 +74,11 @@ contract ChainlinkCompositeOracleProvider {
                 revert InvalidStalePeriod();
             }
 
-            configs[i] = _configs[i];
+            if (_configs[i].isInverted) {
+                _configs[i].assetDecimals = _configs[i].feed.decimals();
+            }
+
+            configs.push(_configs[i]);
         }
 
         sequencerUptimeFeed = _sequencerUptimeFeed;
@@ -88,11 +97,11 @@ contract ChainlinkCompositeOracleProvider {
         for (uint256 i = 0; i < configs.length; i++) {
             Config memory config = configs[i];
 
-            if (address(config.feed) == address(0)) {
-                return _price;
-            }
-
             (, int256 feedPrice,, uint256 updatedAt,) = config.feed.latestRoundData();
+
+            if (feedPrice <= 0) {
+                revert InvalidFeedPrice();
+            }
 
             if (block.timestamp - updatedAt > config.maxStalePeriod) {
                 revert StalePrice();

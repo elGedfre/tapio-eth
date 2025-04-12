@@ -19,7 +19,7 @@ contract ChainlinkCompositeOracleProviderTest is Test {
     }
 
     function test_weETHTostETH() external {
-        ChainlinkCompositeOracleProvider.Config[3] memory configs;
+        ChainlinkCompositeOracleProvider.Config[] memory configs = new ChainlinkCompositeOracleProvider.Config[](2);
         configs[0] = ChainlinkCompositeOracleProvider.Config({
             feed: weETHToETHFeed,
             maxStalePeriod: 24 hours,
