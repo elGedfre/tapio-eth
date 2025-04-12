@@ -20,14 +20,6 @@ contract Config is Script {
     address rampAControllerBeacon;
     address zap;
 
-    struct JSONData {
-        address Factory;
-        address LPTokenBeacon;
-        address SelfPeggingAssetBeacon;
-        address WLPTokenBeacon;
-        address Zap;
-    }
-
     function loadConfig() internal {
         if (!testnet) {
             // POPULATE ADDRESSES BASED ON CHAIN ID

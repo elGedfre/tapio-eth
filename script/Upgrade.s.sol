@@ -17,6 +17,14 @@ import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract Upgrade is Deploy, Pool {
+    struct JSONData {
+        address Factory;
+        address LPTokenBeacon;
+        address SelfPeggingAssetBeacon;
+        address WLPTokenBeacon;
+        address Zap;
+    }
+
     function init() internal {
         if (vm.envUint("HEX_PRIV_KEY") == 0) revert("No private key found");
         deployerPrivateKey = vm.envUint("HEX_PRIV_KEY");
