@@ -72,7 +72,8 @@ contract RampAControllerTest is Test {
                 lpToken,
                 INITIAL_A,
                 providerArray,
-                address(rampAControllerProxy)
+                address(rampAControllerProxy),
+                0
             )
         );
         ERC1967Proxy spaProxy = new ERC1967Proxy(address(new SelfPeggingAsset()), spaData);
@@ -393,7 +394,8 @@ contract RampAControllerTest is Test {
                 newLpToken,
                 1, // initialA
                 providerArray,
-                address(lowAController)
+                address(lowAController),
+                0
             )
         );
 

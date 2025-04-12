@@ -121,6 +121,11 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
     uint256 public minRampTime;
 
     /**
+     * @dev The exchange rate fee factor.
+     */
+    uint256 public exchangeRateFeeFactor;
+
+    /**
      * @dev This event is emitted when the governor is modified.
      * @param governor is the new value of the governor.
      */
@@ -166,6 +171,12 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
     event AModified(uint256 A);
 
     /**
+     * @dev This event is emitted when the exchange rate fee factor is updated.
+     * @param exchangeRateFeeFactor is the new value of the exchange rate fee factor.
+     */
+    event ExchangeRateFeeFactorModified(uint256 exchangeRateFeeFactor);
+
+    /**
      * @dev This event is emitted when the min ramp time is updated.
      * @param minRampTime is the new value of the min ramp time.
      */
@@ -202,7 +213,8 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         address _lpTokenBeacon,
         address _wlpTokenBeacon,
         address _rampAControllerBeacon,
-        ConstantExchangeRateProvider _constantExchangeRateProvider
+        ConstantExchangeRateProvider _constantExchangeRateProvider,
+        uint256 _exchangeRateFeeFactor
     )
         public
         initializer
@@ -231,6 +243,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         A = _A;
         offPegFeeMultiplier = _offPegFeeMultiplier;
         minRampTime = _minRampTime;
+        exchangeRateFeeFactor = _exchangeRateFeeFactor;
     }
 
     /**
@@ -283,9 +296,20 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         emit AModified(_A);
     }
 
+    /**
+     * @dev Set the minimum ramp time.
+     */
     function setMinRampTime(uint256 _minRampTime) external onlyOwner {
         minRampTime = _minRampTime;
         emit MinRampTimeUpdated(_minRampTime);
+    }
+
+    /**
+     * @dev Set the exchange rate fee factor.
+     */
+    function setExchangeRateFeeFactor(uint256 _exchangeRateFeeFactor) external onlyOwner {
+        exchangeRateFeeFactor = _exchangeRateFeeFactor;
+        emit ExchangeRateFeeFactorModified(_exchangeRateFeeFactor);
     }
 
     /**
@@ -360,7 +384,8 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
                 LPToken(address(lpTokenProxy)),
                 A,
                 exchangeRateProviders,
-                address(rampAControllerProxy)
+                address(rampAControllerProxy),
+                exchangeRateFeeFactor
             )
         );
         BeaconProxy selfPeggingAssetProxy = new BeaconProxy(selfPeggingAssetBeacon, selfPeggingAssetInit);
