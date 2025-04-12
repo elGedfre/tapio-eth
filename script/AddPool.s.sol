@@ -11,6 +11,7 @@ import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
 import { ChainlinkOracleProvider } from "../src/misc/ChainlinkOracleProvider.sol";
 import "@chainlink/contracts/shared/interfaces/AggregatorV3Interface.sol";
 import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
+import { ChainlinkCompositeOracleProvider } from "../src/misc/ChainlinkCompositeOracleProvider.sol";
 
 contract AddPool is Deploy, Pool {
     struct JSONData {
@@ -25,6 +26,7 @@ contract AddPool is Deploy, Pool {
         if (vm.envUint("HEX_PRIV_KEY") == 0) revert("No private key found");
         deployerPrivateKey = vm.envUint("HEX_PRIV_KEY");
         DEPLOYER = vm.addr(deployerPrivateKey);
+        console.log("Deployer: ", DEPLOYER);
     }
 
     function run() public payable {
@@ -39,8 +41,6 @@ contract AddPool is Deploy, Pool {
         string memory networkName = getNetworkName(chainId);
         string memory path = string.concat("./broadcast/", networkName, ".json");
 
-        vm.writeJson(vm.serializeAddress("contracts", "Zap", zap), path);
-
         string memory json = vm.readFile(path);
         bytes memory data = vm.parseJson(json);
         JSONData memory jsonData = abi.decode(data, (JSONData));
@@ -49,6 +49,12 @@ contract AddPool is Deploy, Pool {
         selfPeggingAssetBeacon = jsonData.SelfPeggingAssetBeacon;
         lpTokenBeacon = jsonData.LPTokenBeacon;
         wlpTokenBeacon = jsonData.WLPTokenBeacon;
+
+        vm.writeJson(vm.serializeAddress("contracts", "Zap", zap), path);
+        vm.writeJson(vm.serializeAddress("contracts", "Factory", address(factory)), path);
+        vm.writeJson(vm.serializeAddress("contracts", "SelfPeggingAssetBeacon", selfPeggingAssetBeacon), path);
+        vm.writeJson(vm.serializeAddress("contracts", "LPTokenBeacon", lpTokenBeacon), path);
+        vm.writeJson(vm.serializeAddress("contracts", "WLPTokenBeacon", wlpTokenBeacon), path);
 
         if (chainId == 8453) {
             // base mainnet
@@ -70,23 +76,27 @@ contract AddPool is Deploy, Pool {
                 )
             );
 
-            
+            ChainlinkCompositeOracleProvider.Config[] memory configs = new ChainlinkCompositeOracleProvider.Config[](2);
+            configs[0] = ChainlinkCompositeOracleProvider.Config({
+                feed: AggregatorV3Interface(weETHToETHFeed),
+                maxStalePeriod: 24 hours,
+                assetDecimals: 18,
+                isInverted: false
+            });
+            configs[1] = ChainlinkCompositeOracleProvider.Config({
+                feed: AggregatorV3Interface(stETHToETHFeed),
+                maxStalePeriod: 24 hours,
+                assetDecimals: 18,
+                isInverted: true
+            });
 
-            address weETHOracle = address(
-                new ChainlinkOracleProvider(
-                    AggregatorV3Interface(sequencer), AggregatorV3Interface(weETHFeed), 24 hours
-                )
-            );
+            ChainlinkCompositeOracleProvider weETHTostETHOracle =
+                new ChainlinkCompositeOracleProvider(AggregatorV3Interface(sequencer), configs);
 
-            address cbETHOracle = address(
-                new ChainlinkOracleProvider(
-                    AggregatorV3Interface(sequencer), AggregatorV3Interface(cbETHFeed), 24 hours
-                )
-            );
+            (, address pool,,) =
+                createChainlinkPool(wstETH, weETH, address(wstETHTostETHOracle), address(weETHTostETHOracle));
 
-            (, address pool,,) = createChainlinkPool(weth, wstETH, wstETHOracle);
-
-            initialMint(weth, wstETH, ethAmount, ethAmount, SelfPeggingAsset(pool));
+            initialMint(wstETH, weETH, ethAmount, ethAmount, SelfPeggingAsset(pool));
         }
 
         vm.stopBroadcast();

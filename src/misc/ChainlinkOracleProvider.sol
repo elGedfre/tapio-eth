@@ -74,13 +74,13 @@ contract ChainlinkOracleProvider {
     function price() external view returns (uint256) {
         _validateSequencerStatus();
 
-        (, int256 price,, uint256 updatedAt,) = feed.latestRoundData();
+        (, int256 feedPrice,, uint256 updatedAt,) = feed.latestRoundData();
 
         if (block.timestamp - updatedAt > maxStalePeriod) {
             revert StalePrice();
         }
 
-        return uint256(price);
+        return uint256(feedPrice);
     }
 
     /**

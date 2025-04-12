@@ -98,6 +98,54 @@ contract Pool is Config {
         return (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken, decodedRampAController);
     }
 
+    function createChainlinkPool(
+        address tokenA,
+        address tokenB,
+        address tokenAOracle,
+        address tokenBOracle
+    )
+        internal
+        returns (address, address, address, address)
+    {
+        console.log("---------------");
+        console.log("create-pool-logs");
+        console.log("---------------");
+
+        SelfPeggingAssetFactory.CreatePoolArgument memory arg = SelfPeggingAssetFactory.CreatePoolArgument({
+            tokenA: tokenA,
+            tokenB: tokenB,
+            tokenAType: SelfPeggingAssetFactory.TokenType.Standard,
+            tokenAOracle: tokenAOracle,
+            tokenARateFunctionSig: abi.encodePacked(ChainlinkOracleProvider.price.selector),
+            tokenADecimalsFunctionSig: abi.encodePacked(ChainlinkOracleProvider.decimals.selector),
+            tokenBType: SelfPeggingAssetFactory.TokenType.Oracle,
+            tokenBOracle: tokenBOracle,
+            tokenBRateFunctionSig: abi.encodePacked(ChainlinkOracleProvider.price.selector),
+            tokenBDecimalsFunctionSig: abi.encodePacked(ChainlinkOracleProvider.decimals.selector)
+        });
+
+        vm.recordLogs();
+        factory.createPool(arg);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 eventSig = keccak256("PoolCreated(address,address,address,address)");
+
+        address decodedPoolToken;
+        address decodedSelfPeggingAsset;
+        address decodedWrappedPoolToken;
+        address decodedRampAController;
+
+        for (uint256 i = 0; i < entries.length; i++) {
+            Vm.Log memory log = entries[i];
+
+            if (log.topics[0] == eventSig) {
+                (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken, decodedRampAController) =
+                    abi.decode(log.data, (address, address, address, address));
+            }
+        }
+
+        return (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken, decodedRampAController);
+    }
+
     function initialMint(
         address tokenA,
         address tokenB,
