@@ -63,6 +63,7 @@ contract ChainlinkCompositeOracleProvider {
     /**
      * @notice Contract constructor
      * @param _sequencerUptimeFeed L2 Sequencer uptime feed
+     * @param _configs Array of configs for feeds
      */
     constructor(AggregatorV3Interface _sequencerUptimeFeed, Config[] memory _configs) {
         for (uint256 i = 0; i < _configs.length; i++) {
