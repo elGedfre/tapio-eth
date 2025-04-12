@@ -5,10 +5,13 @@ import "@chainlink/contracts/shared/interfaces/AggregatorV3Interface.sol";
 
 contract ChainlinkCompositeOracleProvider {
     struct Config {
+        /// @notice Chainlink feed
         AggregatorV3Interface feed;
+        /// @notice Max stale period in seconds
         uint256 maxStalePeriod;
-        // Should be first token decimals if inverted and if not inverted then feed decimals
+        /// @notice Should be first token decimals if inverted and if not inverted then feed decimals
         uint256 assetDecimals;
+        /// @notice If true, the price is inverted
         bool isInverted;
     }
 
