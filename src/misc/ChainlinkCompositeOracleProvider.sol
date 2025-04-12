@@ -4,6 +4,14 @@ pragma solidity 0.8.28;
 import "@chainlink/contracts/shared/interfaces/AggregatorV3Interface.sol";
 
 contract ChainlinkCompositeOracleProvider {
+    struct Config {
+        AggregatorV3Interface feed;
+        uint256 maxStalePeriod;
+        // Should be first token decimals if inverted and if not inverted then feed decimals
+        uint256 assetDecimals;
+        bool isInverted;
+    }
+
     /**
      * @notice Grace period time after the sequencer is back up
      */
@@ -15,34 +23,9 @@ contract ChainlinkCompositeOracleProvider {
     AggregatorV3Interface public immutable sequencerUptimeFeed;
 
     /**
-     * @notice Chainlink feed for the first asset. Ex: weETH - ETH
+     * @notice Array of 3 configs
      */
-    AggregatorV3Interface public immutable feed1;
-
-    /**
-     * @notice Chainlink feed for the second asset. Ex: stETH - ETH
-     */
-    AggregatorV3Interface public immutable feed2;
-
-    /**
-     * @notice Maximum stale period for the first price feed
-     */
-    uint256 public immutable maxStalePeriod1;
-
-    /**
-     * @notice Maximum stale period for the second price feed
-     */
-    uint256 public immutable maxStalePeriod2;
-
-    /**
-     * @notice Decimals of the second asset. Ex: stETH decimals
-     */
-    uint256 public immutable assetDecimals;
-
-    /**
-     * @notice Inverted flag for the second feed
-     */
-    bool public immutable isInverted;
+    Config[3] public configs;
 
     /**
      * @notice Error emitted when feed is invalid
@@ -73,30 +56,20 @@ contract ChainlinkCompositeOracleProvider {
      * @notice Contract constructor
      * @param _sequencerUptimeFeed L2 Sequencer uptime feed
      */
-    constructor(
-        AggregatorV3Interface _sequencerUptimeFeed,
-        AggregatorV3Interface _feed1,
-        AggregatorV3Interface _feed2,
-        uint256 _maxStalePeriod1,
-        uint256 _maxStalePeriod2,
-        uint256 _assetDecimals,
-        bool _inverted
-    ) {
-        if (address(_feed1) == address(0) || address(_feed2) == address(0)) {
-            revert InvalidFeed();
-        }
+    constructor(AggregatorV3Interface _sequencerUptimeFeed, Config[3] memory _configs) {
+        for (uint256 i = 0; i < _configs.length; i++) {
+            if (i == 0 && address(_configs[i].feed) == address(0)) {
+                revert InvalidFeed();
+            }
 
-        if (_maxStalePeriod1 == 0 || _maxStalePeriod2 == 0) {
-            revert InvalidStalePeriod();
+            if (address(_configs[i].feed) != address(0) && _configs[i].maxStalePeriod == 0) {
+                revert InvalidStalePeriod();
+            }
+
+            configs[i] = _configs[i];
         }
 
         sequencerUptimeFeed = _sequencerUptimeFeed;
-        feed1 = _feed1;
-        feed2 = _feed2;
-        maxStalePeriod1 = _maxStalePeriod1;
-        maxStalePeriod2 = _maxStalePeriod2;
-        assetDecimals = _assetDecimals;
-        isInverted = _inverted;
     }
 
     /**
@@ -106,25 +79,40 @@ contract ChainlinkCompositeOracleProvider {
     function price() external view returns (uint256) {
         _validateSequencerStatus();
 
-        // 1 weETH = ? ETH = price1
-        (, int256 price1,, uint256 updatedAt1,) = feed1.latestRoundData();
+        uint256 _price;
+        uint256 priceDecimals;
 
-        if (block.timestamp - updatedAt1 > maxStalePeriod1) {
-            revert StalePrice();
+        for (uint256 i = 0; i < configs.length; i++) {
+            Config memory config = configs[i];
+
+            if (address(config.feed) == address(0)) {
+                return _price;
+            }
+
+            (, int256 feedPrice,, uint256 updatedAt,) = config.feed.latestRoundData();
+
+            if (block.timestamp - updatedAt > config.maxStalePeriod) {
+                revert StalePrice();
+            }
+
+            if (_price == 0) {
+                _price = 10 ** config.assetDecimals;
+                priceDecimals = config.assetDecimals;
+            }
+
+            if (config.isInverted) {
+                uint256 invertedFeedPrice =
+                    ((10 ** config.assetDecimals) * (10 ** config.feed.decimals())) / uint256(feedPrice);
+                _price = _price * invertedFeedPrice / 10 ** priceDecimals;
+                priceDecimals = config.assetDecimals;
+                continue;
+            }
+
+            _price = (_price * uint256(feedPrice)) / 10 ** priceDecimals;
+            priceDecimals = config.assetDecimals;
         }
 
-        (, int256 price2,, uint256 updatedAt2,) = feed2.latestRoundData();
-
-        if (block.timestamp - updatedAt2 > maxStalePeriod2) {
-            revert StalePrice();
-        }
-
-        if (isInverted) {
-            return ((((10 ** assetDecimals) * (10 ** assetDecimals)) / uint256(price2)) * uint256(price1))
-                / (10 ** feed1.decimals());
-        }
-
-        return uint256(price1 * price2) / 10 ** feed1.decimals();
+        return _price;
     }
 
     /**
@@ -132,7 +120,24 @@ contract ChainlinkCompositeOracleProvider {
      * @return Decimals of the price
      */
     function decimals() external view returns (uint256) {
-        return assetDecimals;
+        uint256 _decimals = 0;
+
+        for (uint256 i = 0; i < configs.length; i++) {
+            Config memory config = configs[i];
+
+            if (address(config.feed) == address(0)) {
+                return _decimals;
+            }
+
+            if (config.isInverted) {
+                _decimals = config.assetDecimals;
+                continue;
+            }
+
+            _decimals = config.feed.decimals();
+        }
+
+        return _decimals;
     }
 
     /**
