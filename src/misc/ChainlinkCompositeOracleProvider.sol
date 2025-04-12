@@ -75,7 +75,7 @@ contract ChainlinkCompositeOracleProvider {
                 revert InvalidStalePeriod();
             }
 
-            if (_configs[i].isInverted) {
+            if (!_configs[i].isInverted) {
                 _configs[i].assetDecimals = _configs[i].feed.decimals();
             }
 
