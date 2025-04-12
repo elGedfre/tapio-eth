@@ -106,12 +106,12 @@ contract ChainlinkCompositeOracleProvider {
             if (config.isInverted) {
                 uint256 invertedFeedPrice =
                     ((10 ** config.assetDecimals) * (10 ** config.feed.decimals())) / uint256(feedPrice);
-                _price = _price * invertedFeedPrice / 10 ** priceDecimals;
+                _price = (_price * invertedFeedPrice) / (10 ** priceDecimals);
                 priceDecimals = config.assetDecimals;
                 continue;
             }
 
-            _price = (_price * uint256(feedPrice)) / 10 ** priceDecimals;
+            _price = (_price * uint256(feedPrice)) / (10 ** priceDecimals);
             priceDecimals = config.assetDecimals;
         }
 
