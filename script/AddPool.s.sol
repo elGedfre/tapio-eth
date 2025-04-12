@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import { stdJson } from "forge-std/StdJson.sol";
-import { console } from "forge-std/console.sol";
+import { console2 } from "forge-std/console2.sol";
 
 import { Deploy } from "script/Deploy.sol";
 import { Pool } from "script/Pool.sol";
@@ -26,7 +26,6 @@ contract AddPool is Deploy, Pool {
         if (vm.envUint("HEX_PRIV_KEY") == 0) revert("No private key found");
         deployerPrivateKey = vm.envUint("HEX_PRIV_KEY");
         DEPLOYER = vm.addr(deployerPrivateKey);
-        console.log("Deployer: ", DEPLOYER);
     }
 
     function run() public payable {
