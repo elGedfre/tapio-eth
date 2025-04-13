@@ -75,28 +75,27 @@ contract AddPool is Deploy, Pool {
                 )
             );
 
-            // ChainlinkCompositeOracleProvider.Config[] memory configs = new
-            // ChainlinkCompositeOracleProvider.Config[](2);
-            // configs[0] = ChainlinkCompositeOracleProvider.Config({
-            //     feed: AggregatorV3Interface(weETHToETHFeed),
-            //     maxStalePeriod: 24 hours,
-            //     assetDecimals: 18,
-            //     isInverted: false
-            // });
-            // configs[1] = ChainlinkCompositeOracleProvider.Config({
-            //     feed: AggregatorV3Interface(stETHToETHFeed),
-            //     maxStalePeriod: 24 hours,
-            //     assetDecimals: 18,
-            //     isInverted: true
-            // });
+            ChainlinkCompositeOracleProvider.Config[] memory configs = new ChainlinkCompositeOracleProvider.Config[](2);
+            configs[0] = ChainlinkCompositeOracleProvider.Config({
+                feed: AggregatorV3Interface(weETHToETHFeed),
+                maxStalePeriod: 24 hours,
+                assetDecimals: 18,
+                isInverted: false
+            });
+            configs[1] = ChainlinkCompositeOracleProvider.Config({
+                feed: AggregatorV3Interface(stETHToETHFeed),
+                maxStalePeriod: 24 hours,
+                assetDecimals: 18,
+                isInverted: true
+            });
 
-            // ChainlinkCompositeOracleProvider weETHTostETHOracle =
-            //     new ChainlinkCompositeOracleProvider(AggregatorV3Interface(sequencer), configs);
+            ChainlinkCompositeOracleProvider weETHTostETHOracle =
+                new ChainlinkCompositeOracleProvider(AggregatorV3Interface(sequencer), configs);
 
-            // (, address pool,,) =
-            //     createChainlinkPool(wstETH, weETH, address(wstETHTostETHOracle), address(weETHTostETHOracle));
+            (, address pool,,) =
+                createChainlinkPool(wstETH, weETH, address(wstETHTostETHOracle), address(weETHTostETHOracle));
 
-            // initialMint(wstETH, weETH, ethAmount, ethAmount, SelfPeggingAsset(pool));
+            initialMint(wstETH, weETH, ethAmount, ethAmount, SelfPeggingAsset(pool));
 
             ChainlinkCompositeOracleProvider.Config[] memory configs2 = new ChainlinkCompositeOracleProvider.Config[](1);
             configs2[0] = ChainlinkCompositeOracleProvider.Config({
@@ -111,6 +110,8 @@ contract AddPool is Deploy, Pool {
 
             (, address pool2,,) =
                 createChainlinkPool(weth, wstETH, address(ETHTostETHOracle), address(wstETHTostETHOracle));
+
+            initialMint(weth, wstETH, ethAmount, ethAmount, SelfPeggingAsset(pool2));
         }
 
         vm.stopBroadcast();
