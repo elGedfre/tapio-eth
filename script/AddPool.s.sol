@@ -34,8 +34,6 @@ contract AddPool is Deploy, Pool {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        deployZap();
-
         uint256 chainId = getChainId();
         string memory networkName = getNetworkName(chainId);
         string memory path = string.concat("./broadcast/", networkName, ".json");
@@ -48,6 +46,7 @@ contract AddPool is Deploy, Pool {
         selfPeggingAssetBeacon = jsonData.SelfPeggingAssetBeacon;
         lpTokenBeacon = jsonData.LPTokenBeacon;
         wlpTokenBeacon = jsonData.WLPTokenBeacon;
+        zap = jsonData.Zap;
 
         vm.writeJson(vm.serializeAddress("contracts", "Zap", zap), path);
         vm.writeJson(vm.serializeAddress("contracts", "Factory", address(factory)), path);
@@ -63,8 +62,9 @@ contract AddPool is Deploy, Pool {
 
             address wstETH = 0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452;
             address weETH = 0x04C0599Ae5A44757c0af6F9eC3b93da8976c150A;
+            address weth = 0x4200000000000000000000000000000000000006;
 
-            uint256 ethAmount = 0.0027e18;
+            uint256 ethAmount = 0.0026e18;
 
             address sequencer = 0xBCF85224fc0756B9Fa45aA7892530B47e10b6433;
 
@@ -75,27 +75,42 @@ contract AddPool is Deploy, Pool {
                 )
             );
 
-            ChainlinkCompositeOracleProvider.Config[] memory configs = new ChainlinkCompositeOracleProvider.Config[](2);
-            configs[0] = ChainlinkCompositeOracleProvider.Config({
-                feed: AggregatorV3Interface(weETHToETHFeed),
-                maxStalePeriod: 24 hours,
-                assetDecimals: 18,
-                isInverted: false
-            });
-            configs[1] = ChainlinkCompositeOracleProvider.Config({
+            // ChainlinkCompositeOracleProvider.Config[] memory configs = new
+            // ChainlinkCompositeOracleProvider.Config[](2);
+            // configs[0] = ChainlinkCompositeOracleProvider.Config({
+            //     feed: AggregatorV3Interface(weETHToETHFeed),
+            //     maxStalePeriod: 24 hours,
+            //     assetDecimals: 18,
+            //     isInverted: false
+            // });
+            // configs[1] = ChainlinkCompositeOracleProvider.Config({
+            //     feed: AggregatorV3Interface(stETHToETHFeed),
+            //     maxStalePeriod: 24 hours,
+            //     assetDecimals: 18,
+            //     isInverted: true
+            // });
+
+            // ChainlinkCompositeOracleProvider weETHTostETHOracle =
+            //     new ChainlinkCompositeOracleProvider(AggregatorV3Interface(sequencer), configs);
+
+            // (, address pool,,) =
+            //     createChainlinkPool(wstETH, weETH, address(wstETHTostETHOracle), address(weETHTostETHOracle));
+
+            // initialMint(wstETH, weETH, ethAmount, ethAmount, SelfPeggingAsset(pool));
+
+            ChainlinkCompositeOracleProvider.Config[] memory configs2 = new ChainlinkCompositeOracleProvider.Config[](1);
+            configs2[0] = ChainlinkCompositeOracleProvider.Config({
                 feed: AggregatorV3Interface(stETHToETHFeed),
                 maxStalePeriod: 24 hours,
                 assetDecimals: 18,
                 isInverted: true
             });
 
-            ChainlinkCompositeOracleProvider weETHTostETHOracle =
-                new ChainlinkCompositeOracleProvider(AggregatorV3Interface(sequencer), configs);
+            ChainlinkCompositeOracleProvider ETHTostETHOracle =
+                new ChainlinkCompositeOracleProvider(AggregatorV3Interface(sequencer), configs2);
 
-            (, address pool,,) =
-                createChainlinkPool(wstETH, weETH, address(wstETHTostETHOracle), address(weETHTostETHOracle));
-
-            initialMint(wstETH, weETH, ethAmount, ethAmount, SelfPeggingAsset(pool));
+            (, address pool2,,) =
+                createChainlinkPool(weth, wstETH, address(ETHTostETHOracle), address(wstETHTostETHOracle));
         }
 
         vm.stopBroadcast();
