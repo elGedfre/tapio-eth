@@ -143,10 +143,11 @@ contract AddPool is Deploy, Pool {
 
             uint256 amount = 0.0026e18;
 
-            address weth = 0x4200000000000000000000000000000000000006;
+            MockToken weth = new MockToken("WETH", "WETH", 18);
             MockToken wstETH = new MockToken("wstETH", "wstETH", 18);
             MockToken weETH = new MockToken("weETH", "weETH", 18);
 
+            MockToken(weth).mint(DEPLOYER, amount);
             MockToken(wstETH).mint(DEPLOYER, amount * 2);
             MockToken(weETH).mint(DEPLOYER, amount);
 
@@ -167,6 +168,7 @@ contract AddPool is Deploy, Pool {
 
             vm.writeJson(vm.serializeAddress("contracts", "wstETH", address(wstETH)), path);
             vm.writeJson(vm.serializeAddress("contracts", "weETH", address(weETH)), path);
+            vm.writeJson(vm.serializeAddress("contracts", "WETH", address(weth)), path);
         }
 
         vm.stopBroadcast();
