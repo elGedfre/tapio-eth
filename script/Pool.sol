@@ -8,6 +8,7 @@ import { Config } from "script/Config.sol";
 import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
 import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
 import { MockToken } from "../src/mock/MockToken.sol";
+import { MockExchangeRateProvider } from "../src/mock/MockExchangeRateProvider.sol";
 import { ChainlinkOracleProvider } from "../src/misc/ChainlinkOracleProvider.sol";
 
 contract Pool is Config {
@@ -114,7 +115,7 @@ contract Pool is Config {
         SelfPeggingAssetFactory.CreatePoolArgument memory arg = SelfPeggingAssetFactory.CreatePoolArgument({
             tokenA: tokenA,
             tokenB: tokenB,
-            tokenAType: SelfPeggingAssetFactory.TokenType.Standard,
+            tokenAType: SelfPeggingAssetFactory.TokenType.Oracle,
             tokenAOracle: tokenAOracle,
             tokenARateFunctionSig: abi.encodePacked(ChainlinkOracleProvider.price.selector),
             tokenADecimalsFunctionSig: abi.encodePacked(ChainlinkOracleProvider.decimals.selector),
@@ -122,6 +123,54 @@ contract Pool is Config {
             tokenBOracle: tokenBOracle,
             tokenBRateFunctionSig: abi.encodePacked(ChainlinkOracleProvider.price.selector),
             tokenBDecimalsFunctionSig: abi.encodePacked(ChainlinkOracleProvider.decimals.selector)
+        });
+
+        vm.recordLogs();
+        factory.createPool(arg);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 eventSig = keccak256("PoolCreated(address,address,address,address)");
+
+        address decodedPoolToken;
+        address decodedSelfPeggingAsset;
+        address decodedWrappedPoolToken;
+        address decodedRampAController;
+
+        for (uint256 i = 0; i < entries.length; i++) {
+            Vm.Log memory log = entries[i];
+
+            if (log.topics[0] == eventSig) {
+                (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken, decodedRampAController) =
+                    abi.decode(log.data, (address, address, address, address));
+            }
+        }
+
+        return (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken, decodedRampAController);
+    }
+
+    function createMockExchangeRatePool(
+        address tokenA,
+        address tokenB,
+        address tokenAOracle,
+        address tokenBOracle
+    )
+        internal
+        returns (address, address, address, address)
+    {
+        console.log("---------------");
+        console.log("create-pool-logs");
+        console.log("---------------");
+
+        SelfPeggingAssetFactory.CreatePoolArgument memory arg = SelfPeggingAssetFactory.CreatePoolArgument({
+            tokenA: tokenA,
+            tokenB: tokenB,
+            tokenAType: SelfPeggingAssetFactory.TokenType.Oracle,
+            tokenAOracle: tokenAOracle,
+            tokenARateFunctionSig: abi.encodePacked(MockExchangeRateProvider.exchangeRate.selector),
+            tokenADecimalsFunctionSig: abi.encodePacked(MockExchangeRateProvider.exchangeRateDecimals.selector),
+            tokenBType: SelfPeggingAssetFactory.TokenType.Oracle,
+            tokenBOracle: tokenBOracle,
+            tokenBRateFunctionSig: abi.encodePacked(MockExchangeRateProvider.exchangeRate.selector),
+            tokenBDecimalsFunctionSig: abi.encodePacked(MockExchangeRateProvider.exchangeRateDecimals.selector)
         });
 
         vm.recordLogs();
