@@ -67,7 +67,6 @@ contract AddPool is Deploy, Pool {
             vm.writeJson(vm.serializeAddress("contracts", "LPTokenBeacon", lpTokenBeacon), path);
             vm.writeJson(vm.serializeAddress("contracts", "WLPTokenBeacon", wlpTokenBeacon), path);
 
-            // base mainnet
             address wstETHTostETHFeed = 0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061;
             address weETHToETHFeed = 0xFC1415403EbB0c693f9a7844b92aD2Ff24775C65;
             address stETHToETHFeed = 0xf586d0728a47229e747d824a939000Cf21dEF5A0;
@@ -104,7 +103,7 @@ contract AddPool is Deploy, Pool {
             ChainlinkCompositeOracleProvider weETHTostETHOracle =
                 new ChainlinkCompositeOracleProvider(AggregatorV3Interface(sequencer), configs);
 
-            (, address pool,,) =
+            (address lpToken, address pool, address wlpToken,) =
                 createChainlinkPool(wstETH, weETH, address(wstETHTostETHOracle), address(weETHTostETHOracle));
 
             initialMint(wstETH, weETH, ethAmount, ethAmount, SelfPeggingAsset(pool));
@@ -120,10 +119,17 @@ contract AddPool is Deploy, Pool {
             ChainlinkCompositeOracleProvider ETHTostETHOracle =
                 new ChainlinkCompositeOracleProvider(AggregatorV3Interface(sequencer), configs2);
 
-            (, address pool2,,) =
+            (address lpToken2, address pool2, address wlpToken2,) =
                 createChainlinkPool(weth, wstETH, address(ETHTostETHOracle), address(wstETHTostETHOracle));
 
             initialMint(weth, wstETH, ethAmount, ethAmount, SelfPeggingAsset(pool2));
+
+            vm.writeJson(vm.serializeAddress("contracts", "WETHwstETHPool", pool), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wstETHweETHPool", pool2), path);
+            vm.writeJson(vm.serializeAddress("contracts", "WETHwstETHPoolLPToken", lpToken), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wstETHweETHPoolLPToken", lpToken2), path);
+            vm.writeJson(vm.serializeAddress("contracts", "WETHwstETHPoolWLPToken", wlpToken), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wstETHweETHPoolWLPToken", wlpToken2), path);
         } else if (chainId == 84_532) {
             JSONDataTestnet memory jsonData = abi.decode(data, (JSONDataTestnet));
 
@@ -155,13 +161,13 @@ contract AddPool is Deploy, Pool {
             MockExchangeRateProvider wstETHTostETHOracle = new MockExchangeRateProvider(1.1e18, 18);
             MockExchangeRateProvider weETHTostETHOracle = new MockExchangeRateProvider(1.2e18, 18);
 
-            (, address pool,,) = createMockExchangeRatePool(
+            (address lpToken, address pool, address wlpToken,) = createMockExchangeRatePool(
                 address(weth), address(wstETH), address(WETHTostETHOracle), address(wstETHTostETHOracle)
             );
 
             initialMint(address(weth), address(wstETH), amount, amount, SelfPeggingAsset(pool));
 
-            (, address pool2,,) = createMockExchangeRatePool(
+            (address lpToken2, address pool2, address wlpToken2,) = createMockExchangeRatePool(
                 address(wstETH), address(weETH), address(wstETHTostETHOracle), address(weETHTostETHOracle)
             );
             initialMint(address(wstETH), address(weETH), amount, amount, SelfPeggingAsset(pool2));
@@ -169,6 +175,12 @@ contract AddPool is Deploy, Pool {
             vm.writeJson(vm.serializeAddress("contracts", "wstETH", address(wstETH)), path);
             vm.writeJson(vm.serializeAddress("contracts", "weETH", address(weETH)), path);
             vm.writeJson(vm.serializeAddress("contracts", "WETH", address(weth)), path);
+            vm.writeJson(vm.serializeAddress("contracts", "WETHwstETHPool", pool), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wstETHweETHPool", pool2), path);
+            vm.writeJson(vm.serializeAddress("contracts", "WETHwstETHPoolLPToken", lpToken), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wstETHweETHPoolLPToken", lpToken2), path);
+            vm.writeJson(vm.serializeAddress("contracts", "WETHwstETHPoolWLPToken", wlpToken), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wstETHweETHPoolWLPToken", wlpToken2), path);
         }
 
         vm.stopBroadcast();
