@@ -221,12 +221,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     event YieldCollected(uint256 feeAmount, uint256 totalSupply);
 
     /**
-     * @dev This event is emitted when the A parameter is modified.
-     * @param A is the new value of the A parameter.
-     */
-    event AModified(uint256 A);
-
-    /**
      * @dev This event is emitted when the RampAController is set or updated.
      */
     event RampAControllerUpdated(address indexed _rampAController);
@@ -272,6 +266,12 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @param factor is the new value of the factor.
      */
     event ExchangeRateFeeFactorModified(uint256 factor);
+
+    /**
+     * @dev This event is emitted when the decay period is modified.
+     * @param decayPeriod is the new value of the decay period.
+     */
+    event DecayPeriodModified(uint256 decayPeriod);
 
     /// @notice Error thrown when the input parameters do not match the expected values.
     error InputMismatch();
@@ -832,6 +832,15 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     function setExchangeRateFeeFactor(uint256 _exchangeRateFeeFactor) external onlyOwner {
         exchangeRateFeeFactor = _exchangeRateFeeFactor;
         emit ExchangeRateFeeFactorModified(_exchangeRateFeeFactor);
+    }
+
+    /**
+     * @dev Updates the decay period.
+     * @param _decayPeriod The new decay period.
+     */
+    function setDecayPeriod(uint256 _decayPeriod) external onlyOwner {
+        decayPeriod = _decayPeriod;
+        emit DecayPeriodModified(_decayPeriod);
     }
 
     /**
