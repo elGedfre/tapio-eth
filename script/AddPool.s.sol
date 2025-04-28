@@ -19,8 +19,14 @@ contract AddPool is Deploy, Pool {
         address Factory;
         address LPTokenBeacon;
         address SelfPeggingAssetBeacon;
+        address WETHwstETHPool;
+        address WETHwstETHPoolLPToken;
+        address WETHwstETHPoolWLPToken;
         address WLPTokenBeacon;
         address Zap;
+        address wstETHweETHPool;
+        address wstETHweETHPoolLPToken;
+        address wstETHweETHPoolWLPToken;
     }
 
     struct JSONDataTestnet {
@@ -61,12 +67,6 @@ contract AddPool is Deploy, Pool {
             wlpTokenBeacon = jsonData.WLPTokenBeacon;
             zap = jsonData.Zap;
 
-            vm.writeJson(vm.serializeAddress("contracts", "Zap", zap), path);
-            vm.writeJson(vm.serializeAddress("contracts", "Factory", address(factory)), path);
-            vm.writeJson(vm.serializeAddress("contracts", "SelfPeggingAssetBeacon", selfPeggingAssetBeacon), path);
-            vm.writeJson(vm.serializeAddress("contracts", "LPTokenBeacon", lpTokenBeacon), path);
-            vm.writeJson(vm.serializeAddress("contracts", "WLPTokenBeacon", wlpTokenBeacon), path);
-
             address wstETHTostETHFeed = 0xB88BAc61a4Ca37C43a3725912B1f472c9A5bc061;
             address weETHToETHFeed = 0xFC1415403EbB0c693f9a7844b92aD2Ff24775C65;
             address stETHToETHFeed = 0xf586d0728a47229e747d824a939000Cf21dEF5A0;
@@ -75,7 +75,7 @@ contract AddPool is Deploy, Pool {
             address weETH = 0x04C0599Ae5A44757c0af6F9eC3b93da8976c150A;
             address weth = 0x4200000000000000000000000000000000000006;
 
-            uint256 ethAmount = 0.0026e18;
+            uint256 ethAmount = 0.0025e18;
 
             address sequencer = 0xBCF85224fc0756B9Fa45aA7892530B47e10b6433;
 
@@ -124,12 +124,17 @@ contract AddPool is Deploy, Pool {
 
             initialMint(weth, wstETH, ethAmount, ethAmount, SelfPeggingAsset(pool2));
 
-            vm.writeJson(vm.serializeAddress("contracts", "WETHwstETHPool", pool), path);
-            vm.writeJson(vm.serializeAddress("contracts", "wstETHweETHPool", pool2), path);
-            vm.writeJson(vm.serializeAddress("contracts", "WETHwstETHPoolLPToken", lpToken), path);
-            vm.writeJson(vm.serializeAddress("contracts", "wstETHweETHPoolLPToken", lpToken2), path);
-            vm.writeJson(vm.serializeAddress("contracts", "WETHwstETHPoolWLPToken", wlpToken), path);
-            vm.writeJson(vm.serializeAddress("contracts", "wstETHweETHPoolWLPToken", wlpToken2), path);
+            vm.writeJson(vm.serializeAddress("contracts", "Factory", address(factory)), path);
+            vm.writeJson(vm.serializeAddress("contracts", "LPTokenBeacon", lpTokenBeacon), path);
+            vm.writeJson(vm.serializeAddress("contracts", "SelfPeggingAssetBeacon", selfPeggingAssetBeacon), path);
+            vm.writeJson(vm.serializeAddress("contracts", "WETHwstETHPool", pool2), path);
+            vm.writeJson(vm.serializeAddress("contracts", "WETHwstETHPoolLPToken", lpToken2), path);
+            vm.writeJson(vm.serializeAddress("contracts", "WETHwstETHPoolWLPToken", wlpToken2), path);
+            vm.writeJson(vm.serializeAddress("contracts", "WLPTokenBeacon", wlpTokenBeacon), path);
+            vm.writeJson(vm.serializeAddress("contracts", "Zap", zap), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wstETHweETHPool", pool), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wstETHweETHPoolLPToken", lpToken), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wstETHweETHPoolWLPToken", wlpToken), path);
         } else if (chainId == 84_532) {
             JSONDataTestnet memory jsonData = abi.decode(data, (JSONDataTestnet));
 
