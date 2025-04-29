@@ -68,6 +68,11 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     uint256 private constant DEFAULT_DECAY_PERIOD = 5 minutes;
 
     /**
+     * @dev This is the default rate change skip period
+     */
+    uint256 private constant DEFAULT_RATE_CHANGE_SKIP_PERIOD = 1 days;
+
+    /**
      * @dev This is an array of addresses representing the tokens currently supported by the SelfPeggingAsset contract.
      */
     address[] public tokens;
@@ -167,6 +172,16 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     uint256 public decayPeriod;
 
     /**
+     * @notice The time (in seconds) after which the multiplier is skipped when the rate is changed.
+     */
+    uint256 public rateChangeSkipPeriod;
+
+    /**
+     * @dev Tracks the last time a transaction occurred in the SelfPeggingAsset contract.
+     */
+    uint256 public lastActivity;
+
+    /**
      * @notice Mapping of token index -> TokenFeeStatus
      */
     mapping(uint256 => TokenFeeStatus) public feeStatusByToken;
@@ -221,12 +236,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     event YieldCollected(uint256 feeAmount, uint256 totalSupply);
 
     /**
-     * @dev This event is emitted when the A parameter is modified.
-     * @param A is the new value of the A parameter.
-     */
-    event AModified(uint256 A);
-
-    /**
      * @dev This event is emitted when the RampAController is set or updated.
      */
     event RampAControllerUpdated(address indexed _rampAController);
@@ -272,6 +281,28 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @param factor is the new value of the factor.
      */
     event ExchangeRateFeeFactorModified(uint256 factor);
+
+    /**
+     * @dev This event is emitted when the decay period is modified.
+     * @param decayPeriod is the new value of the decay period.
+     */
+    event DecayPeriodModified(uint256 decayPeriod);
+
+    /**
+     * @dev This event is emitted when the rate change skip period is modified.
+     * @param rateChangeSkipPeriod is the new value of the rate change skip period.
+     */
+    event RateChangeSkipPeriodModified(uint256 rateChangeSkipPeriod);
+
+    /**
+     * @dev This event is emitted when the pool is paused.
+     */
+    event PoolPaused();
+
+    /**
+     * @dev This event is emitted when the pool is unpaused.
+     */
+    event PoolUnpaused();
 
     /// @notice Error thrown when the input parameters do not match the expected values.
     error InputMismatch();
@@ -454,8 +485,10 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         feeErrorMargin = DEFAULT_FEE_ERROR_MARGIN;
         yieldErrorMargin = DEFAULT_YIELD_ERROR_MARGIN;
         decayPeriod = DEFAULT_DECAY_PERIOD;
+        rateChangeSkipPeriod = DEFAULT_RATE_CHANGE_SKIP_PERIOD;
 
         paused = false;
+        lastActivity = block.timestamp;
 
         for (uint256 i = 0; i < _exchangeRateProviders.length; i++) {
             uint256 initRate = _exchangeRateProviders[i].exchangeRate();
@@ -532,6 +565,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         totalSupply = oldD + mintAmount;
         poolToken.mintShares(msg.sender, mintAmount);
         feeAmount = collectFeeOrYield(true);
+        lastActivity = block.timestamp;
         emit Minted(msg.sender, mintAmount, _amounts, feeAmount);
         return mintAmount;
     }
@@ -599,6 +633,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         amounts[_j] = transferAmountJ;
 
         uint256 feeAmountActual = collectFeeOrYield(true);
+        lastActivity = block.timestamp;
         emit TokenSwapped(msg.sender, transferAmountJ, amounts, feeAmountActual);
         return transferAmountJ;
     }
@@ -716,6 +751,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         totalSupply = newD;
         poolToken.burnSharesFrom(msg.sender, _amount);
         feeAmount = collectFeeOrYield(true);
+        lastActivity = block.timestamp;
         emit Redeemed(msg.sender, _amount, amounts, feeAmount);
         return transferAmount;
     }
@@ -782,6 +818,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             IERC20(tokens[i]).safeTransfer(msg.sender, _amounts[i]);
         }
         feeAmount = collectFeeOrYield(true);
+        lastActivity = block.timestamp;
         emit Redeemed(msg.sender, redeemAmount, amounts, feeAmount);
         return amounts;
     }
@@ -835,6 +872,24 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     }
 
     /**
+     * @dev Updates the decay period.
+     * @param _decayPeriod The new decay period.
+     */
+    function setDecayPeriod(uint256 _decayPeriod) external onlyOwner {
+        decayPeriod = _decayPeriod;
+        emit DecayPeriodModified(_decayPeriod);
+    }
+
+    /**
+     * @dev Updates the rate change skip period.
+     * @param _rateChangeSkipPeriod The new rate change skip period.
+     */
+    function setRateChangeSkipPeriod(uint256 _rateChangeSkipPeriod) external onlyOwner {
+        rateChangeSkipPeriod = _rateChangeSkipPeriod;
+        emit RateChangeSkipPeriodModified(_rateChangeSkipPeriod);
+    }
+
+    /**
      * @dev Pause mint/swap/redeem actions. Can unpause later.
      */
     function pause() external {
@@ -842,6 +897,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         require(admins[msg.sender], NotAdmin());
 
         paused = true;
+        emit PoolPaused();
     }
 
     /**
@@ -852,6 +908,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         require(admins[msg.sender], NotAdmin());
 
         paused = false;
+        emit PoolUnpaused();
     }
 
     /**
@@ -1188,7 +1245,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             return;
         }
 
-        uint256 ratio = (diff * FEE_DENOMINATOR) / oldRate;
+        uint256 ratio = (diff * FEE_DENOMINATOR) / (oldRate > newRate ? oldRate : newRate);
         uint256 candidateMultiplier = FEE_DENOMINATOR + (ratio * exchangeRateFeeFactor) / FEE_DENOMINATOR;
         uint256 currentMult = _currentMultiplier(st);
 
@@ -1250,7 +1307,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      */
     function _currentMultiplier(TokenFeeStatus memory st) internal view returns (uint256) {
         uint256 endTime = st.raisedAt + decayPeriod;
-        if (block.timestamp >= endTime) {
+        if (block.timestamp >= endTime || block.timestamp - lastActivity > rateChangeSkipPeriod) {
             return FEE_DENOMINATOR;
         }
         uint256 timePassed = block.timestamp - st.raisedAt;
