@@ -2,8 +2,11 @@
 pragma solidity 0.8.28;
 
 import "@chainlink/contracts/shared/interfaces/AggregatorV3Interface.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract ChainlinkCompositeOracleProvider {
+    using Math for uint256;
+
     struct Config {
         /// @notice Chainlink feed
         AggregatorV3Interface feed;
@@ -14,6 +17,11 @@ contract ChainlinkCompositeOracleProvider {
         /// @notice If true, the price is inverted
         bool isInverted;
     }
+
+    /**
+     * @notice Fixed-point precision for internal calculations
+     */
+    uint256 private constant PRECISION = 1e36;
 
     /**
      * @notice Grace period time after the sequencer is back up
@@ -67,16 +75,12 @@ contract ChainlinkCompositeOracleProvider {
      */
     constructor(AggregatorV3Interface _sequencerUptimeFeed, Config[] memory _configs) {
         for (uint256 i = 0; i < _configs.length; i++) {
-            if (i == 0 && address(_configs[i].feed) == address(0)) {
+            if (address(_configs[i].feed) == address(0)) {
                 revert InvalidFeed();
             }
 
-            if (address(_configs[i].feed) != address(0) && _configs[i].maxStalePeriod == 0) {
+            if (_configs[i].maxStalePeriod == 0) {
                 revert InvalidStalePeriod();
-            }
-
-            if (!_configs[i].isInverted) {
-                _configs[i].assetDecimals = _configs[i].feed.decimals();
             }
 
             configs.push(_configs[i]);
@@ -92,11 +96,12 @@ contract ChainlinkCompositeOracleProvider {
     function price() external view returns (uint256) {
         _validateSequencerStatus();
 
-        uint256 _price;
-        uint256 priceDecimals;
+        uint256 highPrecisionPrice = PRECISION; // precision accumulator
+        uint256 currentDecimals;
 
         for (uint256 i = 0; i < configs.length; i++) {
             Config memory config = configs[i];
+            currentDecimals = _getCurrentDecimals(config);
 
             (, int256 feedPrice,, uint256 updatedAt,) = config.feed.latestRoundData();
 
@@ -108,24 +113,18 @@ contract ChainlinkCompositeOracleProvider {
                 revert StalePrice();
             }
 
-            if (_price == 0) {
-                _price = 10 ** config.assetDecimals;
-                priceDecimals = config.assetDecimals;
-            }
-
             if (config.isInverted) {
                 uint256 invertedFeedPrice =
-                    ((10 ** config.assetDecimals) * (10 ** config.feed.decimals())) / uint256(feedPrice);
-                _price = (_price * invertedFeedPrice) / (10 ** priceDecimals);
-                priceDecimals = config.assetDecimals;
-                continue;
+                    PRECISION.mulDiv((10 ** config.assetDecimals) * (10 ** config.feed.decimals()), uint256(feedPrice));
+                highPrecisionPrice = highPrecisionPrice.mulDiv(invertedFeedPrice, PRECISION);
+            } else {
+                highPrecisionPrice = (highPrecisionPrice).mulDiv(uint256(feedPrice), (10 ** currentDecimals));
             }
-
-            _price = (_price * uint256(feedPrice)) / (10 ** priceDecimals);
-            priceDecimals = config.assetDecimals;
         }
 
-        return _price;
+        if (highPrecisionPrice == 0) return 0;
+
+        return highPrecisionPrice / PRECISION;
     }
 
     /**
@@ -133,24 +132,25 @@ contract ChainlinkCompositeOracleProvider {
      * @return Decimals of the price
      */
     function decimals() external view returns (uint256) {
-        uint256 _decimals = 0;
+        if (configs.length == 0) return 0;
 
-        for (uint256 i = 0; i < configs.length; i++) {
-            Config memory config = configs[i];
-
-            if (address(config.feed) == address(0)) {
-                return _decimals;
-            }
-
-            if (config.isInverted) {
-                _decimals = config.assetDecimals;
-                continue;
-            }
-
-            _decimals = config.feed.decimals();
+        // last config only matters
+        Config memory lastConfig = configs[configs.length - 1];
+        if (address(lastConfig.feed) == address(0)) {
+            return lastConfig.isInverted ? lastConfig.assetDecimals : 0;
         }
 
-        return _decimals;
+        return _getCurrentDecimals(lastConfig);
+    }
+
+    /**
+     * @notice Get the current decimals of a config
+     * @param config The config to get decimals for
+     * @return The current decimals value
+     */
+    function _getCurrentDecimals(Config memory config) internal view returns (uint256) {
+        if (config.isInverted) return config.assetDecimals;
+        return config.feed.decimals();
     }
 
     /**
