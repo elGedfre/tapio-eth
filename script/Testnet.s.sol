@@ -24,8 +24,6 @@ contract Testnet is Deploy, Pool {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        MockExchangeRateProvider wSToS = new MockExchangeRateProvider(1e18, 18);
-
         deployBeacons();
         deployFactory();
         deployZap();
