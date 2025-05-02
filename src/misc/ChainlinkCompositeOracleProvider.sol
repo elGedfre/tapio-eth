@@ -136,10 +136,6 @@ contract ChainlinkCompositeOracleProvider {
 
         // last config only matters
         Config memory lastConfig = configs[configs.length - 1];
-        if (address(lastConfig.feed) == address(0)) {
-            return lastConfig.isInverted ? lastConfig.assetDecimals : 0;
-        }
-
         return _getCurrentDecimals(lastConfig);
     }
 
