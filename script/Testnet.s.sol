@@ -32,9 +32,9 @@ contract Testnet is Deploy, Pool {
         string memory networkName = getNetworkName(chainId);
         string memory path = string.concat("./broadcast/", networkName, ".json");
 
-        if (chainId == 57054) {
+        if (chainId == 57_054) {
             MockExchangeRateProvider wSToS = new MockExchangeRateProvider(1e18, 18);
-            MockExchangeRateProvider stSToS = new MockExchangeRateProvider(1.015580e18, 18);
+            MockExchangeRateProvider stSToS = new MockExchangeRateProvider(1.01558e18, 18);
             MockExchangeRateProvider OSToS = new MockExchangeRateProvider(1.004739e18, 18);
 
             MockToken wS = new MockToken("wS", "wS", 18);
@@ -47,15 +47,13 @@ contract Testnet is Deploy, Pool {
             MockToken(stS).mint(DEPLOYER, amount);
             MockToken(OS).mint(DEPLOYER, amount);
 
-            (address lpToken, address pool, address wlpToken,) = createMockExchangeRatePool(
-                address(wS), address(stS), address(wSToS), address(stSToS)
-            );
+            (address lpToken, address pool, address wlpToken,) =
+                createMockExchangeRatePool(address(wS), address(stS), address(wSToS), address(stSToS));
 
             initialMint(address(wS), address(stS), amount, amount, SelfPeggingAsset(pool));
 
-            (address lpToken2, address pool2, address wlpToken2,) = createMockExchangeRatePool(
-                address(wS), address(OS), address(wSToS), address(OSToS)
-            );
+            (address lpToken2, address pool2, address wlpToken2,) =
+                createMockExchangeRatePool(address(wS), address(OS), address(wSToS), address(OSToS));
             initialMint(address(wS), address(OS), amount, amount, SelfPeggingAsset(pool2));
 
             vm.writeJson(vm.serializeAddress("contracts", "Zap", zap), path);
