@@ -90,15 +90,15 @@ contract Mainnet is Deploy, Pool {
 
             address ws = 0x039e2fB66102314Ce7b64Ce5Ce3E5183bc94aD38;
             address stS = 0xE5DA20F15420aD15DE0fa650600aFc998bbE3955;
-            address os = 0xb1e25689D55734FD3ffFc939c4C3Eb52DFf8A794;
+            address wOS = 0x9F0dF7799f6FDAd409300080cfF680f5A23df4b1;
 
             (address wSstSLpToken, address wSstSPool, address wSstSWlpToken,) = createStandardAndERC4626Pool(ws, stS);
 
             initialMint(ws, stS, 5e18, 4.9e18, SelfPeggingAsset(wSstSPool));
 
-            (address wSOSLpToken, address wSOSPool, address wSOSWlpToken,) = createStandardAndRebasingPool(ws, os);
+            (address wSwOSLpToken, address wSwOSPool, address wSwOSWlpToken,) = createStandardAndERC4626Pool(ws, wOS);
 
-            initialMint(ws, os, 5e18, 3e18, SelfPeggingAsset(wSOSPool));
+            initialMint(ws, wOS, 5e18, 3e18, SelfPeggingAsset(wSwOSPool));
 
             vm.writeJson(vm.serializeAddress("contracts", "Zap", zap), path);
             vm.writeJson(vm.serializeAddress("contracts", "Factory", address(factory)), path);
@@ -107,13 +107,13 @@ contract Mainnet is Deploy, Pool {
             vm.writeJson(vm.serializeAddress("contracts", "WLPTokenBeacon", wlpTokenBeacon), path);
             vm.writeJson(vm.serializeAddress("contracts", "wS", address(ws)), path);
             vm.writeJson(vm.serializeAddress("contracts", "stS", address(stS)), path);
-            vm.writeJson(vm.serializeAddress("contracts", "OS", address(os)), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wOS", address(wOS)), path);
             vm.writeJson(vm.serializeAddress("contracts", "wSstSPool", address(wSstSPool)), path);
             vm.writeJson(vm.serializeAddress("contracts", "wSstSPoolLPToken", wSstSLpToken), path);
             vm.writeJson(vm.serializeAddress("contracts", "wSstSPoolWLPToken", wSstSWlpToken), path);
-            vm.writeJson(vm.serializeAddress("contracts", "wSOSPool", address(wSOSPool)), path);
-            vm.writeJson(vm.serializeAddress("contracts", "wSOSPoolLPToken", wSOSLpToken), path);
-            vm.writeJson(vm.serializeAddress("contracts", "wSOSPoolWLPToken", wSOSWlpToken), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wSwOSPool", address(wSwOSPool)), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wSwOSPoolLPToken", wSwOSLpToken), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wSwOSPoolWLPToken", wSwOSWlpToken), path);
         }
 
         vm.stopBroadcast();
