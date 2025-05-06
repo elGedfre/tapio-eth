@@ -40,6 +40,7 @@ contract Config is Script {
         else if (chainId == 10) return "optimism";
         else if (chainId == 8453) return "base";
         else if (chainId == 57_054) return "sonic-testnet";
+        else if (chainId == 146) return "sonic-mainnet";
         else revert("Invalid chain ID");
     }
 

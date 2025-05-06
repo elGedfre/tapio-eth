@@ -52,6 +52,98 @@ contract Pool is Config {
         return (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken, decodedRampAController);
     }
 
+    function createStandardAndRebasingPool(
+        address tokenA,
+        address tokenB
+    )
+        internal
+        returns (address, address, address, address)
+    {
+        console.log("---------------");
+        console.log("create-pool-logs");
+        console.log("---------------");
+
+        SelfPeggingAssetFactory.CreatePoolArgument memory arg = SelfPeggingAssetFactory.CreatePoolArgument({
+            tokenA: tokenA,
+            tokenB: tokenB,
+            tokenAType: SelfPeggingAssetFactory.TokenType.Standard,
+            tokenAOracle: address(0),
+            tokenARateFunctionSig: "",
+            tokenADecimalsFunctionSig: "",
+            tokenBType: SelfPeggingAssetFactory.TokenType.Rebasing,
+            tokenBOracle: address(0),
+            tokenBRateFunctionSig: "",
+            tokenBDecimalsFunctionSig: ""
+        });
+
+        vm.recordLogs();
+        factory.createPool(arg);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 eventSig = keccak256("PoolCreated(address,address,address,address)");
+
+        address decodedPoolToken;
+        address decodedSelfPeggingAsset;
+        address decodedWrappedPoolToken;
+        address decodedRampAController;
+
+        for (uint256 i = 0; i < entries.length; i++) {
+            Vm.Log memory log = entries[i];
+
+            if (log.topics[0] == eventSig) {
+                (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken, decodedRampAController) =
+                    abi.decode(log.data, (address, address, address, address));
+            }
+        }
+
+        return (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken, decodedRampAController);
+    }
+
+    function createStandardAndERC4626Pool(
+        address tokenA,
+        address tokenB
+    )
+        internal
+        returns (address, address, address, address)
+    {
+        console.log("---------------");
+        console.log("create-pool-logs");
+        console.log("---------------");
+
+        SelfPeggingAssetFactory.CreatePoolArgument memory arg = SelfPeggingAssetFactory.CreatePoolArgument({
+            tokenA: tokenA,
+            tokenB: tokenB,
+            tokenAType: SelfPeggingAssetFactory.TokenType.Standard,
+            tokenAOracle: address(0),
+            tokenARateFunctionSig: "",
+            tokenADecimalsFunctionSig: "",
+            tokenBType: SelfPeggingAssetFactory.TokenType.ERC4626,
+            tokenBOracle: address(0),
+            tokenBRateFunctionSig: "",
+            tokenBDecimalsFunctionSig: ""
+        });
+
+        vm.recordLogs();
+        factory.createPool(arg);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bytes32 eventSig = keccak256("PoolCreated(address,address,address,address)");
+
+        address decodedPoolToken;
+        address decodedSelfPeggingAsset;
+        address decodedWrappedPoolToken;
+        address decodedRampAController;
+
+        for (uint256 i = 0; i < entries.length; i++) {
+            Vm.Log memory log = entries[i];
+
+            if (log.topics[0] == eventSig) {
+                (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken, decodedRampAController) =
+                    abi.decode(log.data, (address, address, address, address));
+            }
+        }
+
+        return (decodedPoolToken, decodedSelfPeggingAsset, decodedWrappedPoolToken, decodedRampAController);
+    }
+
     function createChainlinkPool(
         address tokenA,
         address tokenB,

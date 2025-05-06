@@ -33,16 +33,6 @@ contract Mainnet is Deploy, Pool {
         string memory networkName = getNetworkName(chainId);
         string memory path = string.concat("./broadcast/", networkName, ".json");
 
-        vm.writeJson(vm.serializeAddress("contracts", "Factory", address(factory)), path);
-
-        vm.writeJson(vm.serializeAddress("contracts", "SelfPeggingAssetBeacon", selfPeggingAssetBeacon), path);
-
-        vm.writeJson(vm.serializeAddress("contracts", "LPTokenBeacon", lpTokenBeacon), path);
-
-        vm.writeJson(vm.serializeAddress("contracts", "WLPTokenBeacon", wlpTokenBeacon), path);
-
-        vm.writeJson(vm.serializeAddress("contracts", "Zap", zap), path);
-
         if (chainId == 8453) {
             // base mainnet
             address wstETHFeed = 0x43a5C292A453A3bF3606fa856197f09D7B74251a;
@@ -95,6 +85,37 @@ contract Mainnet is Deploy, Pool {
             (, pool,,) = createStandardPool(usdc, usdt);
 
             initialMint(usdc, usdt, usdAmount, usdAmount, SelfPeggingAsset(pool));
+        } else if (chainId == 146) {
+            // sonic mainnet
+
+            address ws = 0x039e2fB66102314Ce7b64Ce5Ce3E5183bc94aD38;
+            address stS = 0xE5DA20F15420aD15DE0fa650600aFc998bbE3955;
+            address os = 0xb1e25689D55734FD3ffFc939c4C3Eb52DFf8A794;
+
+            uint256 amount = 10e18;
+
+            (address wSstSLpToken, address wSstSPool, address wSstSWlpToken,) = createStandardAndERC4626Pool(ws, stS);
+
+            initialMint(ws, stS, amount, amount, SelfPeggingAsset(wSstSPool));
+
+            (address wSOSLpToken, address wSOSPool, address wSOSWlpToken,) = createStandardAndRebasingPool(ws, os);
+
+            initialMint(ws, os, amount, amount, SelfPeggingAsset(wSOSPool));
+
+            vm.writeJson(vm.serializeAddress("contracts", "Zap", zap), path);
+            vm.writeJson(vm.serializeAddress("contracts", "Factory", address(factory)), path);
+            vm.writeJson(vm.serializeAddress("contracts", "SelfPeggingAssetBeacon", selfPeggingAssetBeacon), path);
+            vm.writeJson(vm.serializeAddress("contracts", "LPTokenBeacon", lpTokenBeacon), path);
+            vm.writeJson(vm.serializeAddress("contracts", "WLPTokenBeacon", wlpTokenBeacon), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wS", address(ws)), path);
+            vm.writeJson(vm.serializeAddress("contracts", "stS", address(stS)), path);
+            vm.writeJson(vm.serializeAddress("contracts", "OS", address(os)), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wSstSPool", address(wSstSPool)), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wSstSPoolLPToken", wSstSLpToken), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wSstSPoolWLPToken", wSstSWlpToken), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wSOSPool", address(wSOSPool)), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wSOSPoolLPToken", wSOSLpToken), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wSOSPoolWLPToken", wSOSWlpToken), path);
         }
 
         vm.stopBroadcast();
