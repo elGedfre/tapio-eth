@@ -58,7 +58,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     uint256 private constant MAX_A = 10 ** 6;
 
     /**
-     *  @dev This is minimum initial mint
+     *  @dev This is the minimum initial mint amount.
      */
     uint256 private constant INITIAL_MINT_MIN = 100_000;
 
@@ -137,7 +137,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     bool public paused;
 
     /**
-     * @dev These is a state variables that represents the amplification coefficient A.
+     * @dev This is a state variable that represents the amplification coefficient A.
      */
     uint256 public A;
 
@@ -205,7 +205,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     event Minted(address indexed provider, uint256 mintAmount, uint256[] amounts, uint256 feeAmount);
 
     /**
-     * @notice This event is emitted when liquidity is added to the SelfPeggingAsset contract.
+     * @notice This event is emitted when tokens are donated to the SelfPeggingAsset contract without minting LP tokens.
      * @param provider is the address of the liquidity provider.
      * @param mintAmount is the amount of liquidity tokens minted to the provider in exchange for their contribution.
      * @param amounts is an array containing the amounts of each token contributed by the provider.
@@ -370,7 +370,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /// @notice Error thrown when the account address is zero
     error AccountIsZero();
 
-    /// @notice Error thrown when the block number is an past block
+    /// @notice Error thrown when the block number is a past block.
     error PastBlock();
 
     /// @notice Error thrown when there is no loss
@@ -379,19 +379,19 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /// @notice Error thrown when the account is not an admin
     error NotAdmin();
 
-    /// @notice Error thrown donation amount is insufficient
+    /// @notice Error thrown when the donation amount is insufficient.
     error InsufficientDonationAmount();
 
-    /// @notice Error thrown insufficient mint amount
+    /// @notice Error thrown when the mint amount is insufficient.
     error InsufficientMintAmount(uint256 mintAmount, uint256 minMintAmount);
 
-    /// @notice Error thrown insufficient swap out amount
+    /// @notice Error thrown when the swap out amount is insufficient.
     error InsufficientSwapOutAmount(uint256 outAmount, uint256 minOutAmount);
 
-    /// @notice Error thrown insufficient redeem amount
+    /// @notice Error thrown when the redeem amount is insufficient.
     error InsufficientRedeemAmount(uint256 redeemAmount, uint256 minRedeemAmount);
 
-    /// @notice Error thrown when redeem amount is max
+    /// @notice Error thrown when the redeem amount exceeds the maximum allowed.
     error MaxRedeemAmount(uint256 redeemAmount, uint256 maxRedeemAmount);
 
     /// @notice Error thrown in and out token are the same

@@ -20,12 +20,11 @@ import "./interfaces/IExchangeRateProvider.sol";
 import "./periphery/RampAController.sol";
 
 /**
- * @title SelfPeggingAsset Application
+ * @title SelfPeggingAssetFactory
  * @author Nuts Finance Developer
- * @notice The StableSwap Application provides an interface for users to interact with StableSwap pool contracts
- * @dev The StableSwap Application contract allows users to mint pool tokens, swap between different tokens, and redeem
- * pool tokens to underlying tokens.
- * This contract should never store assets.
+ * @notice The SelfPeggingAssetFactory contract is a factory contract for creating self-pegging asset pools.
+ * @dev This contract allows the creation of self-pegging asset pools with different token types and exchange rate
+ * providers.
  */
 contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
     /// @notice Token type enum
@@ -260,7 +259,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
     }
 
     /**
-     * @dev Set the govenance address.
+     * @dev Set the governance address.
      */
     function setGovernor(address _governor) external onlyOwner {
         require(_governor != address(0), InvalidAddress());
@@ -390,7 +389,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
 
         bytes memory rampAControllerInit = abi.encodeCall(RampAController.initialize, (A, minRampTime));
         BeaconProxy rampAControllerProxy = new BeaconProxy(rampAControllerBeacon, rampAControllerInit);
-        RampAController rampAConotroller = RampAController(address(rampAControllerProxy));
+        RampAController rampAController = RampAController(address(rampAControllerProxy));
 
         bytes memory selfPeggingAssetInit = abi.encodeCall(
             SelfPeggingAsset.initialize,
@@ -415,7 +414,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         lpToken.addPool(address(selfPeggingAsset));
         lpToken.setBuffer(bufferPercent);
         lpToken.transferOwnership(governor);
-        rampAConotroller.transferOwnership(governor);
+        rampAController.transferOwnership(governor);
 
         bytes memory wlpTokenInit = abi.encodeCall(WLPToken.initialize, (ILPToken(lpToken)));
         BeaconProxy wlpTokenProxy = new BeaconProxy(wlpTokenBeacon, wlpTokenInit);

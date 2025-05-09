@@ -9,12 +9,12 @@ import "./interfaces/ILPToken.sol";
 /**
  * @title LPToken token wrapper with static balances.
  * @dev It's an ERC4626 standard token that represents the account's share of the total
- * supply of lpToken tokens. WLPToken token's balance only changes on transfers,
- * unlike lpToken that is also changed when staking rewards and swap fee are generated.
+ * supply of lpToken tokens. WLPToken's balance only changes on transfers,
+ * unlike lpToken that is also changed when staking rewards and swap fees are generated.
  * It's a "power user" token for DeFi protocols which don't
  * support rebasable tokens.
  * The contract is also a trustless wrapper that accepts lpToken tokens and mints
- * wlpToken in return. Then the user unwraps, the contract burns user's wlpToken
+ * wlpToken in return. When the user unwraps, the contract burns user's wlpToken
  * and sends user locked lpToken in return.
  *
  */
