@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
@@ -18,6 +19,8 @@ import "./misc/ERC4626ExchangeRate.sol";
 import "./misc/OracleExchangeRate.sol";
 import "./interfaces/IExchangeRateProvider.sol";
 import "./periphery/RampAController.sol";
+import "./periphery/ParameterRegistry.sol";
+import "./periphery/KeeperProxy.sol";
 
 /**
  * @title SelfPeggingAsset Application
@@ -142,8 +145,17 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
      * @param selfPeggingAsset is the self pegging asset created.
      * @param wrappedPoolToken is the wrapped pool token created.
      * @param rampAController is the ramp A controller created.
+     * @param parameterRegistry is the parameter registry created.
+     * @param keeperProxy is the keeper proxy created.
      */
-    event PoolCreated(address poolToken, address selfPeggingAsset, address wrappedPoolToken, address rampAController);
+    event PoolCreated(
+        address poolToken,
+        address selfPeggingAsset,
+        address wrappedPoolToken,
+        address rampAController,
+        address parameterRegistry,
+        address keeperProxy
+    );
 
     /**
      * @dev This event is emitted when the mint fee is updated.
@@ -240,6 +252,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         require(_rampAControllerBeacon != address(0), InvalidAddress());
 
         __Ownable_init(msg.sender);
+        __UUPSUpgradeable_init();
 
         governor = _governor;
 
@@ -420,8 +433,55 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         bytes memory wlpTokenInit = abi.encodeCall(WLPToken.initialize, (ILPToken(lpToken)));
         BeaconProxy wlpTokenProxy = new BeaconProxy(wlpTokenBeacon, wlpTokenInit);
 
+        ParameterRegistry parameterRegistry = new ParameterRegistry(
+            governor,
+            address(selfPeggingAssetProxy),
+            IParameterRegistry.AbsoluteCaps({
+                aMax: 1_000_000, // 1M like in Curve
+                swapFeeMax: 0,
+                mintFeeMax: 0,
+                redeemFeeMax: 0,
+                offPegMax: 0
+            }),
+            IParameterRegistry.RelativeRanges({
+                aMaxDecreasePct: 900_000, // -90%
+                aMaxIncreasePct: 9_000_000, // +900%
+                swapFeeMaxDecreasePct: 0,
+                swapFeeMaxIncreasePct: 0,
+                mintFeeMaxDecreasePct: 0,
+                mintFeeMaxIncreasePct: 0,
+                redeemFeeMaxDecreasePct: 0,
+                redeemFeeMaxIncreasePct: 0,
+                offPegMaxDecreasePct: 0,
+                offPegMaxIncreasePct: 0
+            })
+        );
+
+        ERC1967Proxy keeperProxyProxy = new ERC1967Proxy(
+            address(new KeeperProxy()),
+            abi.encodeCall(
+                KeeperProxy.initialize,
+                (
+                    governor,
+                    address(0), // zero for curator
+                    address(0), // zero for guardian
+                    IParameterRegistry(address(parameterRegistry)),
+                    IRampAController(address(rampAControllerProxy)),
+                    SelfPeggingAsset(address(selfPeggingAssetProxy))
+                )
+            )
+        );
+
+        // Grant the keeper proxy role to set swap fees
+        // selfPeggingAsset.setCurator(address(keeperProxyProxy), true);
+
         emit PoolCreated(
-            address(lpTokenProxy), address(selfPeggingAssetProxy), address(wlpTokenProxy), address(rampAControllerProxy)
+            address(lpTokenProxy),
+            address(selfPeggingAssetProxy),
+            address(wlpTokenProxy),
+            address(rampAControllerProxy),
+            address(parameterRegistry),
+            address(keeperProxyProxy)
         );
     }
 
