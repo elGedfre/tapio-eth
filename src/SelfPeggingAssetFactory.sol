@@ -340,7 +340,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         string memory symbolA = ERC20Upgradeable(argument.tokenA).symbol();
         string memory symbolB = ERC20Upgradeable(argument.tokenB).symbol();
         string memory symbol = string.concat(string.concat(string.concat("SPA-", symbolA), "-"), symbolB);
-        string memory name = string.concat(string.concat(string.concat("Self Pegging Asset ", symbolA), " "), symbolB);
+        string memory name = string.concat(string.concat(string.concat("Tapio SPA ", symbolA), " "), symbolB);
         bytes memory lpTokenInit = abi.encodeCall(LPToken.initialize, (name, symbol));
         BeaconProxy lpTokenProxy = new BeaconProxy(lpTokenBeacon, lpTokenInit);
 
