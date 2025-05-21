@@ -121,7 +121,6 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
             // no change
             return;
         }
-
         require(newFee <= swapFeeParams.max, FeeOutOfBounds());
 
         spa.setSwapFee(newFee);
