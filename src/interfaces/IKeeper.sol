@@ -6,10 +6,10 @@ import "../SelfPeggingAsset.sol";
 import "./IParameterRegistry.sol";
 
 /**
- * @title IKeeperProxy
- * @notice Interface for the KeeperProxy contract that enforces parameter bounds for curators
+ * @title IKeeper
+ * @notice Interface for the Keeper contract that enforces parameter bounds for curators
  */
-interface IKeeperProxy {
+interface IKeeper {
     /**
      * @notice Allows curators to gradually ramp the A coefficient within allowed bounds
      * @param newA The target A value

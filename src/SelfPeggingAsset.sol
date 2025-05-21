@@ -5,7 +5,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 import "./interfaces/IExchangeRateProvider.sol";
 import "./interfaces/ILPToken.sol";
@@ -18,8 +18,11 @@ import "./interfaces/IRampAController.sol";
  * @dev The SelfPeggingAsset contract allows users to trade between different tokens, with prices determined
  * algorithmically based on the current supply and demand of each token
  */
-contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableUpgradeable {
+contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable {
     using SafeERC20 for IERC20;
+
+    bytes32 public constant KEEPER_ROLE = keccak256("KEEPER_ROLE");
+    bytes32 public constant GOVERNOR_ROLE = keccak256("GOVERNOR_ROLE");
 
     /**
      * @dev Data structure for each token's fee status:
@@ -125,11 +128,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * It might be different from the pool token supply as the pool token can have multiple minters.
      */
     uint256 public totalSupply;
-
-    /**
-     * @dev This is a mapping of accounts that have administrative privileges over the SelfPeggingAsset contract.
-     */
-    mapping(address => bool) public admins;
 
     /**
      * @dev This is a state variable that represents whether or not the SelfPeggingAsset contract is currently paused.
@@ -376,9 +374,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /// @notice Error thrown when there is no loss
     error NoLosses();
 
-    /// @notice Error thrown when the account is not an admin
-    error NotAdmin();
-
     /// @notice Error thrown donation amount is insufficient
     error InsufficientDonationAmount();
 
@@ -435,7 +430,9 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         uint256 _A,
         IExchangeRateProvider[] memory _exchangeRateProviders,
         address _rampAController,
-        uint256 _exchangeRateFeeFactor
+        uint256 _exchangeRateFeeFactor,
+        address _governor,
+        address _keeper
     )
         public
         initializer
@@ -466,8 +463,9 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         }
         require(address(_poolToken) != address(0), PoolTokenNotSet());
         require(_A > 0 && _A < MAX_A, ANotSet());
+        
         __ReentrancyGuard_init();
-        __Ownable_init(msg.sender);
+        __AccessControl_init();
 
         tokens = _tokens;
         precisions = _precisions;
@@ -495,6 +493,10 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
             feeStatusByToken[i] =
                 TokenFeeStatus({ lastRate: initRate, multiplier: FEE_DENOMINATOR, raisedAt: block.timestamp });
         }
+
+        _grantRole(KEEPER_ROLE, _keeper);
+        _grantRole(GOVERNOR_ROLE, _governor);
+        _grantRole(DEFAULT_ADMIN_ROLE, _governor);
     }
 
     /**
@@ -512,8 +514,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         syncRamping
         returns (uint256)
     {
-        // If swap is paused, only admins can mint.
-        require(!paused || admins[msg.sender], Paused());
+        require(!paused, Paused());
         require(balances.length == _amounts.length, InvalidAmount());
 
         for (uint256 i = 0; i < _amounts.length; i++) {
@@ -589,8 +590,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         syncRamping
         returns (uint256)
     {
-        // If swap is paused, only admins can swap.
-        require(!paused || admins[msg.sender], Paused());
+        require(!paused, Paused());
         require(_i != _j, SameToken());
         require(_i < balances.length, InvalidIn());
         require(_j < balances.length, InvalidOut());
@@ -653,8 +653,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         syncRamping
         returns (uint256[] memory)
     {
-        // If swap is paused, only admins can redeem.
-        require(!paused || admins[msg.sender], Paused());
+        require(!paused, Paused());
         require(_amount != 0, ZeroAmount());
         require(balances.length == _minRedeemAmounts.length, InvalidMins());
 
@@ -711,8 +710,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         syncRamping
         returns (uint256)
     {
-        // If swap is paused, only admins can redeem.
-        require(!paused || admins[msg.sender], Paused());
+        require(!paused, Paused());
         require(_amount > 0, ZeroAmount());
         require(_i < balances.length, InvalidToken());
 
@@ -772,8 +770,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
         returns (uint256[] memory)
     {
         require(_amounts.length == balances.length, InputMismatch());
-        // If swap is paused, only admins can redeem.
-        require(!paused || admins[msg.sender], Paused());
+        require(!paused, Paused());
 
         for (uint256 i = 0; i < _amounts.length; i++) {
             _updateMultiplierForToken(i);
@@ -827,7 +824,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @dev Updates the mint fee.
      * @param _mintFee The new mint fee.
      */
-    function setMintFee(uint256 _mintFee) external onlyOwner {
+    function setMintFee(uint256 _mintFee) external onlyRole(GOVERNOR_ROLE) {
         require(_mintFee < FEE_DENOMINATOR, LimitExceeded());
         mintFee = _mintFee;
         emit MintFeeModified(_mintFee);
@@ -837,7 +834,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @dev Updates the swap fee.
      * @param _swapFee The new swap fee.
      */
-    function setSwapFee(uint256 _swapFee) external onlyOwner {
+    function setSwapFee(uint256 _swapFee) external onlyRole(GOVERNOR_ROLE) {
         require(_swapFee < FEE_DENOMINATOR, LimitExceeded());
         swapFee = _swapFee;
         emit SwapFeeModified(_swapFee);
@@ -847,7 +844,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @dev Updates the redeem fee.
      * @param _redeemFee The new redeem fee.
      */
-    function setRedeemFee(uint256 _redeemFee) external onlyOwner {
+    function setRedeemFee(uint256 _redeemFee) external onlyRole(GOVERNOR_ROLE) {
         require(_redeemFee < FEE_DENOMINATOR, LimitExceeded());
         redeemFee = _redeemFee;
         emit RedeemFeeModified(_redeemFee);
@@ -857,7 +854,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @dev Updates the off peg fee multiplier.
      * @param _offPegFeeMultiplier The new off peg fee multiplier.
      */
-    function setOffPegFeeMultiplier(uint256 _offPegFeeMultiplier) external onlyOwner {
+    function setOffPegFeeMultiplier(uint256 _offPegFeeMultiplier) external onlyRole(GOVERNOR_ROLE) {
         offPegFeeMultiplier = _offPegFeeMultiplier;
         emit OffPegFeeMultiplierModified(_offPegFeeMultiplier);
     }
@@ -866,7 +863,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @dev Updates the exchange rate fee factor.
      * @param _exchangeRateFeeFactor The new exchange rate fee factor.
      */
-    function setExchangeRateFeeFactor(uint256 _exchangeRateFeeFactor) external onlyOwner {
+    function setExchangeRateFeeFactor(uint256 _exchangeRateFeeFactor) external onlyRole(GOVERNOR_ROLE) {
         exchangeRateFeeFactor = _exchangeRateFeeFactor;
         emit ExchangeRateFeeFactorModified(_exchangeRateFeeFactor);
     }
@@ -875,7 +872,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @dev Updates the decay period.
      * @param _decayPeriod The new decay period.
      */
-    function setDecayPeriod(uint256 _decayPeriod) external onlyOwner {
+    function setDecayPeriod(uint256 _decayPeriod) external onlyRole(GOVERNOR_ROLE) {
         decayPeriod = _decayPeriod;
         emit DecayPeriodModified(_decayPeriod);
     }
@@ -884,7 +881,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      * @dev Updates the rate change skip period.
      * @param _rateChangeSkipPeriod The new rate change skip period.
      */
-    function setRateChangeSkipPeriod(uint256 _rateChangeSkipPeriod) external onlyOwner {
+    function setRateChangeSkipPeriod(uint256 _rateChangeSkipPeriod) external onlyRole(GOVERNOR_ROLE) {
         rateChangeSkipPeriod = _rateChangeSkipPeriod;
         emit RateChangeSkipPeriodModified(_rateChangeSkipPeriod);
     }
@@ -892,9 +889,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /**
      * @dev Pause mint/swap/redeem actions. Can unpause later.
      */
-    function pause() external {
+    function pause() external onlyRole(KEEPER_ROLE) {
         require(!paused, Paused());
-        require(admins[msg.sender], NotAdmin());
 
         paused = true;
         emit PoolPaused();
@@ -903,30 +899,18 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /**
      * @dev Unpause mint/swap/redeem actions.
      */
-    function unpause() external {
+    function unpause() external onlyRole(KEEPER_ROLE) {
         require(paused, NotPaused());
-        require(admins[msg.sender], NotAdmin());
 
         paused = false;
         emit PoolUnpaused();
     }
 
     /**
-     * @dev Updates the admin role for the address.
-     * @param _account Address to update admin role.
-     * @param _allowed Whether the address is granted the admin role.
-     */
-    function setAdmin(address _account, bool _allowed) external onlyOwner {
-        require(_account != address(0), AccountIsZero());
-
-        admins[_account] = _allowed;
-    }
-
-    /**
      * @dev Set the RampAController address
      * @param _rampAController New controller address
      */
-    function setRampAController(address _rampAController) external onlyOwner {
+    function setRampAController(address _rampAController) external onlyRole(GOVERNOR_ROLE) {
         if (address(rampAController) != address(0) && rampAController.isRamping()) {
             revert CannotChangeControllerDuringRamp();
         }
@@ -975,7 +959,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /**
      * @dev update fee error margin.
      */
-    function updateFeeErrorMargin(uint256 newValue) external onlyOwner {
+    function updateFeeErrorMargin(uint256 newValue) external onlyRole(GOVERNOR_ROLE) {
         feeErrorMargin = newValue;
         emit FeeMarginModified(newValue);
     }
@@ -983,7 +967,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /**
      * @dev update yield error margin.
      */
-    function updateYieldErrorMargin(uint256 newValue) external onlyOwner {
+    function updateYieldErrorMargin(uint256 newValue) external onlyRole(GOVERNOR_ROLE) {
         yieldErrorMargin = newValue;
         emit YieldMarginModified(newValue);
     }
@@ -991,7 +975,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /**
      * @dev Distribute losses by rebasing negatively
      */
-    function distributeLoss() external onlyOwner {
+    function distributeLoss() external onlyRole(GOVERNOR_ROLE) {
         require(paused, NotPaused());
 
         uint256[] memory _balances = balances;

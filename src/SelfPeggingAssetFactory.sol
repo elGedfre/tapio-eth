@@ -20,7 +20,7 @@ import "./misc/OracleExchangeRate.sol";
 import "./interfaces/IExchangeRateProvider.sol";
 import "./periphery/RampAController.sol";
 import "./periphery/ParameterRegistry.sol";
-import "./periphery/KeeperProxy.sol";
+import "./periphery/Keeper.sol";
 
 /**
  * @title SelfPeggingAsset Application
@@ -114,6 +114,16 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
     address public rampAControllerBeacon;
 
     /**
+     * @dev The address of the Keeper contract.
+     */
+    address public keeperBeacon;
+
+    /**
+     * @dev The address of the Parameters Registry contract.
+     */
+    address public parameterRegistryBeacon;
+
+    /**
      * @dev Constant exchange rate provider.
      */
     ConstantExchangeRateProvider public constantExchangeRateProvider;
@@ -146,7 +156,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
      * @param wrappedPoolToken is the wrapped pool token created.
      * @param rampAController is the ramp A controller created.
      * @param parameterRegistry is the parameter registry created.
-     * @param keeperProxy is the keeper proxy created.
+     * @param keeper is the keeper created.
      */
     event PoolCreated(
         address poolToken,
@@ -154,7 +164,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         address wrappedPoolToken,
         address rampAController,
         address parameterRegistry,
-        address keeperProxy
+        address keeper
     );
 
     /**
@@ -405,33 +415,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         BeaconProxy rampAControllerProxy = new BeaconProxy(rampAControllerBeacon, rampAControllerInit);
         RampAController rampAConotroller = RampAController(address(rampAControllerProxy));
 
-        bytes memory selfPeggingAssetInit = abi.encodeCall(
-            SelfPeggingAsset.initialize,
-            (
-                tokens,
-                precisions,
-                fees,
-                offPegFeeMultiplier,
-                LPToken(address(lpTokenProxy)),
-                A,
-                exchangeRateProviders,
-                address(rampAControllerProxy),
-                exchangeRateFeeFactor
-            )
-        );
-        BeaconProxy selfPeggingAssetProxy = new BeaconProxy(selfPeggingAssetBeacon, selfPeggingAssetInit);
-        SelfPeggingAsset selfPeggingAsset = SelfPeggingAsset(address(selfPeggingAssetProxy));
-        LPToken lpToken = LPToken(address(lpTokenProxy));
-
-        selfPeggingAsset.setAdmin(governor, true);
-        selfPeggingAsset.transferOwnership(governor);
-        lpToken.addPool(address(selfPeggingAsset));
-        lpToken.setBuffer(bufferPercent);
-        lpToken.transferOwnership(governor);
-        rampAConotroller.transferOwnership(governor);
-
-        bytes memory wlpTokenInit = abi.encodeCall(WLPToken.initialize, (ILPToken(lpToken)));
-        BeaconProxy wlpTokenProxy = new BeaconProxy(wlpTokenBeacon, wlpTokenInit);
+        BeaconProxy selfPeggingAssetProxy = new BeaconProxy(selfPeggingAssetBeacon, new bytes(0));
 
         ParameterRegistry parameterRegistry = new ParameterRegistry(
             governor,
@@ -452,23 +436,41 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
             IParameterRegistry.Bounds({ max: 0, maxDecreasePct: 0, maxIncreasePct: 0 })
         );
 
-        ERC1967Proxy keeperProxyProxy = new ERC1967Proxy(
-            address(new KeeperProxy()),
-            abi.encodeCall(
-                KeeperProxy.initialize,
-                (
-                    governor,
-                    address(0), // zero for curator
-                    address(0), // zero for guardian
-                    IParameterRegistry(address(parameterRegistry)),
-                    IRampAController(address(rampAControllerProxy)),
-                    SelfPeggingAsset(address(selfPeggingAssetProxy))
-                )
-            )
-        );
+        bytes memory keeperInit = abi.encodeCall(Keeper.initialize, (
+            address(governor),
+            address(governor),
+            address(governor),
+            IParameterRegistry(address(parameterRegistry)),
+            IRampAController(address(rampAControllerProxy)),
+            SelfPeggingAsset(address(selfPeggingAssetProxy))
+        ));
+        BeaconProxy keeperProxy = new BeaconProxy(keeperBeacon, keeperInit);
 
-        // Grant the keeper proxy role to set swap fees
-        // selfPeggingAsset.setCurator(address(keeperProxyProxy), true);
+
+        SelfPeggingAsset selfPeggingAsset = SelfPeggingAsset(address(selfPeggingAssetProxy));
+        selfPeggingAsset.initialize(
+            tokens,
+            precisions,
+            fees,
+            offPegFeeMultiplier,
+            LPToken(address(lpTokenProxy)),
+            A,
+            exchangeRateProviders,
+            address(rampAControllerProxy),
+            exchangeRateFeeFactor,
+            governor,
+            address(keeperProxy)
+        );
+        LPToken lpToken = LPToken(address(lpTokenProxy));
+
+        lpToken.addPool(address(selfPeggingAsset));
+        lpToken.setBuffer(bufferPercent);
+        lpToken.transferOwnership(governor);
+        rampAConotroller.transferOwnership(governor);
+        
+
+        bytes memory wlpTokenInit = abi.encodeCall(WLPToken.initialize, (ILPToken(lpToken)));
+        BeaconProxy wlpTokenProxy = new BeaconProxy(wlpTokenBeacon, wlpTokenInit);
 
         emit PoolCreated(
             address(lpTokenProxy),
@@ -476,7 +478,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
             address(wlpTokenProxy),
             address(rampAControllerProxy),
             address(parameterRegistry),
-            address(keeperProxyProxy)
+            address(keeperProxy)
         );
     }
 

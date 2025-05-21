@@ -5,16 +5,16 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "../interfaces/IRampAController.sol";
 import "../interfaces/IParameterRegistry.sol";
-import "../interfaces/IKeeperProxy.sol";
+import "../interfaces/IKeeper.sol";
 import "../SelfPeggingAsset.sol";
 
 /**
- * @title KeeperProxy
+ * @title Keeper
  * @notice Follows Tapio Governance model
  * @notice Fast-path executor that lets curators adjust parameters within bounds enforced by ParameterRegistry
  * @dev UUPS upgradeable. Governor is admin, curator and guardian are roles.
  */
-contract KeeperProxy is AccessControlUpgradeable, UUPSUpgradeable, IKeeperProxy {
+contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
     bytes32 public constant CURATOR_ROLE = keccak256("CURATOR_ROLE");
     bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN_ROLE");
     bytes32 public constant GOVERNOR_ROLE = keccak256("GOVERNOR_ROLE");
@@ -68,10 +68,11 @@ contract KeeperProxy is AccessControlUpgradeable, UUPSUpgradeable, IKeeperProxy 
         _grantRole(GOVERNOR_ROLE, _governor);
         _grantRole(CURATOR_ROLE, _curator);
         _grantRole(GUARDIAN_ROLE, _guardian);
+        _grantRole(DEFAULT_ADMIN_ROLE, _governor);
     }
 
     /**
-     * @inheritdoc IKeeperProxy
+     * @inheritdoc IKeeper
      */
     function rampA(uint256 newA, uint256 endTime) external override onlyRole(CURATOR_ROLE) {
         IParameterRegistry.Bounds memory aParams = registry.aParams();
@@ -102,7 +103,7 @@ contract KeeperProxy is AccessControlUpgradeable, UUPSUpgradeable, IKeeperProxy 
     }
 
     /**
-     * @inheritdoc IKeeperProxy
+     * @inheritdoc IKeeper
      */
     function setSwapFee(uint256 newFee) external override onlyRole(GOVERNOR_ROLE) {
         IParameterRegistry.Bounds memory swapFeeParams = registry.swapFeeParams();
@@ -128,7 +129,7 @@ contract KeeperProxy is AccessControlUpgradeable, UUPSUpgradeable, IKeeperProxy 
     }
 
     /**
-     * @inheritdoc IKeeperProxy
+     * @inheritdoc IKeeper
      */
     function cancelRamp() external override onlyRole(GUARDIAN_ROLE) {
         rampAController.stopRamp();
@@ -137,21 +138,21 @@ contract KeeperProxy is AccessControlUpgradeable, UUPSUpgradeable, IKeeperProxy 
     // TODO: add pause logic
 
     /**
-     * @inheritdoc IKeeperProxy
+     * @inheritdoc IKeeper
      */
     function getRegistry() external view override returns (IParameterRegistry) {
         return registry;
     }
 
     /**
-     * @inheritdoc IKeeperProxy
+     * @inheritdoc IKeeper
      */
     function getRampAController() external view override returns (IRampAController) {
         return rampAController;
     }
 
     /**
-     * @inheritdoc IKeeperProxy
+     * @inheritdoc IKeeper
      */
     function getSpa() external view override returns (SelfPeggingAsset) {
         return spa;
