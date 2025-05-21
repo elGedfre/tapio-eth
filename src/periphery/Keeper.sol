@@ -159,38 +159,6 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
     }
 
     /**
-     * @notice Allows Governor to grant the Curator role to a new account
-     * @param account Address to receive Curator permissions
-     */
-    function grantCuratorRole(address account) external onlyRole(GOVERNOR_ROLE) {
-        _grantRole(CURATOR_ROLE, account);
-    }
-
-    /**
-     * @notice Allows Governor to revoke the Curator role from an account
-     * @param account Address to lose Curator permissions
-     */
-    function revokeCuratorRole(address account) external onlyRole(GOVERNOR_ROLE) {
-        _revokeRole(CURATOR_ROLE, account);
-    }
-
-    /**
-     * @notice Allows Governor to grant the Guardian role to a new account
-     * @param account Address to receive Guardian permissions
-     */
-    function grantGuardianRole(address account) external onlyRole(GOVERNOR_ROLE) {
-        _grantRole(GUARDIAN_ROLE, account);
-    }
-
-    /**
-     * @notice Allows Governor to revoke the Guardian role from an account
-     * @param account Address to lose Guardian permissions
-     */
-    function revokeGuardianRole(address account) external onlyRole(GOVERNOR_ROLE) {
-        _revokeRole(GUARDIAN_ROLE, account);
-    }
-
-    /**
      * @dev Internal helper to update swap fee within bounds
      * @param newFee The new swap fee to set
      */
