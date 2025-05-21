@@ -436,25 +436,20 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         ParameterRegistry parameterRegistry = new ParameterRegistry(
             governor,
             address(selfPeggingAssetProxy),
-            IParameterRegistry.AbsoluteCaps({
-                aMax: 1_000_000, // 1M like in Curve
-                swapFeeMax: 0,
-                mintFeeMax: 0,
-                redeemFeeMax: 0,
-                offPegMax: 0
-            }),
-            IParameterRegistry.RelativeRanges({
-                aMaxDecreasePct: 900_000, // -90%
-                aMaxIncreasePct: 9_000_000, // +900%
-                swapFeeMaxDecreasePct: 0,
-                swapFeeMaxIncreasePct: 0,
-                mintFeeMaxDecreasePct: 0,
-                mintFeeMaxIncreasePct: 0,
-                redeemFeeMaxDecreasePct: 0,
-                redeemFeeMaxIncreasePct: 0,
-                offPegMaxDecreasePct: 0,
-                offPegMaxIncreasePct: 0
-            })
+            // a bounds
+            IParameterRegistry.Bounds({
+                max: 1_000_000, // 1M like in Curve
+                maxDecreasePct: 900_000, // -90%
+                maxIncreasePct: 9_000_000 // +900%
+             }),
+            // swap TBD
+            IParameterRegistry.Bounds({ max: 0, maxDecreasePct: 0, maxIncreasePct: 0 }),
+            // mint TBD
+            IParameterRegistry.Bounds({ max: 0, maxDecreasePct: 0, maxIncreasePct: 0 }),
+            // redeem TBD
+            IParameterRegistry.Bounds({ max: 0, maxDecreasePct: 0, maxIncreasePct: 0 }),
+            // offpeg TBD
+            IParameterRegistry.Bounds({ max: 0, maxDecreasePct: 0, maxIncreasePct: 0 })
         );
 
         ERC1967Proxy keeperProxyProxy = new ERC1967Proxy(

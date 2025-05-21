@@ -12,72 +12,94 @@ import "../SelfPeggingAsset.sol";
  * Each SPA has its own ParameterRegistry
  */
 contract ParameterRegistry is IParameterRegistry, Ownable {
-    IParameterRegistry.AbsoluteCaps public absoluteCaps;
-    IParameterRegistry.RelativeRanges public relativeRanges;
-
     /// @notice SPA this registry is for
     SelfPeggingAsset public immutable spa;
 
-    event AbsoluteCapsUpdated(
-        address indexed caller,
-        address indexed spa,
-        IParameterRegistry.AbsoluteCaps oldCaps,
-        IParameterRegistry.AbsoluteCaps newCaps
-    );
-    event RelativeRangesUpdated(
-        address indexed caller,
-        address indexed spa,
-        IParameterRegistry.RelativeRanges oldRanges,
-        IParameterRegistry.RelativeRanges newRanges
-    );
-
-    error ZeroAddress();
+    /// keccak256(abi.encode(uint256(keccak256("tapio.params.registry")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 internal constant STORAGE_SLOT = 0x882c628f41b9f95bc5e7f228cc14a4ad25b219701a90bc13bf2f12347cc27d00;
 
     constructor(
         address _governor,
         address _spa,
-        IParameterRegistry.AbsoluteCaps memory _initialAbsCaps,
-        IParameterRegistry.RelativeRanges memory _initialRelRanges
+        Bounds memory _a,
+        Bounds memory _swapFee,
+        Bounds memory _mintFee,
+        Bounds memory _redeemFee,
+        Bounds memory _offPeg
     )
         Ownable(_governor)
     {
         require(_spa != address(0), ZeroAddress());
 
         spa = SelfPeggingAsset(_spa);
-        absoluteCaps = _initialAbsCaps;
-        relativeRanges = _initialRelRanges;
 
-        emit AbsoluteCapsUpdated(_governor, _spa, absoluteCaps, _initialAbsCaps);
-        emit RelativeRangesUpdated(_governor, _spa, relativeRanges, _initialRelRanges);
+        ParameterRegistryStorage storage $ = _getStorage();
+        $.aParams = _a;
+        $.swapFeeParams = _swapFee;
+        $.mintFeeParams = _mintFee;
+        $.redeemFeeParams = _redeemFee;
+        $.offPegParams = _offPeg;
+
+        emit AParamsUpdated(_governor, _a, _a);
+        emit SwapFeeParamsUpdated(_governor, _swapFee, _swapFee);
+        emit MintFeeParamsUpdated(_governor, _mintFee, _mintFee);
+        emit RedeemFeeParamsUpdated(_governor, _redeemFee, _redeemFee);
+        emit OffPegParamsUpdated(_governor, _offPeg, _offPeg);
     }
 
-    /**
-     * @inheritdoc IParameterRegistry
-     */
-    function setAbsoluteCaps(IParameterRegistry.AbsoluteCaps calldata _absCaps) external override onlyOwner {
-        emit AbsoluteCapsUpdated(msg.sender, address(spa), absoluteCaps, _absCaps);
-        absoluteCaps = _absCaps;
+    function aParams() external view returns (Bounds memory) {
+        return _getStorage().aParams;
     }
 
-    /**
-     * @inheritdoc IParameterRegistry
-     */
-    function setRelativeRanges(IParameterRegistry.RelativeRanges calldata _relRanges) external override onlyOwner {
-        emit RelativeRangesUpdated(msg.sender, address(spa), relativeRanges, _relRanges);
-        relativeRanges = _relRanges;
+    function swapFeeParams() external view returns (Bounds memory) {
+        return _getStorage().swapFeeParams;
     }
 
-    /**
-     * @inheritdoc IParameterRegistry
-     */
-    function absCaps() external view override returns (IParameterRegistry.AbsoluteCaps memory) {
-        return absoluteCaps;
+    function mintFeeParams() external view returns (Bounds memory) {
+        return _getStorage().mintFeeParams;
     }
 
-    /**
-     * @inheritdoc IParameterRegistry
-     */
-    function relRanges() external view override returns (IParameterRegistry.RelativeRanges memory) {
-        return relativeRanges;
+    function redeemFeeParams() external view returns (Bounds memory) {
+        return _getStorage().redeemFeeParams;
+    }
+
+    function offPegParams() external view returns (Bounds memory) {
+        return _getStorage().offPegParams;
+    }
+
+    function setAParams(Bounds calldata params) external onlyOwner {
+        ParameterRegistryStorage storage $ = _getStorage();
+        emit AParamsUpdated(msg.sender, $.aParams, params);
+        $.aParams = params;
+    }
+
+    function setSwapFeeParams(Bounds calldata params) external onlyOwner {
+        ParameterRegistryStorage storage $ = _getStorage();
+        emit SwapFeeParamsUpdated(msg.sender, $.swapFeeParams, params);
+        $.swapFeeParams = params;
+    }
+
+    function setMintFeeParams(Bounds calldata params) external onlyOwner {
+        ParameterRegistryStorage storage $ = _getStorage();
+        emit MintFeeParamsUpdated(msg.sender, $.mintFeeParams, params);
+        $.mintFeeParams = params;
+    }
+
+    function setRedeemFeeParams(Bounds calldata params) external onlyOwner {
+        ParameterRegistryStorage storage $ = _getStorage();
+        emit RedeemFeeParamsUpdated(msg.sender, $.redeemFeeParams, params);
+        $.redeemFeeParams = params;
+    }
+
+    function setOffPegParams(Bounds calldata params) external onlyOwner {
+        ParameterRegistryStorage storage $ = _getStorage();
+        emit OffPegParamsUpdated(msg.sender, $.offPegParams, params);
+        $.offPegParams = params;
+    }
+
+    function _getStorage() internal pure returns (ParameterRegistryStorage storage $) {
+        assembly {
+            $.slot := STORAGE_SLOT
+        }
     }
 }
