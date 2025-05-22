@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "../interfaces/IParameterRegistry.sol";
 import "../SelfPeggingAsset.sol";
 
@@ -11,12 +11,12 @@ import "../SelfPeggingAsset.sol";
  * @dev Immutable by design. Only the Governor (admin role) can modify values.
  * Each SPA has its own ParameterRegistry
  */
-contract ParameterRegistry is IParameterRegistry, Ownable {
+contract ParameterRegistry is IParameterRegistry, OwnableUpgradeable {
     IParameterRegistry.AbsoluteCaps public absoluteCaps;
     IParameterRegistry.RelativeRanges public relativeRanges;
 
     /// @notice SPA this registry is for
-    SelfPeggingAsset public immutable spa;
+    SelfPeggingAsset public spa;
 
     event AbsoluteCapsUpdated(
         address indexed caller,
@@ -33,22 +33,16 @@ contract ParameterRegistry is IParameterRegistry, Ownable {
 
     error ZeroAddress();
 
-    constructor(
-        address _governor,
-        address _spa,
-        IParameterRegistry.AbsoluteCaps memory _initialAbsCaps,
-        IParameterRegistry.RelativeRanges memory _initialRelRanges
-    )
-        Ownable(_governor)
-    {
+    function initialize(address _governor, address _spa) public initializer {
         require(_spa != address(0), ZeroAddress());
 
-        spa = SelfPeggingAsset(_spa);
-        absoluteCaps = _initialAbsCaps;
-        relativeRanges = _initialRelRanges;
+        __Ownable_init(_governor);
 
-        emit AbsoluteCapsUpdated(_governor, _spa, absoluteCaps, _initialAbsCaps);
-        emit RelativeRangesUpdated(_governor, _spa, relativeRanges, _initialRelRanges);
+        spa = SelfPeggingAsset(_spa);
+
+        absoluteCaps.aMax = 1_000_000; // 1M like in Curve
+        relativeRanges.aMaxDecreasePct = 900_000; // -90%
+        relativeRanges.aMaxIncreasePct = 9_000_000; // +900%
     }
 
     /**

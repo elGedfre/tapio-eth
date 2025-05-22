@@ -463,7 +463,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
         }
         require(address(_poolToken) != address(0), PoolTokenNotSet());
         require(_A > 0 && _A < MAX_A, ANotSet());
-        
+
         __ReentrancyGuard_init();
         __AccessControl_init();
 

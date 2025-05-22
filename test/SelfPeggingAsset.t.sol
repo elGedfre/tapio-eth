@@ -60,7 +60,8 @@
 //         exchangeRateProviders[1] = exchangeRateProvider;
 
 //         data = abi.encodeCall(
-//             SelfPeggingAsset.initialize, (tokens, precisions, fees, 0, lpToken, A, exchangeRateProviders, address(0), 0)
+//             SelfPeggingAsset.initialize, (tokens, precisions, fees, 0, lpToken, A, exchangeRateProviders, address(0),
+// 0)
 //         );
 
 //         proxy = new ERC1967Proxy(address(new SelfPeggingAsset()), data);
