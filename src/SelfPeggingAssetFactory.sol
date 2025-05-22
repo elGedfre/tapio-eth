@@ -417,7 +417,11 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
 
         BeaconProxy selfPeggingAssetProxy = new BeaconProxy(selfPeggingAssetBeacon, new bytes(0));
 
-        ParameterRegistry parameterRegistry = new ParameterRegistry(address(this), address(selfPeggingAssetProxy));
+        bytes memory parameterRegistryInit =
+            abi.encodeCall(ParameterRegistry.initialize, (address(this), address(selfPeggingAssetProxy)));
+        BeaconProxy parameterRegistryProxy = new BeaconProxy(parameterRegistryBeacon, parameterRegistryInit);
+        ParameterRegistry parameterRegistry = ParameterRegistry(address(parameterRegistryProxy));
+
         parameterRegistry.setBounds(
             IParameterRegistry.ParamKey.A,
             IParameterRegistry.Bounds({

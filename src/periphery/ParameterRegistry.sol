@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "../interfaces/IParameterRegistry.sol";
 import "../SelfPeggingAsset.sol";
 
@@ -11,14 +11,16 @@ import "../SelfPeggingAsset.sol";
  * @dev Only the Governor (admin role) can modify values.
  * Each SPA has its own ParameterRegistry
  */
-contract ParameterRegistry is IParameterRegistry, Ownable {
-    /// @notice SPA this registry is for
-    SelfPeggingAsset public immutable spa;
+contract ParameterRegistry is IParameterRegistry, OwnableUpgradeable {
+    /// @notice SPA this registry is connected
+    SelfPeggingAsset public spa;
 
     mapping(ParamKey => Bounds) public bounds;
 
-    constructor(address _governor, address _spa) Ownable(_governor) {
+    function initialize(address _governor, address _spa) public initializer {
         require(_spa != address(0), ZeroAddress());
+
+        __Ownable_init(_governor);
 
         spa = SelfPeggingAsset(_spa);
     }
