@@ -21,6 +21,8 @@ contract Config is Script {
     address lpTokenBeacon;
     address wlpTokenBeacon;
     address rampAControllerBeacon;
+    address keeperBeacon;
+    address parameterRegistryBeacon;
     address zap;
 
     struct JSONData {

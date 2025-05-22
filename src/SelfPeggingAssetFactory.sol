@@ -246,6 +246,8 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         address _lpTokenBeacon,
         address _wlpTokenBeacon,
         address _rampAControllerBeacon,
+        address _keeperBeacon,
+        address _parameterRegistryBeacon,
         ConstantExchangeRateProvider _constantExchangeRateProvider,
         uint256 _exchangeRateFeeFactor,
         uint256 _bufferPercent
@@ -260,6 +262,8 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         require(_wlpTokenBeacon != address(0), InvalidAddress());
         require(address(_constantExchangeRateProvider) != address(0), InvalidAddress());
         require(_rampAControllerBeacon != address(0), InvalidAddress());
+        require(_keeperBeacon != address(0), InvalidAddress());
+        require(_parameterRegistryBeacon != address(0), InvalidAddress());
 
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
@@ -270,6 +274,8 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         lpTokenBeacon = _lpTokenBeacon;
         wlpTokenBeacon = _wlpTokenBeacon;
         rampAControllerBeacon = _rampAControllerBeacon;
+        keeperBeacon = _keeperBeacon;
+        parameterRegistryBeacon = _parameterRegistryBeacon;
         constantExchangeRateProvider = _constantExchangeRateProvider;
 
         mintFee = _mintFee;
