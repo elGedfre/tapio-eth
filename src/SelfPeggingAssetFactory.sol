@@ -437,7 +437,6 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
              })
         );
         parameterRegistry.transferOwnership(governor);
-
         bytes memory keeperInit = abi.encodeCall(
             Keeper.initialize,
             (
