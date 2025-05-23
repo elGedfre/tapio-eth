@@ -3,27 +3,30 @@ pragma solidity ^0.8.28;
 
 /**
  * @title IParameterRegistry
- * @notice Interface for the immutable ParameterRegistry contract
  */
 interface IParameterRegistry {
-    /// @custom:storage-location erc7201:tapio.params.registry
-    struct ParameterRegistryStorage {
-        // A coefficient bounds
-        Bounds aParams;
-        // Swap fee bounds
-        Bounds swapFeeParams;
-        // Off-peg multiplier bounds
-        Bounds offPegParams;
-        // TBD
-        Bounds mintFeeParams;
-        Bounds redeemFeeParams;
+    /**
+     * @notice Unique keys identifying different parameter types.
+     */
+    enum ParamKey {
+        A,
+        SwapFee,
+        MintFee,
+        RedeemFee,
+        OffPeg,
+        ExchangeRateFee,
+        DecayPeriod,
+        RateChangeSkipPeriod,
+        FeeErrorMargin,
+        YieldErrorMargin
     }
 
     /**
-     * @notice Absolute limit and Relative per-tx ranges, expressed in ppm
-     * @params max Absolute limit that can never be exceeded.
-     * @params maxDecreasePct: e.g., 900000 = -90%
-     * @params maxIncreasePct: e.g., 9000000 = +900%
+     * @notice Structure representing bounds for a given parameter.
+     * @dev All percentages are expressed in parts-per-million (ppm), i.e., 1e6 = 100%.
+     * @param max The hard cap for the parameter value.
+     * @param maxDecreasePct The maximum decrease allowed per transaction, e.g., 900_000 = -90%.
+     * @param maxIncreasePct The maximum increase allowed per transaction, e.g., 900_000 = +90%.
      */
     struct Bounds {
         uint256 max;
@@ -31,23 +34,52 @@ interface IParameterRegistry {
         uint32 maxIncreasePct;
     }
 
+    /**
+     * @notice Emitted when parameter bounds are updated.
+     * @param caller The address of governor that performed the update.
+     * @param key The parameter key that was updated.
+     * @param oldParams The old bounds before the update.
+     * @param newParams The new bounds after the update.
+     */
+    event BoundsUpdated(address indexed caller, ParamKey key, Bounds oldParams, Bounds newParams);
+
     error ZeroAddress();
 
-    event AParamsUpdated(address indexed caller, Bounds oldParams, Bounds newParams);
-    event SwapFeeParamsUpdated(address indexed caller, Bounds oldParams, Bounds newParams);
-    event OffPegParamsUpdated(address indexed caller, Bounds oldParams, Bounds newParams);
-    event MintFeeParamsUpdated(address indexed caller, Bounds oldParams, Bounds newParams);
-    event RedeemFeeParamsUpdated(address indexed caller, Bounds oldParams, Bounds newParams);
+    /**
+     * @notice Updates the bounds for a specific parameter.
+     * @dev Only callable by an authorized governor.
+     * @param key The parameter key to update.
+     * @param newBounds The new bounds structure to apply.
+     */
+    function setBounds(ParamKey key, Bounds calldata newBounds) external;
 
+    /// @return Bounds for the 'A' coefficient parameter
     function aParams() external view returns (Bounds memory);
+
+    /// @return Bounds for the swap fee
     function swapFeeParams() external view returns (Bounds memory);
+
+    /// @return Bounds for the mint fee
     function mintFeeParams() external view returns (Bounds memory);
+
+    /// @return Bounds for the redeem fee
     function redeemFeeParams() external view returns (Bounds memory);
+
+    /// @return Bounds for the off-peg multiplier
     function offPegParams() external view returns (Bounds memory);
 
-    function setAParams(Bounds calldata params) external;
-    function setSwapFeeParams(Bounds calldata params) external;
-    function setMintFeeParams(Bounds calldata params) external;
-    function setRedeemFeeParams(Bounds calldata params) external;
-    function setOffPegParams(Bounds calldata params) external;
+    /// @return Bounds for exchange rate fee changes
+    function exchangeRateFeeParams() external view returns (Bounds memory);
+
+    /// @return Bounds for decay period
+    function decayPeriodParams() external view returns (Bounds memory);
+
+    /// @return Bounds for the rate change skip period
+    function rateChangeSkipPeriodParams() external view returns (Bounds memory);
+
+    /// @return Bounds for the fee error margin
+    function feeErrorMarginParams() external view returns (Bounds memory);
+
+    /// @return Bounds for the yield error margin
+    function yieldErrorMarginParams() external view returns (Bounds memory);
 }

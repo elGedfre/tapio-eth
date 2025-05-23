@@ -417,35 +417,29 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
 
         BeaconProxy selfPeggingAssetProxy = new BeaconProxy(selfPeggingAssetBeacon, new bytes(0));
 
-        ParameterRegistry parameterRegistry = new ParameterRegistry(
-            governor,
-            address(selfPeggingAssetProxy),
-            // a bounds
+        ParameterRegistry parameterRegistry = new ParameterRegistry(address(this), address(selfPeggingAssetProxy));
+        parameterRegistry.setBounds(
+            IParameterRegistry.ParamKey.A,
             IParameterRegistry.Bounds({
                 max: 1_000_000, // 1M like in Curve
                 maxDecreasePct: 900_000, // -90%
                 maxIncreasePct: 9_000_000 // +900%
-             }),
-            // swap TBD
-            IParameterRegistry.Bounds({ max: 0, maxDecreasePct: 0, maxIncreasePct: 0 }),
-            // mint TBD
-            IParameterRegistry.Bounds({ max: 0, maxDecreasePct: 0, maxIncreasePct: 0 }),
-            // redeem TBD
-            IParameterRegistry.Bounds({ max: 0, maxDecreasePct: 0, maxIncreasePct: 0 }),
-            // offpeg TBD
-            IParameterRegistry.Bounds({ max: 0, maxDecreasePct: 0, maxIncreasePct: 0 })
+             })
         );
+        parameterRegistry.transferOwnership(governor);
 
-        bytes memory keeperInit = abi.encodeCall(Keeper.initialize, (
-            address(governor),
-            address(governor),
-            address(governor),
-            IParameterRegistry(address(parameterRegistry)),
-            IRampAController(address(rampAControllerProxy)),
-            SelfPeggingAsset(address(selfPeggingAssetProxy))
-        ));
+        bytes memory keeperInit = abi.encodeCall(
+            Keeper.initialize,
+            (
+                address(governor),
+                address(governor),
+                address(governor),
+                IParameterRegistry(address(parameterRegistry)),
+                IRampAController(address(rampAControllerProxy)),
+                SelfPeggingAsset(address(selfPeggingAssetProxy))
+            )
+        );
         BeaconProxy keeperProxy = new BeaconProxy(keeperBeacon, keeperInit);
-
 
         SelfPeggingAsset selfPeggingAsset = SelfPeggingAsset(address(selfPeggingAssetProxy));
         selfPeggingAsset.initialize(
@@ -467,7 +461,6 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         lpToken.setBuffer(bufferPercent);
         lpToken.transferOwnership(governor);
         rampAConotroller.transferOwnership(governor);
-        
 
         bytes memory wlpTokenInit = abi.encodeCall(WLPToken.initialize, (ILPToken(lpToken)));
         BeaconProxy wlpTokenProxy = new BeaconProxy(wlpTokenBeacon, wlpTokenInit);
