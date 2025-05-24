@@ -56,6 +56,7 @@ contract FactoryTest is Test {
             SelfPeggingAssetFactory.initialize,
             (
                 governor,
+                governor,
                 0,
                 0,
                 0,
@@ -299,6 +300,7 @@ contract FactoryTest is Test {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         factory.initialize(
             governor,
+            governor,
             0,
             0,
             0,
@@ -332,6 +334,8 @@ contract FactoryTest is Test {
             _exchangeRateProviders,
             address(0),
             0,
+            governor,
+            governor,
             governor,
             governor
         );
