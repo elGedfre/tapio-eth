@@ -58,7 +58,7 @@ contract RampAControllerTest is Test {
         bytes memory rampAControllerData = abi.encodeCall(RampAController.initialize, (INITIAL_A, MIN_RAMP_TIME));
         ERC1967Proxy rampAControllerProxy = new ERC1967Proxy(address(new RampAController()), rampAControllerData);
 
-        bytes memory lpTokenData = abi.encodeCall(LPToken.initialize, ("LP Token", "TLP"));
+        bytes memory lpTokenData = abi.encodeCall(LPToken.initialize, ("LP Token", "TLP", 5e8, owner));
         ERC1967Proxy lpTokenProxy = new ERC1967Proxy(address(new LPToken()), lpTokenData);
         lpToken = LPToken(address(lpTokenProxy));
 
@@ -83,7 +83,7 @@ contract RampAControllerTest is Test {
         ERC1967Proxy spaProxy = new ERC1967Proxy(address(new SelfPeggingAsset()), spaData);
         spa = SelfPeggingAsset(address(spaProxy));
 
-        lpToken.addPool(address(spa));
+        lpToken.setPool(address(spa));
 
         controller = RampAController(address(rampAControllerProxy));
 
@@ -384,7 +384,7 @@ contract RampAControllerTest is Test {
         providerArray[0] = providers[0];
         providerArray[1] = providers[1];
 
-        bytes memory lpTokenData = abi.encodeCall(LPToken.initialize, ("LP Token Low A", "TLPA"));
+        bytes memory lpTokenData = abi.encodeCall(LPToken.initialize, ("LP Token Low A", "TLPA", 5e8, owner));
         ERC1967Proxy lpTokenProxy = new ERC1967Proxy(address(new LPToken()), lpTokenData);
         LPToken newLpToken = LPToken(address(lpTokenProxy));
 
@@ -409,7 +409,7 @@ contract RampAControllerTest is Test {
 
         ERC1967Proxy spaProxy = new ERC1967Proxy(address(new SelfPeggingAsset()), spaData);
         SelfPeggingAsset lowASpa = SelfPeggingAsset(address(spaProxy));
-        newLpToken.addPool(address(lowASpa));
+        newLpToken.setPool(address(lowASpa));
 
         MockToken(tokens[0]).mint(address(this), 1000e18);
         MockToken(tokens[1]).mint(address(this), 1000e18);

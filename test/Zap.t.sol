@@ -55,7 +55,7 @@ contract ZapTest is Test {
         tokens[0] = address(token1);
         tokens[1] = address(token2);
 
-        bytes memory data = abi.encodeCall(LPToken.initialize, ("Tapio ETH", "TapETH"));
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("Tapio ETH", "TapETH", 5e8, governance));
         ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), data);
 
         lpToken = LPToken(address(proxy));
@@ -96,7 +96,7 @@ contract ZapTest is Test {
         vm.stopPrank();
 
         vm.prank(governance);
-        lpToken.addPool(address(spa));
+        lpToken.setPool(address(spa));
 
         vm.startPrank(admin);
 
@@ -383,7 +383,7 @@ contract ZapTest is Test {
     }
 
     function testZapIn_CrossPoolMismatch() public {
-        bytes memory data = abi.encodeCall(LPToken.initialize, ("Second LP Token", "LP2"));
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("Second LP Token", "LP2", 5e8, governance));
         ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), data);
         LPToken secondLpToken = LPToken(address(proxy));
         secondLpToken.transferOwnership(governance);
@@ -424,7 +424,7 @@ contract ZapTest is Test {
         vm.stopPrank();
 
         vm.prank(governance);
-        secondLpToken.addPool(address(secondSpa));
+        secondLpToken.setPool(address(secondSpa));
 
         vm.startPrank(admin);
 

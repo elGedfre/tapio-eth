@@ -22,7 +22,7 @@ contract LPTokenTest is Test {
         user2 = makeAddr("user2");
         user3 = makeAddr("user3");
 
-        bytes memory data = abi.encodeCall(LPToken.initialize, ("Tapio ETH", "lpToken"));
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("Tapio ETH", "lpToken", 0, governance));
 
         ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), data);
 
@@ -32,24 +32,14 @@ contract LPTokenTest is Test {
 
     function test_AddPool() public {
         vm.prank(governance);
-        lpToken.addPool(pool1);
+        lpToken.setPool(pool1);
 
-        assertEq(lpToken.pools(pool1), true);
-    }
-
-    function test_RemovePool() public {
-        vm.prank(governance);
-        lpToken.addPool(pool1);
-
-        vm.prank(governance);
-        lpToken.removePool(pool1);
-
-        assertEq(lpToken.pools(pool1), false);
+        assertEq(lpToken.pool(), pool1);
     }
 
     function test_MintSharesSingleUser() public {
         vm.prank(governance);
-        lpToken.addPool(pool1);
+        lpToken.setPool(pool1);
 
         uint256 amount = 1_000_000_000_000_000_000_000;
         vm.prank(pool1);
@@ -63,7 +53,7 @@ contract LPTokenTest is Test {
 
     function test_MintSharesMultipleUsers() public {
         vm.prank(governance);
-        lpToken.addPool(pool1);
+        lpToken.setPool(pool1);
 
         uint256 amount1 = 1_000_000_000_000_000_000_000;
         uint256 amount2 = 2_000_000_000_000_000_000_000;
@@ -89,7 +79,7 @@ contract LPTokenTest is Test {
 
     function test_BurnSharesSingleUser() public {
         vm.prank(governance);
-        lpToken.addPool(pool1);
+        lpToken.setPool(pool1);
 
         uint256 amount1 = 1_000_000_000_000_000_000_000;
         uint256 amount2 = 500_000_000_000_000_000_000;
@@ -114,7 +104,7 @@ contract LPTokenTest is Test {
         uint256 totalAmount = amount1 + amount2;
 
         vm.prank(governance);
-        lpToken.addPool(pool1);
+        lpToken.setPool(pool1);
 
         vm.prank(pool1);
         lpToken.mintShares(user, amount1);
@@ -204,7 +194,7 @@ contract LPTokenTest is Test {
 
         // Governance adds pool
         vm.prank(governance);
-        lpToken.addPool(pool1);
+        lpToken.setPool(pool1);
 
         // Pool mints shares to user1
         vm.prank(pool1);
@@ -232,7 +222,7 @@ contract LPTokenTest is Test {
 
         // Governance adds pool
         vm.prank(governance);
-        lpToken.addPool(pool1);
+        lpToken.setPool(pool1);
 
         // Pool mints shares to user1
         vm.prank(pool1);

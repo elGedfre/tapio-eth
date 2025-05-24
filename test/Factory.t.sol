@@ -164,7 +164,9 @@ contract FactoryTest is Test {
         });
 
         vm.recordLogs();
+
         factory.createPool(arg);
+
         Vm.Log[] memory entries = vm.getRecordedLogs();
         bytes32 eventSig = keccak256("PoolCreated(address,address,address,address,address,address)");
 
@@ -336,7 +338,7 @@ contract FactoryTest is Test {
 
         LPToken lpToken = new LPToken();
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        lpToken.initialize("", "");
+        lpToken.initialize("", "", 0, address(0));
 
         WLPToken wlpToken = new WLPToken();
         vm.expectRevert(Initializable.InvalidInitialization.selector);

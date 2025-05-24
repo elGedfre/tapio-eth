@@ -64,11 +64,6 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     mapping(address => mapping(address => uint256)) private allowances;
 
     /**
-     * @dev The mapping of pools.
-     */
-    mapping(address => bool) public pools;
-
-    /**
      * @dev The buffer rate.
      */
     uint256 public bufferPercent;
@@ -94,6 +89,16 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     uint256 public bufferBadDebt;
 
     /**
+     * @dev The address of governor for setting buffer and symbol
+     */
+    address public governor;
+
+    /**
+     * @dev The address of SPA pool.
+     */
+    address public pool;
+
+    /**
      * @notice Emitted when shares are transferred.
      */
     event TransferShares(address indexed from, address indexed to, uint256 sharesValue);
@@ -102,16 +107,6 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * @notice Emitted when rewards are minted.
      */
     event RewardsMinted(uint256 amount, uint256 actualAmount);
-
-    /**
-     * @notice Emitted when a pool is added.
-     */
-    event PoolAdded(address indexed pool);
-
-    /**
-     * @notice Emitted when a pool is removed.
-     */
-    event PoolRemoved(address indexed pool);
 
     /**
      * @notice Emitted when the buffer rate is set.
@@ -138,14 +133,30 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      */
     event SymbolModified(string);
 
+    /**
+     * @notice Emitted when new Governor is set.
+     */
+    event GovernorModified(address oldGovernor, address newGovernor);
+
+    /**
+     * @notice Emitted when the SPA pool is set.
+     */
+    event PoolSet(address);
+
+    /// @notice Error thrown when the SPA pool address is already set.
+    error PoolAlreadySet();
+
     /// @notice Error thrown when the allowance is below zero.
     error AllowanceBelowZero();
 
     /// @notice Error thrown when array index is out of range.
     error OutOfRange();
 
-    /// @notice Error thrown when the pool is not added.
+    /// @notice Error thrown when the pool is not the caller.
     error NoPool();
+
+    /// @notice Error thrown when the governor is not the caller.
+    error NoGovernor();
 
     /// @notice Error thrown when the amount is invalid.
     error InvalidAmount();
@@ -171,12 +182,6 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     /// @notice Error thrown when burning from the zero address.
     error BurnFromZeroAddr();
 
-    /// @notice Error thrown when the pool is already added.
-    error PoolAlreadyAdded();
-
-    /// @notice Error thrown when the pool is not found.
-    error PoolNotFound();
-
     /// @notice Error thrown when the supply is insufficient.
     error InsufficientSupply();
 
@@ -184,11 +189,25 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
         _disableInitializers();
     }
 
-    function initialize(string memory _name, string memory _symbol) public initializer {
+    function initialize(
+        string memory _name,
+        string memory _symbol,
+        uint256 _buffer,
+        address _governor
+    )
+        public
+        initializer
+    {
+        require(_buffer < BUFFER_DENOMINATOR, OutOfRange());
         tokenName = _name;
         tokenSymbol = _symbol;
+        governor = _governor;
+        bufferPercent = _buffer;
 
         __Ownable_init(msg.sender);
+
+        emit SetBufferPercent(_buffer);
+        emit GovernorModified(address(0), _governor);
     }
 
     /**
@@ -234,7 +253,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * @dev Mints shares for the `_account` and transfers them to the `_account`.
      */
     function mintShares(address _account, uint256 _tokenAmount) external {
-        require(pools[msg.sender], NoPool());
+        require(msg.sender == pool, NoPool());
         _mintShares(_account, _tokenAmount);
     }
 
@@ -327,20 +346,42 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     // solhint-enable max-line-length
 
     /**
-     * @notice This function is called by the owner to set the buffer rate.
+     * @notice This function is called by the governor to set the buffer rate.
      */
-    function setBuffer(uint256 _buffer) external onlyOwner {
+    function setBuffer(uint256 _buffer) external {
+        require(msg.sender == governor, NoGovernor());
         require(_buffer < BUFFER_DENOMINATOR, OutOfRange());
         bufferPercent = _buffer;
         emit SetBufferPercent(_buffer);
     }
 
     /**
-     * @notice This function is called by the owner to set the token symbol.
+     * @notice This function is called by the governor to set the token symbol.
      */
-    function setSymbol(string memory _symbol) external onlyOwner {
+    function setSymbol(string memory _symbol) external {
+        require(msg.sender == governor, NoGovernor());
         tokenSymbol = _symbol;
         emit SymbolModified(_symbol);
+    }
+
+    /**
+     * @notice This function is called by the owner to set the governor.
+     */
+    function setGovernor(address _governor) external onlyOwner {
+        require(_governor != address(0), ZeroAddress());
+        emit GovernorModified(governor, _governor);
+        governor = _governor;
+    }
+
+    /**
+     * @notice This function is called by the owner to set the SPA pool.
+     */
+    function setPool(address _pool) external onlyOwner {
+        require(pool == address(0), PoolAlreadySet());
+        require(_pool != address(0), ZeroAddress());
+
+        pool = _pool;
+        emit PoolSet(_pool);
     }
 
     /**
@@ -348,7 +389,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * the total supply of LPToken by the staking rewards and the swap fee.
      */
     function addTotalSupply(uint256 _amount) external {
-        require(pools[msg.sender], NoPool());
+        require(msg.sender == pool, NoPool());
         require(_amount != 0, InvalidAmount());
 
         if (bufferBadDebt >= _amount) {
@@ -383,7 +424,7 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * @param withDebt The flag to indicate whether to add the lost amount to the buffer bad debt or not.
      */
     function removeTotalSupply(uint256 _amount, bool isBuffer, bool withDebt) external {
-        require(pools[msg.sender], NoPool());
+        require(msg.sender == pool, NoPool());
         require(_amount != 0, InvalidAmount());
 
         if (isBuffer) {
@@ -405,32 +446,11 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      * the total supply of LPToken
      */
     function addBuffer(uint256 _amount) external {
-        require(pools[msg.sender], NoPool());
+        require(msg.sender == pool, NoPool());
         require(_amount != 0, InvalidAmount());
 
         bufferAmount += _amount;
         emit BufferIncreased(_amount, bufferAmount);
-    }
-
-    /**
-     * @dev Adds a pool to the list of pools.
-     * @param _pool The address of the pool to add.
-     */
-    function addPool(address _pool) external onlyOwner {
-        require(_pool != address(0), ZeroAddress());
-        require(!pools[_pool], PoolAlreadyAdded());
-        pools[_pool] = true;
-        emit PoolAdded(_pool);
-    }
-
-    /**
-     * @dev Removes a pool from the list of pools.
-     * @param _pool The address of the pool to remove.
-     */
-    function removePool(address _pool) external onlyOwner {
-        require(pools[_pool], PoolNotFound());
-        pools[_pool] = false;
-        emit PoolRemoved(_pool);
     }
 
     /**

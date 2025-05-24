@@ -33,7 +33,7 @@ contract SelfPeggingAssetTest is Test {
         WETH = new MockToken("WETH", "WETH", 18);
         frxETH = new MockToken("frxETH", "frxETH", 18);
 
-        bytes memory data = abi.encodeCall(LPToken.initialize, ("LP Token", "LPT"));
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("LP Token", "LPT", 0, owner));
 
         ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), data);
 
@@ -69,7 +69,7 @@ contract SelfPeggingAssetTest is Test {
         pool = SelfPeggingAsset(address(proxy));
 
         vm.prank(owner);
-        lpToken.addPool(address(pool));
+        lpToken.setPool(address(pool));
     }
 
     function test_CorrectMintAmount_EqualTokenAmounts() external {
@@ -125,7 +125,7 @@ contract SelfPeggingAssetTest is Test {
         // SelfPeggingAsset _pool = new SelfPeggingAsset();
         // LPToken _lpToken = new LPToken();
 
-        bytes memory data = abi.encodeCall(LPToken.initialize, ("LP Token", "LPT"));
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("LP Token", "LPT", 5e8, owner));
 
         ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), data);
         LPToken _lpToken = LPToken(address(proxy));
@@ -163,7 +163,7 @@ contract SelfPeggingAssetTest is Test {
         SelfPeggingAsset _pool = SelfPeggingAsset(address(proxy));
 
         vm.prank(owner);
-        _lpToken.addPool(address(_pool));
+        _lpToken.setPool(address(_pool));
 
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = 110e18;
@@ -527,7 +527,7 @@ contract SelfPeggingAssetTest is Test {
         exchangeRateProviders[0] = IExchangeRateProvider(rETHExchangeRateProvider);
         exchangeRateProviders[1] = IExchangeRateProvider(wstETHExchangeRateProvider);
 
-        bytes memory data = abi.encodeCall(LPToken.initialize, ("LP Token", "LPT"));
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("LP Token", "LPT", 5e8, owner));
 
         ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), data);
         LPToken _lpToken = LPToken(address(proxy));
@@ -564,7 +564,7 @@ contract SelfPeggingAssetTest is Test {
         SelfPeggingAsset _pool = SelfPeggingAsset(address(proxy));
 
         vm.prank(owner);
-        _lpToken.addPool(address(_pool));
+        _lpToken.setPool(address(_pool));
 
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = 100e18;
@@ -779,7 +779,7 @@ contract SelfPeggingAssetTest is Test {
         exchangeRateProviders2[0] = IExchangeRateProvider(rETHExchangeRateProvider2);
         exchangeRateProviders2[1] = IExchangeRateProvider(wstETHExchangeRateProvider2);
 
-        bytes memory data = abi.encodeCall(LPToken.initialize, ("LP Token", "LPT"));
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("LP Token", "LPT", 5e8, owner));
 
         ERC1967Proxy proxy1 = new ERC1967Proxy(address(new LPToken()), data);
         LPToken _lpToken1 = LPToken(address(proxy1));
@@ -843,8 +843,8 @@ contract SelfPeggingAssetTest is Test {
         SelfPeggingAsset _pool2 = SelfPeggingAsset(address(proxy2));
 
         vm.startPrank(owner);
-        _lpToken1.addPool(address(_pool1));
-        _lpToken2.addPool(address(_pool2));
+        _lpToken1.setPool(address(_pool1));
+        _lpToken2.setPool(address(_pool2));
         vm.stopPrank();
 
         vm.prank(address(_pool1));
@@ -940,7 +940,7 @@ contract SelfPeggingAssetTest is Test {
         exchangeRateProviders2[0] = IExchangeRateProvider(rETHExchangeRateProvider2);
         exchangeRateProviders2[1] = IExchangeRateProvider(wstETHExchangeRateProvider2);
 
-        bytes memory data = abi.encodeCall(LPToken.initialize, ("LP Token", "LPT"));
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("LP Token", "LPT", 5e8, owner));
 
         ERC1967Proxy proxy1 = new ERC1967Proxy(address(new LPToken()), data);
         LPToken _lpToken1 = LPToken(address(proxy1));
@@ -1007,8 +1007,8 @@ contract SelfPeggingAssetTest is Test {
         SelfPeggingAsset _pool2 = SelfPeggingAsset(address(proxy2));
 
         vm.startPrank(owner);
-        _lpToken1.addPool(address(_pool1));
-        _lpToken2.addPool(address(_pool2));
+        _lpToken1.setPool(address(_pool1));
+        _lpToken2.setPool(address(_pool2));
         vm.stopPrank();
 
         vm.prank(address(_pool1));
@@ -1084,7 +1084,7 @@ contract SelfPeggingAssetTest is Test {
         MockExchangeRateProvider provider0 = new MockExchangeRateProvider(1e18, 18);
         MockExchangeRateProvider provider1 = new MockExchangeRateProvider(1e18, 18);
 
-        bytes memory data = abi.encodeCall(LPToken.initialize, ("LP Token", "LPT"));
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("LP Token", "LPT", 5e8, owner));
         ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), data);
         LPToken lpToken = LPToken(address(proxy));
         lpToken.transferOwnership(owner);
@@ -1120,7 +1120,7 @@ contract SelfPeggingAssetTest is Test {
         vm.stopPrank();
 
         vm.prank(owner);
-        lpToken.addPool(address(pool));
+        lpToken.setPool(address(pool));
 
         vm.prank(address(pool));
         lpToken.addBuffer(100e18);
@@ -1238,12 +1238,12 @@ contract SelfPeggingAssetTest is Test {
         providers2[0] = IExchangeRateProvider(rETHProvider2);
         providers2[1] = IExchangeRateProvider(wstETHProvider2);
 
-        bytes memory data = abi.encodeCall(LPToken.initialize, ("LP Token 1", "LPT1"));
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("LP Token 1", "LPT1", 5e8, owner));
         ERC1967Proxy proxy1 = new ERC1967Proxy(address(new LPToken()), data);
         LPToken lpToken1 = LPToken(address(proxy1));
         lpToken1.transferOwnership(owner);
 
-        data = abi.encodeCall(LPToken.initialize, ("LP Token 2", "LPT2"));
+        data = abi.encodeCall(LPToken.initialize, ("LP Token 2", "LPT2", 5e8, owner));
         ERC1967Proxy proxy2 = new ERC1967Proxy(address(new LPToken()), data);
         LPToken lpToken2 = LPToken(address(proxy2));
         lpToken2.transferOwnership(owner);
@@ -1290,8 +1290,8 @@ contract SelfPeggingAssetTest is Test {
         pool2.setRateChangeSkipPeriod(100 days);
 
         vm.startPrank(owner);
-        lpToken1.addPool(address(pool1));
-        lpToken2.addPool(address(pool2));
+        lpToken1.setPool(address(pool1));
+        lpToken2.setPool(address(pool2));
         vm.stopPrank();
 
         uint256 bufferSize = initialLiquidity * 3;

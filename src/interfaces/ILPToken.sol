@@ -9,12 +9,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @notice Interface for LP Token
  */
 interface ILPToken is IERC20 {
-    /// @dev Add a pool to the list of pools
-    function addPool(address _pool) external;
-
-    /// @dev Remove a pool from the list of pools
-    function removePool(address _pool) external;
-
     /// @dev Increase the allowance of the spender
     function increaseAllowance(address _spender, uint256 _addedValue) external returns (bool);
 
