@@ -23,6 +23,13 @@ contract ParameterRegistry is IParameterRegistry, OwnableUpgradeable {
         __Ownable_init(_governor);
 
         spa = SelfPeggingAsset(_spa);
+
+        // set default values for A boundry
+        bounds[ParamKey.A] = Bounds({
+            max: 1_000_000, // 1M like in Curve
+            maxDecreasePct: 900_000, // -90%
+            maxIncreasePct: 9_000_000 // +900%
+         });
     }
 
     /**
