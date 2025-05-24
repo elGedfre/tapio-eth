@@ -13,7 +13,6 @@ import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy
 import "../src/misc/ConstantExchangeRateProvider.sol";
 import { Zap } from "../src/periphery/Zap.sol";
 import { Keeper } from "../src/periphery/Keeper.sol";
-import { ParameterRegistry } from "../src/periphery/ParameterRegistry.sol";
 
 import { RampAController } from "../src/periphery/RampAController.sol";
 
@@ -28,7 +27,6 @@ contract Deploy is Config {
         address wlpTokenImplentation = address(new WLPToken());
         address rampAControllerImplentation = address(new RampAController());
         address keeperImplentation = address(new Keeper());
-        address parameterRegistryImplentation = address(new ParameterRegistry());
 
         UpgradeableBeacon beacon = new UpgradeableBeacon(selfPeggingAssetImplentation, GOVERNOR);
         selfPeggingAssetBeacon = address(beacon);
@@ -44,9 +42,6 @@ contract Deploy is Config {
 
         beacon = new UpgradeableBeacon(keeperImplentation, GOVERNOR);
         keeperBeacon = address(beacon);
-
-        beacon = new UpgradeableBeacon(parameterRegistryImplentation, GOVERNOR);
-        parameterRegistryBeacon = address(beacon);
     }
 
     function deployFactory() internal {
@@ -69,7 +64,6 @@ contract Deploy is Config {
                 wlpTokenBeacon,
                 rampAControllerBeacon,
                 keeperBeacon,
-                parameterRegistryBeacon,
                 new ConstantExchangeRateProvider(),
                 0,
                 0
