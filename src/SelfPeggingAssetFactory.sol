@@ -64,6 +64,11 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
     }
 
     /**
+     * @dev The address of the council
+     */
+    address public council;
+
+    /**
      * @dev This is the account that has governor control over the protocol.
      */
     address public governor;
@@ -137,6 +142,12 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
      * @dev The buffer percent for the LPToken.
      */
     uint256 public bufferPercent;
+
+    /**
+     * @dev This event is emitted when the council is modified.
+     * @param council is the new value of the council.
+     */
+    event CouncilModified(address indexed council);
 
     /**
      * @dev This event is emitted when the governor is modified.
@@ -230,6 +241,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
      * @dev Initializes the StableSwap Application contract.
      */
     function initialize(
+        address _council,
         address _governor,
         uint256 _mintFee,
         uint256 _swapFee,
@@ -250,6 +262,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         initializer
     {
         require(_governor != address(0), InvalidAddress());
+        require(_council != address(0), InvalidAddress());
         require(_A > 0, InvalidValue());
         require(_selfPeggingAssetBeacon != address(0), InvalidAddress());
         require(_lpTokenBeacon != address(0), InvalidAddress());
@@ -262,6 +275,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         __UUPSUpgradeable_init();
 
         governor = _governor;
+        council = _council;
 
         selfPeggingAssetBeacon = _selfPeggingAssetBeacon;
         lpTokenBeacon = _lpTokenBeacon;
@@ -278,6 +292,15 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         minRampTime = _minRampTime;
         exchangeRateFeeFactor = _exchangeRateFeeFactor;
         bufferPercent = _bufferPercent;
+    }
+
+    /**
+     * @dev Set the council address.
+     */
+    function setCouncil(address _council) external onlyOwner {
+        require(_council != address(0), InvalidAddress());
+        council = _council;
+        emit CouncilModified(council);
     }
 
     /**
@@ -441,6 +464,8 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
             exchangeRateProviders,
             address(rampAControllerProxy),
             exchangeRateFeeFactor,
+            owner(),
+            council,
             governor,
             address(keeperProxy)
         );

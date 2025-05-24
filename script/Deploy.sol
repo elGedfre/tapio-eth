@@ -53,6 +53,7 @@ contract Deploy is Config {
             SelfPeggingAssetFactory.initialize,
             (
                 GOVERNOR,
+                GOVERNOR,
                 0,
                 0,
                 0,

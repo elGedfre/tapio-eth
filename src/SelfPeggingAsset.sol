@@ -21,6 +21,11 @@ import "./interfaces/IRampAController.sol";
 contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable {
     using SafeERC20 for IERC20;
 
+    bytes32 public constant PROTOCOL_OWNER_ROLE = keccak256("PROTOCOL_OWNER_ROLE");
+    bytes32 public constant COUNCIL_ROLE = keccak256("COUNCIL_ROLE");
+    bytes32 public constant GOVERNOR_ROLE = keccak256("GOVERNOR_ROLE");
+    bytes32 public constant KEEPER_ROLE = keccak256("KEEPER_ROLE");
+
     /**
      * @dev Data structure for each token's fee status:
      *      - lastRate: last recorded exchange rate for this token.
@@ -395,6 +400,12 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
     /// @notice Error thrown when the pool is imbalanced
     error ImbalancedPool(uint256 oldD, uint256 newD);
 
+    /// @notice Error thrown when the account is unauthorized
+    error UnauthorizedAccount();
+
+    /// @notice Error thrown when the address is zero
+    error ZeroAddress();
+
     modifier syncRamping() {
         if (address(rampAController) != address(0)) {
             uint256 currentA = getCurrentA();
@@ -431,6 +442,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
         IExchangeRateProvider[] memory _exchangeRateProviders,
         address _rampAController,
         uint256 _exchangeRateFeeFactor,
+        address _protocolOwner,
+        address _council,
         address _governor,
         address _keeper
     )
@@ -496,7 +509,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
 
         _grantRole(KEEPER_ROLE, _keeper);
         _grantRole(GOVERNOR_ROLE, _governor);
-        _grantRole(DEFAULT_ADMIN_ROLE, _governor);
+        _grantRole(PROTOCOL_OWNER_ROLE, _protocolOwner);
+        _grantRole(COUNCIL_ROLE, _council);
     }
 
     /**
@@ -821,10 +835,30 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
     }
 
     /**
+     * @dev Sets the keeper address.
+     * @param _keeper The new keeper address.
+     */
+    function setKeeper(address _keeper) external {
+        require(hasRole(PROTOCOL_OWNER_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        require(_keeper != address(0), ZeroAddress());
+        _grantRole(KEEPER_ROLE, _keeper);
+    }
+
+    /**
+     * @dev Sets the governor address.
+     * @param _governor The new governor address.
+     */
+    function setGovernor(address _governor) external onlyRole(PROTOCOL_OWNER_ROLE) {
+        require(hasRole(PROTOCOL_OWNER_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        require(_governor != address(0), ZeroAddress());
+        _grantRole(GOVERNOR_ROLE, _governor);
+    }
+
+    /**
      * @dev Updates the mint fee.
      * @param _mintFee The new mint fee.
      */
-    function setMintFee(uint256 _mintFee) external onlyRole(GOVERNOR_ROLE) {
+    function setMintFee(uint256 _mintFee) external onlyRole(KEEPER_ROLE) {
         require(_mintFee < FEE_DENOMINATOR, LimitExceeded());
         mintFee = _mintFee;
         emit MintFeeModified(_mintFee);
@@ -834,7 +868,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
      * @dev Updates the swap fee.
      * @param _swapFee The new swap fee.
      */
-    function setSwapFee(uint256 _swapFee) external onlyRole(GOVERNOR_ROLE) {
+    function setSwapFee(uint256 _swapFee) external onlyRole(KEEPER_ROLE) {
         require(_swapFee < FEE_DENOMINATOR, LimitExceeded());
         swapFee = _swapFee;
         emit SwapFeeModified(_swapFee);
@@ -844,7 +878,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
      * @dev Updates the redeem fee.
      * @param _redeemFee The new redeem fee.
      */
-    function setRedeemFee(uint256 _redeemFee) external onlyRole(GOVERNOR_ROLE) {
+    function setRedeemFee(uint256 _redeemFee) external onlyRole(KEEPER_ROLE) {
         require(_redeemFee < FEE_DENOMINATOR, LimitExceeded());
         redeemFee = _redeemFee;
         emit RedeemFeeModified(_redeemFee);
@@ -854,7 +888,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
      * @dev Updates the off peg fee multiplier.
      * @param _offPegFeeMultiplier The new off peg fee multiplier.
      */
-    function setOffPegFeeMultiplier(uint256 _offPegFeeMultiplier) external onlyRole(GOVERNOR_ROLE) {
+    function setOffPegFeeMultiplier(uint256 _offPegFeeMultiplier) external onlyRole(KEEPER_ROLE) {
         offPegFeeMultiplier = _offPegFeeMultiplier;
         emit OffPegFeeMultiplierModified(_offPegFeeMultiplier);
     }
@@ -863,7 +897,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
      * @dev Updates the exchange rate fee factor.
      * @param _exchangeRateFeeFactor The new exchange rate fee factor.
      */
-    function setExchangeRateFeeFactor(uint256 _exchangeRateFeeFactor) external onlyRole(GOVERNOR_ROLE) {
+    function setExchangeRateFeeFactor(uint256 _exchangeRateFeeFactor) external onlyRole(KEEPER_ROLE) {
         exchangeRateFeeFactor = _exchangeRateFeeFactor;
         emit ExchangeRateFeeFactorModified(_exchangeRateFeeFactor);
     }
@@ -872,7 +906,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
      * @dev Updates the decay period.
      * @param _decayPeriod The new decay period.
      */
-    function setDecayPeriod(uint256 _decayPeriod) external onlyRole(GOVERNOR_ROLE) {
+    function setDecayPeriod(uint256 _decayPeriod) external onlyRole(KEEPER_ROLE) {
         decayPeriod = _decayPeriod;
         emit DecayPeriodModified(_decayPeriod);
     }
@@ -881,7 +915,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
      * @dev Updates the rate change skip period.
      * @param _rateChangeSkipPeriod The new rate change skip period.
      */
-    function setRateChangeSkipPeriod(uint256 _rateChangeSkipPeriod) external onlyRole(GOVERNOR_ROLE) {
+    function setRateChangeSkipPeriod(uint256 _rateChangeSkipPeriod) external onlyRole(KEEPER_ROLE) {
         rateChangeSkipPeriod = _rateChangeSkipPeriod;
         emit RateChangeSkipPeriodModified(_rateChangeSkipPeriod);
     }
@@ -889,7 +923,11 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
     /**
      * @dev Pause mint/swap/redeem actions. Can unpause later.
      */
-    function pause() external onlyRole(KEEPER_ROLE) {
+    function pause() external {
+        require(
+            hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender) || hasRole(KEEPER_ROLE, msg.sender),
+            UnauthorizedAccount()
+        );
         require(!paused, Paused());
 
         paused = true;
@@ -899,7 +937,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
     /**
      * @dev Unpause mint/swap/redeem actions.
      */
-    function unpause() external onlyRole(KEEPER_ROLE) {
+    function unpause() external onlyRole(COUNCIL_ROLE) {
         require(paused, NotPaused());
 
         paused = false;
@@ -910,7 +948,13 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
      * @dev Set the RampAController address
      * @param _rampAController New controller address
      */
-    function setRampAController(address _rampAController) external onlyRole(GOVERNOR_ROLE) {
+    function setRampAController(address _rampAController) external {
+        require(
+            hasRole(PROTOCOL_OWNER_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender)
+                || hasRole(GOVERNOR_ROLE, msg.sender),
+            UnauthorizedAccount()
+        );
+
         if (address(rampAController) != address(0) && rampAController.isRamping()) {
             revert CannotChangeControllerDuringRamp();
         }
@@ -959,7 +1003,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
     /**
      * @dev update fee error margin.
      */
-    function updateFeeErrorMargin(uint256 newValue) external onlyRole(GOVERNOR_ROLE) {
+    function updateFeeErrorMargin(uint256 newValue) external onlyRole(KEEPER_ROLE) {
         feeErrorMargin = newValue;
         emit FeeMarginModified(newValue);
     }
@@ -967,7 +1011,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
     /**
      * @dev update yield error margin.
      */
-    function updateYieldErrorMargin(uint256 newValue) external onlyRole(GOVERNOR_ROLE) {
+    function updateYieldErrorMargin(uint256 newValue) external onlyRole(KEEPER_ROLE) {
         yieldErrorMargin = newValue;
         emit YieldMarginModified(newValue);
     }
@@ -975,7 +1019,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
     /**
      * @dev Distribute losses by rebasing negatively
      */
-    function distributeLoss() external onlyRole(GOVERNOR_ROLE) {
+    function distributeLoss() external onlyRole(KEEPER_ROLE) {
         require(paused, NotPaused());
 
         uint256[] memory _balances = balances;
