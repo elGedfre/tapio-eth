@@ -124,11 +124,6 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
     address public keeperBeacon;
 
     /**
-     * @dev The address of the Parameters Registry contract.
-     */
-    address public parameterRegistryBeacon;
-
-    /**
      * @dev Constant exchange rate provider.
      */
     ConstantExchangeRateProvider public constantExchangeRateProvider;
@@ -259,7 +254,6 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         address _wlpTokenBeacon,
         address _rampAControllerBeacon,
         address _keeperBeacon,
-        address _parameterRegistryBeacon,
         ConstantExchangeRateProvider _constantExchangeRateProvider,
         uint256 _exchangeRateFeeFactor,
         uint256 _bufferPercent
@@ -276,7 +270,6 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         require(address(_constantExchangeRateProvider) != address(0), InvalidAddress());
         require(_rampAControllerBeacon != address(0), InvalidAddress());
         require(_keeperBeacon != address(0), InvalidAddress());
-        require(_parameterRegistryBeacon != address(0), InvalidAddress());
 
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
@@ -289,7 +282,6 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         wlpTokenBeacon = _wlpTokenBeacon;
         rampAControllerBeacon = _rampAControllerBeacon;
         keeperBeacon = _keeperBeacon;
-        parameterRegistryBeacon = _parameterRegistryBeacon;
         constantExchangeRateProvider = _constantExchangeRateProvider;
 
         mintFee = _mintFee;
@@ -446,10 +438,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
 
         BeaconProxy selfPeggingAssetProxy = new BeaconProxy(selfPeggingAssetBeacon, new bytes(0));
 
-        bytes memory parameterRegistryInit =
-            abi.encodeCall(ParameterRegistry.initialize, (governor, address(selfPeggingAssetProxy)));
-        BeaconProxy parameterRegistryProxy = new BeaconProxy(parameterRegistryBeacon, parameterRegistryInit);
-        ParameterRegistry parameterRegistry = ParameterRegistry(address(parameterRegistryProxy));
+        ParameterRegistry parameterRegistry = new ParameterRegistry(governor, address(selfPeggingAssetProxy));
 
         bytes memory keeperInit = abi.encodeCall(
             Keeper.initialize,

@@ -75,11 +75,10 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
      * @inheritdoc IKeeper
      */
     function rampA(uint256 newA, uint256 endTime) external override onlyRole(CURATOR_ROLE) {
-        IParameterRegistry.AbsoluteCaps memory C = registry.absCaps();
-        IParameterRegistry.RelativeRanges memory R = registry.relRanges();
+        IParameterRegistry.Bounds memory aParams = registry.aParams();
 
         // only if governor has defined ranges
-        if (R.aMaxDecreasePct == 0 && R.aMaxIncreasePct == 0) revert RelativeRangeNotSet();
+        if (aParams.maxDecreasePct == 0 && aParams.maxIncreasePct == 0) revert RelativeRangeNotSet();
 
         uint256 curA = rampAController.getA();
 
@@ -87,17 +86,17 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
         if (newA < curA) {
             // decreasing
             uint256 decreasePct = ((curA - newA) * 1e6) / curA;
-            require(decreasePct <= R.aMaxDecreasePct, FeeDeltaTooBig());
+            require(decreasePct <= aParams.maxDecreasePct, FeeDeltaTooBig());
         } else if (newA > curA) {
             // increasing
             uint256 increasePct = ((newA - curA) * 1e6) / curA;
-            require(increasePct <= R.aMaxIncreasePct, FeeDeltaTooBig());
+            require(increasePct <= aParams.maxIncreasePct, FeeDeltaTooBig());
         } else {
             // no change
             return;
         }
 
-        require(newA <= C.aMax, FeeOutOfBounds());
+        require(newA <= aParams.max, FeeOutOfBounds());
 
         rampAController.rampA(newA, endTime);
         emit ACoeffManaged(msg.sender, newA);
@@ -107,24 +106,22 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
      * @inheritdoc IKeeper
      */
     function setSwapFee(uint256 newFee) external override onlyRole(GOVERNOR_ROLE) {
-        IParameterRegistry.AbsoluteCaps memory C = registry.absCaps();
-        IParameterRegistry.RelativeRanges memory R = registry.relRanges();
+        IParameterRegistry.Bounds memory swapFeeParams = registry.swapFeeParams();
 
         uint256 cur = spa.swapFee();
         if (newFee < cur) {
             // decreasing
             uint256 decreasePct = ((cur - newFee) * 1e6) / cur;
-            require(decreasePct <= R.swapFeeMaxDecreasePct, FeeDeltaTooBig());
+            require(decreasePct <= swapFeeParams.maxDecreasePct, FeeDeltaTooBig());
         } else if (newFee > cur) {
             // increasing
             uint256 increasePct = ((newFee - cur) * 1e6) / cur;
-            require(increasePct <= R.swapFeeMaxIncreasePct, FeeDeltaTooBig());
+            require(increasePct <= swapFeeParams.maxIncreasePct, FeeDeltaTooBig());
         } else {
             // no change
             return;
         }
-
-        require(newFee <= C.swapFeeMax, FeeOutOfBounds());
+        require(newFee <= swapFeeParams.max, FeeOutOfBounds());
 
         spa.setSwapFee(newFee);
         emit SwapFeeManaged(msg.sender, newFee);

@@ -3,66 +3,83 @@ pragma solidity ^0.8.28;
 
 /**
  * @title IParameterRegistry
- * @notice Interface for the immutable ParameterRegistry contract
  */
 interface IParameterRegistry {
     /**
-     * @notice Absolute limits that can never be exceeded.
+     * @notice Unique keys identifying different parameter types.
      */
-    struct AbsoluteCaps {
-        // A coefficient bound
-        uint256 aMax; // Max allowed value for amplification coefficient A
-        // Fee bounds (all values in FEE_DENOMINATOR = 1e10 units)
-        uint256 swapFeeMax; // Max allowed swap fee
-        uint256 mintFeeMax; // Max allowed mint fee (future-proof)
-        uint256 redeemFeeMax; // Max allowed redeem fee (future-proof)
-        // Other parameter limits
-        uint256 offPegMax; // Max allowed off-peg fee multiplier
+    enum ParamKey {
+        A,
+        SwapFee,
+        MintFee,
+        RedeemFee,
+        OffPeg,
+        ExchangeRateFee,
+        DecayPeriod,
+        RateChangeSkipPeriod,
+        FeeErrorMargin,
+        YieldErrorMargin
     }
 
     /**
-     * @notice Relative per-tx ranges, expressed in ppm (precision 1e6 = 100%)
-     * - MaxDecreasePct: e.g., 900000 = -90%
-     * - MaxIncreasePct: e.g., 9000000 = +900%
+     * @notice Structure representing bounds for a given parameter.
+     * @dev All percentages are expressed in parts-per-million (ppm), i.e., 1e6 = 100%.
+     * @param max The hard cap for the parameter value.
+     * @param maxDecreasePct The maximum decrease allowed per transaction, e.g., 900_000 = -90%.
+     * @param maxIncreasePct The maximum increase allowed per transaction, e.g., 900_000 = +90%.
      */
-    struct RelativeRanges {
-        // A coefficient bounds
-        uint32 aMaxDecreasePct; // max decrease of A vs current value
-        uint32 aMaxIncreasePct; // max increase of A vs current value
-        // Swap fee bounds
-        uint32 swapFeeMaxDecreasePct;
-        uint32 swapFeeMaxIncreasePct;
-        // future-proof
-        uint32 mintFeeMaxDecreasePct;
-        uint32 mintFeeMaxIncreasePct;
-        uint32 redeemFeeMaxDecreasePct;
-        uint32 redeemFeeMaxIncreasePct;
-        // Off-peg multiplier bounds
-        uint32 offPegMaxDecreasePct;
-        uint32 offPegMaxIncreasePct;
+    struct Bounds {
+        uint256 max;
+        uint32 maxDecreasePct;
+        uint32 maxIncreasePct;
     }
 
     /**
-     * @notice Get the current absolute caps
-     * @return Current absolute caps
+     * @notice Emitted when parameter bounds are updated.
+     * @param caller The address of governor that performed the update.
+     * @param key The parameter key that was updated.
+     * @param oldParams The old bounds before the update.
+     * @param newParams The new bounds after the update.
      */
-    function absCaps() external view returns (AbsoluteCaps memory);
+    event BoundsUpdated(address indexed caller, ParamKey key, Bounds oldParams, Bounds newParams);
+
+    error ZeroAddress();
 
     /**
-     * @notice Get the current relative ranges
-     * @return Current relative ranges
+     * @notice Updates the bounds for a specific parameter.
+     * @dev Only callable by an authorized governor.
+     * @param key The parameter key to update.
+     * @param newBounds The new bounds structure to apply.
      */
-    function relRanges() external view returns (RelativeRanges memory);
+    function setBounds(ParamKey key, Bounds calldata newBounds) external;
 
-    /**
-     * @notice Set new absolute caps (Governor only)
-     * @param absCaps New absolute caps
-     */
-    function setAbsoluteCaps(AbsoluteCaps calldata absCaps) external;
+    /// @return Bounds for the 'A' coefficient parameter
+    function aParams() external view returns (Bounds memory);
 
-    /**
-     * @notice Set new relative ranges (Governor only)
-     * @param relRanges New relative ranges
-     */
-    function setRelativeRanges(RelativeRanges calldata relRanges) external;
+    /// @return Bounds for the swap fee
+    function swapFeeParams() external view returns (Bounds memory);
+
+    /// @return Bounds for the mint fee
+    function mintFeeParams() external view returns (Bounds memory);
+
+    /// @return Bounds for the redeem fee
+    function redeemFeeParams() external view returns (Bounds memory);
+
+    /// @return Bounds for the off-peg multiplier
+    function offPegParams() external view returns (Bounds memory);
+
+    /// @return Bounds for exchange rate fee changes
+    function exchangeRateFeeParams() external view returns (Bounds memory);
+
+    /// @return Bounds for decay period
+    function decayPeriodParams() external view returns (Bounds memory);
+
+    /// @return Bounds for the rate change skip period
+    function rateChangeSkipPeriodParams() external view returns (Bounds memory);
+
+    /// @return Bounds for the fee error margin
+    function feeErrorMarginParams() external view returns (Bounds memory);
+
+    /// @return Bounds for the yield error margin
+    function yieldErrorMarginParams() external view returns (Bounds memory);
 }

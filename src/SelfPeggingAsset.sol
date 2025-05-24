@@ -21,11 +21,6 @@ import "./interfaces/IRampAController.sol";
 contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable {
     using SafeERC20 for IERC20;
 
-    bytes32 public constant PROTOCOL_OWNER_ROLE = keccak256("PROTOCOL_OWNER_ROLE");
-    bytes32 public constant COUNCIL_ROLE = keccak256("COUNCIL_ROLE");
-    bytes32 public constant GOVERNOR_ROLE = keccak256("GOVERNOR_ROLE");
-    bytes32 public constant KEEPER_ROLE = keccak256("KEEPER_ROLE");
-
     /**
      * @dev Data structure for each token's fee status:
      *      - lastRate: last recorded exchange rate for this token.
@@ -37,6 +32,11 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
         uint256 multiplier;
         uint256 raisedAt;
     }
+
+    bytes32 public constant PROTOCOL_OWNER_ROLE = keccak256("PROTOCOL_OWNER_ROLE");
+    bytes32 public constant COUNCIL_ROLE = keccak256("COUNCIL_ROLE");
+    bytes32 public constant GOVERNOR_ROLE = keccak256("GOVERNOR_ROLE");
+    bytes32 public constant KEEPER_ROLE = keccak256("KEEPER_ROLE");
 
     /**
      * @dev This is the denominator used for calculating transaction fees in the SelfPeggingAsset contract.

@@ -1,77 +1,110 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/IParameterRegistry.sol";
 import "../SelfPeggingAsset.sol";
 
 /**
  * @title ParameterRegistry
  * @notice Stores hard caps and per-transaction relative ranges that bound keeper operations.
- * @dev Immutable by design. Only the Governor (admin role) can modify values.
+ * @dev Only the Governor (admin role) can modify values.
  * Each SPA has its own ParameterRegistry
  */
-contract ParameterRegistry is IParameterRegistry, OwnableUpgradeable {
-    IParameterRegistry.AbsoluteCaps public absoluteCaps;
-    IParameterRegistry.RelativeRanges public relativeRanges;
-
-    /// @notice SPA this registry is for
+contract ParameterRegistry is IParameterRegistry, Ownable {
+    /// @notice SPA this registry is connected
     SelfPeggingAsset public spa;
 
-    event AbsoluteCapsUpdated(
-        address indexed caller,
-        address indexed spa,
-        IParameterRegistry.AbsoluteCaps oldCaps,
-        IParameterRegistry.AbsoluteCaps newCaps
-    );
-    event RelativeRangesUpdated(
-        address indexed caller,
-        address indexed spa,
-        IParameterRegistry.RelativeRanges oldRanges,
-        IParameterRegistry.RelativeRanges newRanges
-    );
+    mapping(ParamKey => Bounds) public bounds;
 
-    error ZeroAddress();
-
-    function initialize(address _governor, address _spa) public initializer {
+    constructor(address _governor, address _spa) Ownable(_governor) {
         require(_spa != address(0), ZeroAddress());
-
-        __Ownable_init(_governor);
 
         spa = SelfPeggingAsset(_spa);
 
-        absoluteCaps.aMax = 1_000_000; // 1M like in Curve
-        relativeRanges.aMaxDecreasePct = 900_000; // -90%
-        relativeRanges.aMaxIncreasePct = 9_000_000; // +900%
+        // set default values for A boundry
+        bounds[ParamKey.A] = Bounds({
+            max: 1_000_000, // 1M like in Curve
+            maxDecreasePct: 900_000, // -90%
+            maxIncreasePct: 9_000_000 // +900%
+         });
     }
 
     /**
      * @inheritdoc IParameterRegistry
      */
-    function setAbsoluteCaps(IParameterRegistry.AbsoluteCaps calldata _absCaps) external override onlyOwner {
-        emit AbsoluteCapsUpdated(msg.sender, address(spa), absoluteCaps, _absCaps);
-        absoluteCaps = _absCaps;
+    function setBounds(ParamKey key, Bounds calldata newBounds) external onlyOwner {
+        emit BoundsUpdated(msg.sender, key, bounds[key], newBounds);
+        bounds[key] = newBounds;
     }
 
     /**
      * @inheritdoc IParameterRegistry
      */
-    function setRelativeRanges(IParameterRegistry.RelativeRanges calldata _relRanges) external override onlyOwner {
-        emit RelativeRangesUpdated(msg.sender, address(spa), relativeRanges, _relRanges);
-        relativeRanges = _relRanges;
+    function aParams() external view returns (Bounds memory) {
+        return bounds[ParamKey.A];
     }
 
     /**
      * @inheritdoc IParameterRegistry
      */
-    function absCaps() external view override returns (IParameterRegistry.AbsoluteCaps memory) {
-        return absoluteCaps;
+    function swapFeeParams() external view returns (Bounds memory) {
+        return bounds[ParamKey.SwapFee];
     }
 
     /**
      * @inheritdoc IParameterRegistry
      */
-    function relRanges() external view override returns (IParameterRegistry.RelativeRanges memory) {
-        return relativeRanges;
+    function mintFeeParams() external view returns (Bounds memory) {
+        return bounds[ParamKey.MintFee];
+    }
+
+    /**
+     * @inheritdoc IParameterRegistry
+     */
+    function redeemFeeParams() external view returns (Bounds memory) {
+        return bounds[ParamKey.RedeemFee];
+    }
+
+    /**
+     * @inheritdoc IParameterRegistry
+     */
+    function offPegParams() external view returns (Bounds memory) {
+        return bounds[ParamKey.OffPeg];
+    }
+
+    /**
+     * @inheritdoc IParameterRegistry
+     */
+    function exchangeRateFeeParams() external view returns (Bounds memory) {
+        return bounds[ParamKey.ExchangeRateFee];
+    }
+
+    /**
+     * @inheritdoc IParameterRegistry
+     */
+    function decayPeriodParams() external view returns (Bounds memory) {
+        return bounds[ParamKey.DecayPeriod];
+    }
+
+    /**
+     * @inheritdoc IParameterRegistry
+     */
+    function rateChangeSkipPeriodParams() external view returns (Bounds memory) {
+        return bounds[ParamKey.RateChangeSkipPeriod];
+    }
+
+    /**
+     * @inheritdoc IParameterRegistry
+     */
+    function feeErrorMarginParams() external view returns (Bounds memory) {
+        return bounds[ParamKey.FeeErrorMargin];
+    }
+
+    /**
+     * @inheritdoc IParameterRegistry
+     */
+    function yieldErrorMarginParams() external view returns (Bounds memory) {
+        return bounds[ParamKey.YieldErrorMargin];
     }
 }
