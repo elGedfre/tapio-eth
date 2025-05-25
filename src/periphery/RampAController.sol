@@ -13,7 +13,6 @@ import "../interfaces/IRampAController.sol";
 contract RampAController is IRampAController, Initializable, OwnableUpgradeable {
     // Constants for A parameter limits and precision
     uint256 private constant MAX_A = 10 ** 6; // as Curve
-    uint256 private constant MAX_A_CHANGE = 2; // Allow 50% changes
     uint256 private constant DEFAULT_RAMP_TIME = 30 minutes;
 
     uint256 public override initialA; // when starts
@@ -32,7 +31,6 @@ contract RampAController is IRampAController, Initializable, OwnableUpgradeable 
     error RampAlreadyInProgress();
     error NoOngoingRamp();
     error AOutOfBounds();
-    error ExcessiveAChange();
     error InsufficientRampTime();
     error Unauthorized();
 
@@ -44,9 +42,10 @@ contract RampAController is IRampAController, Initializable, OwnableUpgradeable 
      * @notice Initializer for RampAController
      * @param _initialA is the initial value of A
      * @param _minRampTime is min ramp time
+     * @param _owner is the address of the owner
      */
-    function initialize(uint256 _initialA, uint256 _minRampTime) external initializer {
-        __Ownable_init(msg.sender);
+    function initialize(uint256 _initialA, uint256 _minRampTime, address _owner) external initializer {
+        __Ownable_init(_owner);
 
         if (_initialA == 0 || _initialA > MAX_A) revert AOutOfBounds();
 
@@ -77,22 +76,10 @@ contract RampAController is IRampAController, Initializable, OwnableUpgradeable 
     function rampA(uint256 _futureA, uint256 _futureTime) external override onlyOwner {
         if (_futureTime <= block.timestamp) revert InvalidFutureTime();
         if (block.timestamp < futureATime) revert RampAlreadyInProgress();
-        if (_futureA == 0 || _futureA > MAX_A) revert AOutOfBounds();
         if (_futureTime - block.timestamp < minRampTime) revert InsufficientRampTime();
 
         // should be static
         uint256 _initialA = getA();
-
-        if (_initialA <= 2) {
-            uint256 maxMultiplier = 11 - _initialA; // 10 for initialA=1, 9 for initialA=2
-            if (_futureA > _initialA * maxMultiplier) revert ExcessiveAChange();
-        } else if (_futureA > _initialA) {
-            // A increasing, check if futureA <= initialA * (1 + 1/MAX_A_CHANGE)
-            if (_futureA * MAX_A_CHANGE > _initialA * (MAX_A_CHANGE + 1)) revert ExcessiveAChange();
-        } else {
-            // A decreasing, check if initialA <= futureA * MAX_A_CHANGE
-            if (_initialA > _futureA * MAX_A_CHANGE) revert ExcessiveAChange();
-        }
 
         initialA = _initialA;
         futureA = _futureA;

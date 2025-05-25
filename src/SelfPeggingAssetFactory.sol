@@ -429,7 +429,9 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
             exchangeRateProviders[1] = IExchangeRateProvider(erc4626ExchangeRate);
         }
 
-        bytes memory rampAControllerInit = abi.encodeCall(RampAController.initialize, (A, minRampTime));
+        BeaconProxy keeperProxy = new BeaconProxy(keeperBeacon, new bytes(0));
+        bytes memory rampAControllerInit =
+            abi.encodeCall(RampAController.initialize, (A, minRampTime, address(keeperProxy)));
         BeaconProxy rampAControllerProxy = new BeaconProxy(rampAControllerBeacon, rampAControllerInit);
         RampAController rampAConotroller = RampAController(address(rampAControllerProxy));
 
@@ -440,15 +442,28 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         bytes memory keeperInit = abi.encodeCall(
             Keeper.initialize,
             (
+                owner(),
                 address(governor),
                 address(governor),
                 address(governor),
+                address(council),
                 IParameterRegistry(address(parameterRegistry)),
                 IRampAController(address(rampAControllerProxy)),
                 SelfPeggingAsset(address(selfPeggingAssetProxy))
             )
         );
-        BeaconProxy keeperProxy = new BeaconProxy(keeperBeacon, keeperInit);
+
+        Keeper keeper = Keeper(address(keeperProxy));
+        keeper.initialize(
+            owner(),
+            address(governor),
+            address(governor),
+            address(governor),
+            address(council),
+            IParameterRegistry(address(parameterRegistry)),
+            IRampAController(address(rampAControllerProxy)),
+            SelfPeggingAsset(address(selfPeggingAssetProxy))
+        );
 
         SelfPeggingAsset selfPeggingAsset = SelfPeggingAsset(address(selfPeggingAssetProxy));
         selfPeggingAsset.initialize(

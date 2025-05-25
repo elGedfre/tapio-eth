@@ -2,7 +2,6 @@
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "../interfaces/IRampAController.sol";
 import "../interfaces/IParameterRegistry.sol";
 import "../interfaces/IKeeper.sol";
@@ -14,23 +13,22 @@ import "../SelfPeggingAsset.sol";
  * @notice Fast-path executor that lets curators adjust parameters within bounds enforced by ParameterRegistry
  * @dev UUPS upgradeable. Governor is admin, curator and guardian are roles.
  */
-contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
+contract Keeper is AccessControlUpgradeable, IKeeper {
+    bytes32 public constant COUNCIL_ROLE = keccak256("COUNCIL_ROLE");
     bytes32 public constant CURATOR_ROLE = keccak256("CURATOR_ROLE");
     bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN_ROLE");
     bytes32 public constant GOVERNOR_ROLE = keccak256("GOVERNOR_ROLE");
-    // Protocol Owner holds DEFAULT_ADMIN_ROLE (admin key)
+    bytes32 public constant PROTOCOL_OWNER_ROLE = keccak256("PROTOCOL_OWNER_ROLE");
 
     IParameterRegistry private registry;
     IRampAController private rampAController;
     SelfPeggingAsset private spa;
 
-    event ACoeffManaged(address indexed caller, uint256 newA);
-    event SwapFeeManaged(address indexed caller, uint256 newFee);
-
     error ZeroAddress();
-    error FeeOutOfBounds();
-    error FeeDeltaTooBig();
+    error OutOfBounds();
+    error DeltaTooBig();
     error RelativeRangeNotSet();
+    error UnauthorizedAccount();
 
     /**
      * @custom:oz-upgrades-unsafe-allow constructor
@@ -40,9 +38,11 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
     }
 
     function initialize(
+        address _protocolOwner,
         address _governor,
         address _curator,
         address _guardian,
+        address _council,
         IParameterRegistry _registry,
         IRampAController _rampAController,
         SelfPeggingAsset _spa
@@ -58,7 +58,6 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
         require(address(_spa) != address(0), ZeroAddress());
 
         __AccessControl_init();
-        __UUPSUpgradeable_init();
 
         registry = _registry;
         rampAController = _rampAController;
@@ -68,73 +67,220 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
         _grantRole(GOVERNOR_ROLE, _governor);
         _grantRole(CURATOR_ROLE, _curator);
         _grantRole(GUARDIAN_ROLE, _guardian);
-        _grantRole(DEFAULT_ADMIN_ROLE, _governor);
+        _grantRole(COUNCIL_ROLE, _council);
+        _grantRole(PROTOCOL_OWNER_ROLE, _protocolOwner);
     }
 
     /**
      * @inheritdoc IKeeper
      */
-    function rampA(uint256 newA, uint256 endTime) external override onlyRole(CURATOR_ROLE) {
+    function rampA(uint256 newA, uint256 endTime) external override {
+        require(
+            hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender) || hasRole(CURATOR_ROLE, msg.sender),
+            UnauthorizedAccount()
+        );
         IParameterRegistry.Bounds memory aParams = registry.aParams();
 
-        // only if governor has defined ranges
-        if (aParams.maxDecreasePct == 0 && aParams.maxIncreasePct == 0) revert RelativeRangeNotSet();
-
         uint256 curA = rampAController.getA();
-
-        // check if within allowed relative bounds
-        if (newA < curA) {
-            // decreasing
-            uint256 decreasePct = ((curA - newA) * 1e6) / curA;
-            require(decreasePct <= aParams.maxDecreasePct, FeeDeltaTooBig());
-        } else if (newA > curA) {
-            // increasing
-            uint256 increasePct = ((newA - curA) * 1e6) / curA;
-            require(increasePct <= aParams.maxIncreasePct, FeeDeltaTooBig());
+        if (curA <= 2) {
+            uint256 maxMultiplier = 11 - curA; // 10 for initialA=1, 9 for initialA=2
+            if (newA > curA * maxMultiplier) revert OutOfBounds();
         } else {
-            // no change
-            return;
+            if (aParams.maxDecreasePct == 0 && aParams.maxIncreasePct == 0) revert RelativeRangeNotSet();
+            checkRange(newA, curA, aParams);
         }
 
-        require(newA <= aParams.max, FeeOutOfBounds());
+        require(newA <= aParams.max, OutOfBounds());
 
         rampAController.rampA(newA, endTime);
-        emit ACoeffManaged(msg.sender, newA);
     }
 
     /**
      * @inheritdoc IKeeper
      */
-    function setSwapFee(uint256 newFee) external override onlyRole(GOVERNOR_ROLE) {
+    function setSwapFee(uint256 newFee) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
         IParameterRegistry.Bounds memory swapFeeParams = registry.swapFeeParams();
 
         uint256 cur = spa.swapFee();
-        if (newFee < cur) {
-            // decreasing
-            uint256 decreasePct = ((cur - newFee) * 1e6) / cur;
-            require(decreasePct <= swapFeeParams.maxDecreasePct, FeeDeltaTooBig());
-        } else if (newFee > cur) {
-            // increasing
-            uint256 increasePct = ((newFee - cur) * 1e6) / cur;
-            require(increasePct <= swapFeeParams.maxIncreasePct, FeeDeltaTooBig());
-        } else {
-            // no change
-            return;
-        }
-        require(newFee <= swapFeeParams.max, FeeOutOfBounds());
+        checkRange(newFee, cur, swapFeeParams);
 
         spa.setSwapFee(newFee);
-        emit SwapFeeManaged(msg.sender, newFee);
     }
 
     /**
      * @inheritdoc IKeeper
      */
-    function cancelRamp() external override onlyRole(GUARDIAN_ROLE) {
+    function setMintFee(uint256 newFee) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        IParameterRegistry.Bounds memory mintFeeParams = registry.mintFeeParams();
+
+        uint256 cur = spa.mintFee();
+        checkRange(newFee, cur, mintFeeParams);
+
+        spa.setMintFee(newFee);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function setRedeemFee(uint256 newFee) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        IParameterRegistry.Bounds memory redeemFeeParams = registry.redeemFeeParams();
+
+        uint256 cur = spa.redeemFee();
+
+        checkRange(newFee, cur, redeemFeeParams);
+        spa.setRedeemFee(newFee);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function cancelRamp() external override {
+        require(hasRole(GUARDIAN_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
         rampAController.stopRamp();
     }
 
-    // TODO: add pause logic
+    /**
+     * @inheritdoc IKeeper
+     */
+    function grantGovernorRole(address _governor) external override onlyRole(COUNCIL_ROLE) {
+        _grantRole(GOVERNOR_ROLE, _governor);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function revokeGovernorRole(address _governor) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        _revokeRole(GOVERNOR_ROLE, _governor);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function grantCuratorRole(address _curator) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        _grantRole(CURATOR_ROLE, _curator);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function revokeCuratorRole(address _curator) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        _revokeRole(CURATOR_ROLE, _curator);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function grantGuardianRole(address _guardian) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        _grantRole(GUARDIAN_ROLE, _guardian);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function revokeGuardianRole(address _guardian) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        _revokeRole(GUARDIAN_ROLE, _guardian);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function setOffPegFeeMultiplier(uint256 newMultiplier) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        IParameterRegistry.Bounds memory offPegParams = registry.offPegParams();
+
+        uint256 cur = spa.offPegFeeMultiplier();
+        checkRange(newMultiplier, cur, offPegParams);
+
+        spa.setOffPegFeeMultiplier(newMultiplier);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function setExchangeRateFeeFactor(uint256 newFeeFactor) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        IParameterRegistry.Bounds memory exchangeRateFeeParams = registry.exchangeRateFeeParams();
+
+        uint256 cur = spa.exchangeRateFeeFactor();
+        checkRange(newFeeFactor, cur, exchangeRateFeeParams);
+
+        spa.setExchangeRateFeeFactor(newFeeFactor);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function setDecayPeriod(uint256 newDecayPeriod) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        IParameterRegistry.Bounds memory decayPeriodParams = registry.decayPeriodParams();
+
+        uint256 cur = spa.decayPeriod();
+        checkRange(newDecayPeriod, cur, decayPeriodParams);
+
+        spa.setDecayPeriod(newDecayPeriod);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function setRateChangeSkipPeriod(uint256 newSkipPeriod) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        IParameterRegistry.Bounds memory rateChangeSkipPeriodParams = registry.rateChangeSkipPeriodParams();
+
+        uint256 cur = spa.rateChangeSkipPeriod();
+        checkRange(newSkipPeriod, cur, rateChangeSkipPeriodParams);
+
+        spa.setRateChangeSkipPeriod(newSkipPeriod);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function updateFeeErrorMargin(uint256 newMargin) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        IParameterRegistry.Bounds memory feeErrorMarginParams = registry.feeErrorMarginParams();
+
+        uint256 cur = spa.feeErrorMargin();
+        checkRange(newMargin, cur, feeErrorMarginParams);
+
+        spa.updateFeeErrorMargin(newMargin);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function updateYieldErrorMargin(uint256 newMargin) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        IParameterRegistry.Bounds memory yieldErrorMarginParams = registry.yieldErrorMarginParams();
+
+        uint256 cur = spa.yieldErrorMargin();
+        checkRange(newMargin, cur, yieldErrorMarginParams);
+
+        spa.updateYieldErrorMargin(newMargin);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function distributeLoss() external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        spa.distributeLoss();
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function pause() external override onlyRole(GUARDIAN_ROLE) {
+        spa.pause();
+    }
 
     /**
      * @inheritdoc IKeeper
@@ -157,14 +303,24 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
         return spa;
     }
 
-    /**
-     * @dev Internal helper to update swap fee within bounds
-     * @param newFee The new swap fee to set
-     */
-    function _boundedSwapFeeUpdate(uint256 newFee) internal { }
+    function checkRange(
+        uint256 newValue,
+        uint256 currentValue,
+        IParameterRegistry.Bounds memory bounds
+    )
+        internal
+        pure
+    {
+        if (newValue < currentValue) {
+            // decreasing
+            uint256 decreasePct = ((currentValue - newValue) * 1e6) / currentValue;
+            require(decreasePct <= bounds.maxDecreasePct, DeltaTooBig());
+        } else if (newValue > currentValue) {
+            // increasing
+            uint256 increasePct = ((newValue - currentValue) * 1e6) / currentValue;
+            require(increasePct <= bounds.maxIncreasePct, DeltaTooBig());
+        }
 
-    /**
-     * @dev Overrides the OpenZeppelin UUPS implementation
-     */
-    function _authorizeUpgrade(address) internal view override onlyRole(DEFAULT_ADMIN_ROLE) { }
+        require(newValue <= bounds.max, OutOfBounds());
+    }
 }
