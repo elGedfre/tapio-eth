@@ -24,14 +24,9 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     IRampAController private rampAController;
     SelfPeggingAsset private spa;
 
-    event ACoeffManaged(address indexed caller, uint256 newA);
-    event SwapFeeManaged(address indexed caller, uint256 newFee);
-    event MintFeeManaged(address indexed caller, uint256 newFee);
-    event RedeemFeeManaged(address indexed caller, uint256 newFee);
-
     error ZeroAddress();
-    error FeeOutOfBounds();
-    error FeeDeltaTooBig();
+    error OutOfBounds();
+    error DeltaTooBig();
     error RelativeRangeNotSet();
     error UnauthorizedAccount();
 
@@ -95,20 +90,19 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
         if (newA < curA) {
             // decreasing
             uint256 decreasePct = ((curA - newA) * 1e6) / curA;
-            require(decreasePct <= aParams.maxDecreasePct, FeeDeltaTooBig());
+            require(decreasePct <= aParams.maxDecreasePct, DeltaTooBig());
         } else if (newA > curA) {
             // increasing
             uint256 increasePct = ((newA - curA) * 1e6) / curA;
-            require(increasePct <= aParams.maxIncreasePct, FeeDeltaTooBig());
+            require(increasePct <= aParams.maxIncreasePct, DeltaTooBig());
         } else {
             // no change
             return;
         }
 
-        require(newA <= aParams.max, FeeOutOfBounds());
+        require(newA <= aParams.max, OutOfBounds());
 
         rampAController.rampA(newA, endTime);
-        emit ACoeffManaged(msg.sender, newA);
     }
 
     /**
@@ -122,22 +116,9 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
         IParameterRegistry.Bounds memory swapFeeParams = registry.swapFeeParams();
 
         uint256 cur = spa.swapFee();
-        if (newFee < cur) {
-            // decreasing
-            uint256 decreasePct = ((cur - newFee) * 1e6) / cur;
-            require(decreasePct <= swapFeeParams.maxDecreasePct, FeeDeltaTooBig());
-        } else if (newFee > cur) {
-            // increasing
-            uint256 increasePct = ((newFee - cur) * 1e6) / cur;
-            require(increasePct <= swapFeeParams.maxIncreasePct, FeeDeltaTooBig());
-        } else {
-            // no change
-            return;
-        }
-        require(newFee <= swapFeeParams.max, FeeOutOfBounds());
+        checkRange(newFee, cur, swapFeeParams);
 
         spa.setSwapFee(newFee);
-        emit SwapFeeManaged(msg.sender, newFee);
     }
 
     /**
@@ -151,22 +132,9 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
         IParameterRegistry.Bounds memory mintFeeParams = registry.mintFeeParams();
 
         uint256 cur = spa.mintFee();
-        if (newFee < cur) {
-            // decreasing
-            uint256 decreasePct = ((cur - newFee) * 1e6) / cur;
-            require(decreasePct <= mintFeeParams.maxDecreasePct, FeeDeltaTooBig());
-        } else if (newFee > cur) {
-            // increasing
-            uint256 increasePct = ((newFee - cur) * 1e6) / cur;
-            require(increasePct <= mintFeeParams.maxIncreasePct, FeeDeltaTooBig());
-        } else {
-            // no change
-            return;
-        }
-        require(newFee <= mintFeeParams.max, FeeOutOfBounds());
+        checkRange(newFee, cur, mintFeeParams);
 
         spa.setMintFee(newFee);
-        emit MintFeeManaged(msg.sender, newFee);
     }
 
     /**
@@ -180,22 +148,9 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
         IParameterRegistry.Bounds memory redeemFeeParams = registry.redeemFeeParams();
 
         uint256 cur = spa.redeemFee();
-        if (newFee < cur) {
-            // decreasing
-            uint256 decreasePct = ((cur - newFee) * 1e6) / cur;
-            require(decreasePct <= redeemFeeParams.maxDecreasePct, FeeDeltaTooBig());
-        } else if (newFee > cur) {
-            // increasing
-            uint256 increasePct = ((newFee - cur) * 1e6) / cur;
-            require(increasePct <= redeemFeeParams.maxIncreasePct, FeeDeltaTooBig());
-        } else {
-            // no change
-            return;
-        }
-        require(newFee <= redeemFeeParams.max, FeeOutOfBounds());
 
+        checkRange(newFee, cur, redeemFeeParams);
         spa.setRedeemFee(newFee);
-        emit RedeemFeeManaged(msg.sender, newFee);
     }
 
     /**
@@ -220,7 +175,119 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
         _grantRole(GOVERNOR_ROLE, _governor);
     }
 
-    // TODO: add pause logic
+    /**
+     * @inheritdoc IKeeper
+     */
+     function setOffPegFeeMultiplier(uint256 newMultiplier) external override {
+        require(
+            hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender),
+            UnauthorizedAccount()
+        );
+        IParameterRegistry.Bounds memory offPegParams = registry.offPegParams();
+
+        uint256 cur = spa.offPegFeeMultiplier();
+        checkRange(newMultiplier, cur, offPegParams);
+
+        spa.setOffPegFeeMultiplier(newMultiplier);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function setExchangeRateFeeFactor(uint256 newFeeFactor) external override {
+        require(
+            hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender),
+            UnauthorizedAccount()
+        );
+        IParameterRegistry.Bounds memory exchangeRateFeeParams = registry.exchangeRateFeeParams();
+
+        uint256 cur = spa.exchangeRateFeeFactor();
+        checkRange(newFeeFactor, cur, exchangeRateFeeParams);
+
+        spa.setExchangeRateFeeFactor(newFeeFactor);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function setDecayPeriod(uint256 newDecayPeriod) external override {
+        require(
+            hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender),
+            UnauthorizedAccount()
+        );
+        IParameterRegistry.Bounds memory decayPeriodParams = registry.decayPeriodParams();
+
+        uint256 cur = spa.decayPeriod();
+        checkRange(newDecayPeriod, cur, decayPeriodParams);
+
+        spa.setDecayPeriod(newDecayPeriod);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function setRateChangeSkipPeriod(uint256 newSkipPeriod) external override {
+        require(
+            hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender),
+            UnauthorizedAccount()
+        );
+        IParameterRegistry.Bounds memory rateChangeSkipPeriodParams = registry.rateChangeSkipPeriodParams();
+
+        uint256 cur = spa.rateChangeSkipPeriod();
+        checkRange(newSkipPeriod, cur, rateChangeSkipPeriodParams);
+
+        spa.setRateChangeSkipPeriod(newSkipPeriod);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+     function updateFeeErrorMargin(uint256 newMargin) external override {
+        require(
+            hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender),
+            UnauthorizedAccount()
+        );
+        IParameterRegistry.Bounds memory feeErrorMarginParams = registry.feeErrorMarginParams();
+
+        uint256 cur = spa.feeErrorMargin();
+        checkRange(newMargin, cur, feeErrorMarginParams);
+
+        spa.updateFeeErrorMargin(newMargin);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function updateYieldErrorMargin(uint256 newMargin) external override {
+        require(
+            hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender),
+            UnauthorizedAccount()
+        );
+        IParameterRegistry.Bounds memory yieldErrorMarginParams = registry.yieldErrorMarginParams();
+
+        uint256 cur = spa.yieldErrorMargin();
+        checkRange(newMargin, cur, yieldErrorMarginParams);
+
+        spa.updateYieldErrorMargin(newMargin);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function distributeLoss() external override {
+        require(
+            hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender),
+            UnauthorizedAccount()
+        );
+        spa.distributeLoss();
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function pause() external override onlyRole(GUARDIAN_ROLE) {
+        spa.pause();
+    }
 
     /**
      * @inheritdoc IKeeper
@@ -241,5 +308,23 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
      */
     function getSpa() external view override returns (SelfPeggingAsset) {
         return spa;
+    }
+
+    function checkRange(
+        uint256 newValue,
+        uint256 currentValue,
+        IParameterRegistry.Bounds memory bounds
+    ) internal pure {
+        if (newValue < currentValue) {
+            // decreasing
+            uint256 decreasePct = ((currentValue - newValue) * 1e6) / currentValue;
+            require(decreasePct <= bounds.maxDecreasePct, DeltaTooBig());
+        } else if (newValue > currentValue) {
+            // increasing
+            uint256 increasePct = ((newValue - currentValue) * 1e6) / currentValue;
+            require(increasePct <= bounds.maxIncreasePct, DeltaTooBig());
+        }
+
+        require(newValue <= bounds.max, OutOfBounds());
     }
 }

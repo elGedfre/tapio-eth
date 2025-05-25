@@ -18,22 +18,68 @@ interface IKeeper {
     function rampA(uint256 newA, uint256 endTime) external;
 
     /**
-     * @notice Allows curators to set the swap fee within allowed bounds
+     * @notice Set the swap fee within allowed bounds
      * @param newFee The new swap fee value
      */
     function setSwapFee(uint256 newFee) external;
 
     /**
-     * @notice Allows curators to set the mint fee within allowed bounds
+     * @notice Set the mint fee within allowed bounds
      * @param newFee The new mint fee value
      */
     function setMintFee(uint256 newFee) external;
 
     /**
-     * @notice Allows curators to set the redeem fee within allowed bounds
+     * @notice Set the redeem fee within allowed bounds
      * @param newFee The new redeem fee value
      */
     function setRedeemFee(uint256 newFee) external;
+
+    /**
+     * @notice Set the off-peg fee multiplier within allowed bounds
+     * @param newMultiplier The new off-peg fee multiplier value
+     */
+    function setOffPegFeeMultiplier(uint256 newMultiplier) external;
+
+    /**
+     * @notice Set the exchange rate fee within allowed bounds
+     * @param newFeeFactor The new exchange rate fee value
+     */
+    function setExchangeRateFeeFactor(uint256 newFeeFactor) external;
+
+    /**
+     * @notice Set the decay period
+     * @param newDecayPeriod The new decay period in seconds
+     */
+    function setDecayPeriod(uint256 newDecayPeriod) external;
+
+    /**
+     * @notice Set the rate change skip period
+     * @param newSkipPeriod The new skip period in seconds
+     */
+    function setRateChangeSkipPeriod(uint256 newSkipPeriod) external;
+
+    /**
+     * @notice Set the fee error margin within allowed bounds
+     * @param newMargin The new fee error margin value
+     */
+    function updateFeeErrorMargin(uint256 newMargin) external;
+
+    /**
+     * @notice Set the yield error margin within allowed bounds
+     * @param newMargin The new yield error margin value
+     */
+    function updateYieldErrorMargin(uint256 newMargin) external;
+
+    /**
+     * @notice Distribute any losses incurred 
+     */
+    function distributeLoss() external;
+
+    /**
+     * @notice Pause the SPA
+     */
+    function pause() external;
 
     /**
      * @notice Sets the governor address for the Keeper
