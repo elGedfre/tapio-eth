@@ -137,17 +137,8 @@ contract RampAControllerTest is Test {
         vm.expectRevert(RampAController.InvalidFutureTime.selector);
         controller.rampA(300, block.timestamp - 1);
 
-        vm.expectRevert(RampAController.AOutOfBounds.selector);
-        controller.rampA(0, block.timestamp + 1 hours);
-
         vm.expectRevert(RampAController.InsufficientRampTime.selector);
         controller.rampA(300, block.timestamp + 1 minutes);
-        // increase more than 50%
-        vm.expectRevert(RampAController.ExcessiveAChange.selector);
-        controller.rampA((INITIAL_A * 3 / 2) + 1, block.timestamp + 1 hours);
-        // decrease more than 50%
-        vm.expectRevert(RampAController.ExcessiveAChange.selector);
-        controller.rampA((INITIAL_A / 2) - 1, block.timestamp + 1 hours);
     }
 
     function testSPAIntegration() public {
@@ -322,22 +313,6 @@ contract RampAControllerTest is Test {
         assertEq(lowAController.isRamping(), false, "should not be ramping after end time");
     }
 
-    function testLowInitialARampExceedingMax() public {
-        bytes memory rampAControllerData = abi.encodeCall(RampAController.initialize, (1, MIN_RAMP_TIME, address(this)));
-        ERC1967Proxy rampAControllerProxy = new ERC1967Proxy(address(new RampAController()), rampAControllerData);
-        RampAController lowAController = RampAController(address(rampAControllerProxy));
-
-        uint256 tooHighA = 11;
-        uint256 endTime = block.timestamp + 1 hours;
-
-        vm.expectRevert(RampAController.ExcessiveAChange.selector);
-        lowAController.rampA(tooHighA, endTime);
-
-        uint256 maxAllowedA = 10;
-        lowAController.rampA(maxAllowedA, endTime);
-        assertEq(lowAController.futureA(), maxAllowedA, "should allow ramping to max multiple");
-    }
-
     function testInitialAEqualsTwo() public {
         bytes memory rampAControllerData = abi.encodeCall(RampAController.initialize, (2, MIN_RAMP_TIME, address(this)));
         ERC1967Proxy rampAControllerProxy = new ERC1967Proxy(address(new RampAController()), rampAControllerData);
@@ -348,32 +323,6 @@ contract RampAControllerTest is Test {
 
         lowAController.rampA(maxAllowedA, endTime);
         assertEq(lowAController.futureA(), maxAllowedA, "should allow ramping to max multiple for A=2");
-
-        bytes memory newControllerData = abi.encodeCall(RampAController.initialize, (2, MIN_RAMP_TIME, address(this)));
-        ERC1967Proxy newControllerProxy = new ERC1967Proxy(address(new RampAController()), newControllerData);
-        RampAController anotherController = RampAController(address(newControllerProxy));
-
-        uint256 tooHighA = 19;
-        uint256 newEndTime = block.timestamp + 1 hours;
-
-        vm.expectRevert(RampAController.ExcessiveAChange.selector);
-        anotherController.rampA(tooHighA, newEndTime);
-    }
-
-    function testInitialAEqualsThree() public {
-        bytes memory rampAControllerData = abi.encodeCall(RampAController.initialize, (3, MIN_RAMP_TIME, address(this)));
-        ERC1967Proxy rampAControllerProxy = new ERC1967Proxy(address(new RampAController()), rampAControllerData);
-        RampAController regularAController = RampAController(address(rampAControllerProxy));
-
-        uint256 endTime = block.timestamp + 1 hours;
-        uint256 maxAllowedA = 4;
-        uint256 excessiveA = 5;
-
-        vm.expectRevert(RampAController.ExcessiveAChange.selector);
-        regularAController.rampA(excessiveA, endTime);
-
-        regularAController.rampA(maxAllowedA, endTime);
-        assertEq(regularAController.futureA(), maxAllowedA, "should allow ramping within normal limits");
     }
 
     function testLowInitialAWithPool() public {

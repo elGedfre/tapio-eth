@@ -81,23 +81,13 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
         );
         IParameterRegistry.Bounds memory aParams = registry.aParams();
 
-        // only if governor has defined ranges
-        if (aParams.maxDecreasePct == 0 && aParams.maxIncreasePct == 0) revert RelativeRangeNotSet();
-
         uint256 curA = rampAController.getA();
-
-        // check if within allowed relative bounds
-        if (newA < curA) {
-            // decreasing
-            uint256 decreasePct = ((curA - newA) * 1e6) / curA;
-            require(decreasePct <= aParams.maxDecreasePct, DeltaTooBig());
-        } else if (newA > curA) {
-            // increasing
-            uint256 increasePct = ((newA - curA) * 1e6) / curA;
-            require(increasePct <= aParams.maxIncreasePct, DeltaTooBig());
+        if (curA <= 2) {
+            uint256 maxMultiplier = 11 - curA; // 10 for initialA=1, 9 for initialA=2
+            if (newA > curA * maxMultiplier) revert OutOfBounds();
         } else {
-            // no change
-            return;
+            if (aParams.maxDecreasePct == 0 && aParams.maxIncreasePct == 0) revert RelativeRangeNotSet();
+            checkRange(newA, curA, aParams);
         }
 
         require(newA <= aParams.max, OutOfBounds());
