@@ -439,20 +439,6 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
 
         ParameterRegistry parameterRegistry = new ParameterRegistry(governor, address(selfPeggingAssetProxy));
 
-        bytes memory keeperInit = abi.encodeCall(
-            Keeper.initialize,
-            (
-                owner(),
-                address(governor),
-                address(governor),
-                address(governor),
-                address(council),
-                IParameterRegistry(address(parameterRegistry)),
-                IRampAController(address(rampAControllerProxy)),
-                SelfPeggingAsset(address(selfPeggingAssetProxy))
-            )
-        );
-
         Keeper keeper = Keeper(address(keeperProxy));
         keeper.initialize(
             owner(),
