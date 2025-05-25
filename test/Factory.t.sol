@@ -338,7 +338,7 @@ contract FactoryTest is Test {
 
         LPToken lpToken = new LPToken();
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        lpToken.initialize("", "", 0, address(0));
+        lpToken.initialize("", "", 0, address(0), address(0));
 
         WLPToken wlpToken = new WLPToken();
         vm.expectRevert(Initializable.InvalidInitialization.selector);

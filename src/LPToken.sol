@@ -3,7 +3,6 @@ pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./interfaces/ILPToken.sol";
 
 error InsufficientAllowance(uint256 currentAllowance, uint256 amount);
@@ -22,7 +21,7 @@ error InsufficientBalance(uint256 currentBalance, uint256 amount);
  *   shares[account] * _totalSupply / _totalShares
  * where the _totalSupply is the total supply of lpToken controlled by the protocol.
  */
-contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
+contract LPToken is Initializable, ILPToken {
     /**
      * @dev Constant value representing an infinite allowance.
      */
@@ -89,9 +88,9 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     uint256 public bufferBadDebt;
 
     /**
-     * @dev The address of governor for setting buffer and symbol
+     * @dev The address of keeper
      */
-    address public governor;
+    address public keeper;
 
     /**
      * @dev The address of SPA pool.
@@ -134,11 +133,6 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     event SymbolModified(string);
 
     /**
-     * @notice Emitted when new Governor is set.
-     */
-    event GovernorModified(address oldGovernor, address newGovernor);
-
-    /**
      * @notice Emitted when the SPA pool is set.
      */
     event PoolSet(address);
@@ -155,8 +149,8 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     /// @notice Error thrown when the pool is not the caller.
     error NoPool();
 
-    /// @notice Error thrown when the governor is not the caller.
-    error NoGovernor();
+    /// @notice Error thrown when the keeper is not the caller.
+    error NotKeeper();
 
     /// @notice Error thrown when the amount is invalid.
     error InvalidAmount();
@@ -193,7 +187,8 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
         string memory _name,
         string memory _symbol,
         uint256 _buffer,
-        address _governor
+        address _keeper,
+        address _pool
     )
         public
         initializer
@@ -201,13 +196,11 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
         require(_buffer < BUFFER_DENOMINATOR, OutOfRange());
         tokenName = _name;
         tokenSymbol = _symbol;
-        governor = _governor;
+        keeper = _keeper;
+        pool = _pool;
         bufferPercent = _buffer;
 
-        __Ownable_init(msg.sender);
-
         emit SetBufferPercent(_buffer);
-        emit GovernorModified(address(0), _governor);
     }
 
     /**
@@ -346,42 +339,22 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     // solhint-enable max-line-length
 
     /**
-     * @notice This function is called by the governor to set the buffer rate.
+     * @notice This function is called by the keeper to set the buffer rate.
      */
     function setBuffer(uint256 _buffer) external {
-        require(msg.sender == governor, NoGovernor());
+        require(msg.sender == keeper, NotKeeper());
         require(_buffer < BUFFER_DENOMINATOR, OutOfRange());
         bufferPercent = _buffer;
         emit SetBufferPercent(_buffer);
     }
 
     /**
-     * @notice This function is called by the governor to set the token symbol.
+     * @notice This function is called by the keeper to set the token symbol.
      */
     function setSymbol(string memory _symbol) external {
-        require(msg.sender == governor, NoGovernor());
+        require(msg.sender == keeper, NotKeeper());
         tokenSymbol = _symbol;
         emit SymbolModified(_symbol);
-    }
-
-    /**
-     * @notice This function is called by the owner to set the governor.
-     */
-    function setGovernor(address _governor) external onlyOwner {
-        require(_governor != address(0), ZeroAddress());
-        emit GovernorModified(governor, _governor);
-        governor = _governor;
-    }
-
-    /**
-     * @notice This function is called by the owner to set the SPA pool.
-     */
-    function setPool(address _pool) external onlyOwner {
-        require(pool == address(0), PoolAlreadySet());
-        require(_pool != address(0), ZeroAddress());
-
-        pool = _pool;
-        emit PoolSet(_pool);
     }
 
     /**

@@ -25,11 +25,10 @@ contract WLPTokenTest is Test {
 
         vm.startPrank(owner);
 
-        bytes memory data = abi.encodeCall(LPToken.initialize, ("Tapio ETH", "TapETH", 0, owner));
+        bytes memory data = abi.encodeCall(LPToken.initialize, ("Tapio ETH", "TapETH", 0, owner, address(pool1)));
 
         ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), data);
         lpToken = LPToken(address(proxy));
-        lpToken.transferOwnership(governance);
 
         data = abi.encodeCall(WLPToken.initialize, (lpToken));
 
@@ -46,10 +45,6 @@ contract WLPTokenTest is Test {
 
         uint256 targetTotalSupply = amount1 + amount2;
         uint256 wlpTokenTargetAmount = (amountToWrap * amount1) / targetTotalSupply;
-
-        // Add pool
-        vm.prank(governance);
-        lpToken.setPool(pool1);
 
         // Mint shares to user
         vm.prank(pool1);
@@ -83,10 +78,6 @@ contract WLPTokenTest is Test {
 
         uint256 targetTotalSupply = amount1 + amount2;
         uint256 wlpTokenTargetAmount = (amountToWrap * amount1) / targetTotalSupply;
-
-        // Add pool
-        vm.prank(governance);
-        lpToken.setPool(pool1);
 
         // Mint shares to user
         vm.prank(pool1);
@@ -125,10 +116,6 @@ contract WLPTokenTest is Test {
 
         uint256 targetTotalSupply = amount1 + amount2;
         uint256 wlpTokenTargetAmount = (amountToWrap * amount1) / targetTotalSupply;
-
-        // Add pool
-        vm.prank(governance);
-        lpToken.setPool(pool1);
 
         // Mint shares to user
         vm.prank(pool1);
