@@ -46,14 +46,7 @@ contract RampAController is IRampAController, Initializable, OwnableUpgradeable 
      * @param _minRampTime is min ramp time
      * @param _owner is the address of the owner
      */
-    function initialize(
-        uint256 _initialA,
-        uint256 _minRampTime,
-        address _owner
-    )
-        external
-        initializer
-    {
+    function initialize(uint256 _initialA, uint256 _minRampTime, address _owner) external initializer {
         __Ownable_init(_owner);
 
         if (_initialA == 0 || _initialA > MAX_A) revert AOutOfBounds();
@@ -71,7 +64,7 @@ contract RampAController is IRampAController, Initializable, OwnableUpgradeable 
      * @notice Set the minimum ramp time (default is 30 minutes)
      * @param _minRampTime is the new minimum ramp time
      */
-    function setMinRampTime(uint256 _minRampTime) external onlyOwner() {
+    function setMinRampTime(uint256 _minRampTime) external onlyOwner {
         uint256 oldValue = minRampTime;
         minRampTime = _minRampTime;
         emit MinRampTimeUpdated(oldValue, _minRampTime);
@@ -82,7 +75,7 @@ contract RampAController is IRampAController, Initializable, OwnableUpgradeable 
      * @param _futureA is the target value of A
      * @param _futureTime is UNIX timestamp when the ramp should complete
      */
-    function rampA(uint256 _futureA, uint256 _futureTime) external override onlyOwner() {
+    function rampA(uint256 _futureA, uint256 _futureTime) external override onlyOwner {
         if (_futureTime <= block.timestamp) revert InvalidFutureTime();
         if (block.timestamp < futureATime) revert RampAlreadyInProgress();
         if (_futureA == 0 || _futureA > MAX_A) revert AOutOfBounds();
@@ -113,7 +106,7 @@ contract RampAController is IRampAController, Initializable, OwnableUpgradeable 
     /**
      * @notice Force-stop ramping A coeff
      */
-    function stopRamp() external override onlyOwner() {
+    function stopRamp() external override onlyOwner {
         if (block.timestamp >= futureATime) revert NoOngoingRamp();
         uint256 currentA = getA();
 
