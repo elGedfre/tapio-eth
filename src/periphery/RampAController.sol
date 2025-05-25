@@ -22,8 +22,6 @@ contract RampAController is IRampAController, Initializable, OwnableUpgradeable 
     uint256 public override futureATime;
     uint256 public minRampTime;
 
-    address public keeper;
-
     // Events
     event RampInitiated(uint256 initialA, uint256 futureA, uint256 initialATime, uint256 futureATime);
     event RampStopped(uint256 currentA);
@@ -46,13 +44,11 @@ contract RampAController is IRampAController, Initializable, OwnableUpgradeable 
      * @notice Initializer for RampAController
      * @param _initialA is the initial value of A
      * @param _minRampTime is min ramp time
-     * @param _keeper is the address of the keeper
      * @param _owner is the address of the owner
      */
     function initialize(
         uint256 _initialA,
         uint256 _minRampTime,
-        address _keeper,
         address _owner
     )
         external
@@ -67,7 +63,6 @@ contract RampAController is IRampAController, Initializable, OwnableUpgradeable 
         initialATime = block.timestamp;
         futureATime = block.timestamp;
         minRampTime = _minRampTime == 0 ? DEFAULT_RAMP_TIME : _minRampTime;
-        keeper = _keeper;
 
         emit MinRampTimeUpdated(0, minRampTime);
     }
@@ -76,8 +71,7 @@ contract RampAController is IRampAController, Initializable, OwnableUpgradeable 
      * @notice Set the minimum ramp time (default is 30 minutes)
      * @param _minRampTime is the new minimum ramp time
      */
-    function setMinRampTime(uint256 _minRampTime) external {
-        if (msg.sender != owner() || msg.sender != keeper) revert Unauthorized();
+    function setMinRampTime(uint256 _minRampTime) external onlyOwner() {
         uint256 oldValue = minRampTime;
         minRampTime = _minRampTime;
         emit MinRampTimeUpdated(oldValue, _minRampTime);
@@ -88,8 +82,7 @@ contract RampAController is IRampAController, Initializable, OwnableUpgradeable 
      * @param _futureA is the target value of A
      * @param _futureTime is UNIX timestamp when the ramp should complete
      */
-    function rampA(uint256 _futureA, uint256 _futureTime) external override {
-        if (msg.sender != owner() || msg.sender != keeper) revert Unauthorized();
+    function rampA(uint256 _futureA, uint256 _futureTime) external override onlyOwner() {
         if (_futureTime <= block.timestamp) revert InvalidFutureTime();
         if (block.timestamp < futureATime) revert RampAlreadyInProgress();
         if (_futureA == 0 || _futureA > MAX_A) revert AOutOfBounds();
@@ -120,8 +113,7 @@ contract RampAController is IRampAController, Initializable, OwnableUpgradeable 
     /**
      * @notice Force-stop ramping A coeff
      */
-    function stopRamp() external override {
-        if (msg.sender != owner() || msg.sender != keeper) revert Unauthorized();
+    function stopRamp() external override onlyOwner() {
         if (block.timestamp >= futureATime) revert NoOngoingRamp();
         uint256 currentA = getA();
 
