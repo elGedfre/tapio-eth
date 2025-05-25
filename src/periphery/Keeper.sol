@@ -26,6 +26,8 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
 
     event ACoeffManaged(address indexed caller, uint256 newA);
     event SwapFeeManaged(address indexed caller, uint256 newFee);
+    event MintFeeManaged(address indexed caller, uint256 newFee);
+    event RedeemFeeManaged(address indexed caller, uint256 newFee);
 
     error ZeroAddress();
     error FeeOutOfBounds();
@@ -61,7 +63,6 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
         require(address(_spa) != address(0), ZeroAddress());
 
         __AccessControl_init();
-        __UUPSUpgradeable_init();
 
         registry = _registry;
         rampAController = _rampAController;
@@ -142,6 +143,64 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     /**
      * @inheritdoc IKeeper
      */
+    function setMintFee(uint256 newFee) external override {
+        require(
+            hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender),
+            UnauthorizedAccount()
+        );
+        IParameterRegistry.Bounds memory mintFeeParams = registry.mintFeeParams();
+
+        uint256 cur = spa.mintFee();
+        if (newFee < cur) {
+            // decreasing
+            uint256 decreasePct = ((cur - newFee) * 1e6) / cur;
+            require(decreasePct <= mintFeeParams.maxDecreasePct, FeeDeltaTooBig());
+        } else if (newFee > cur) {
+            // increasing
+            uint256 increasePct = ((newFee - cur) * 1e6) / cur;
+            require(increasePct <= mintFeeParams.maxIncreasePct, FeeDeltaTooBig());
+        } else {
+            // no change
+            return;
+        }
+        require(newFee <= mintFeeParams.max, FeeOutOfBounds());
+
+        spa.setMintFee(newFee);
+        emit MintFeeManaged(msg.sender, newFee);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function setRedeemFee(uint256 newFee) external override {
+        require(
+            hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender),
+            UnauthorizedAccount()
+        );
+        IParameterRegistry.Bounds memory redeemFeeParams = registry.redeemFeeParams();
+
+        uint256 cur = spa.redeemFee();
+        if (newFee < cur) {
+            // decreasing
+            uint256 decreasePct = ((cur - newFee) * 1e6) / cur;
+            require(decreasePct <= redeemFeeParams.maxDecreasePct, FeeDeltaTooBig());
+        } else if (newFee > cur) {
+            // increasing
+            uint256 increasePct = ((newFee - cur) * 1e6) / cur;
+            require(increasePct <= redeemFeeParams.maxIncreasePct, FeeDeltaTooBig());
+        } else {
+            // no change
+            return;
+        }
+        require(newFee <= redeemFeeParams.max, FeeOutOfBounds());
+
+        spa.setRedeemFee(newFee);
+        emit RedeemFeeManaged(msg.sender, newFee);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
     function cancelRamp() external override onlyRole(GUARDIAN_ROLE) {
         require(
             hasRole(GUARDIAN_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender),
@@ -183,10 +242,4 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     function getSpa() external view override returns (SelfPeggingAsset) {
         return spa;
     }
-
-    /**
-     * @dev Internal helper to update swap fee within bounds
-     * @param newFee The new swap fee to set
-     */
-    function _boundedSwapFeeUpdate(uint256 newFee) internal { }
 }

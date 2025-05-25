@@ -24,6 +24,18 @@ interface IKeeper {
     function setSwapFee(uint256 newFee) external;
 
     /**
+     * @notice Allows curators to set the mint fee within allowed bounds
+     * @param newFee The new mint fee value
+     */
+    function setMintFee(uint256 newFee) external;
+
+    /**
+     * @notice Allows curators to set the redeem fee within allowed bounds
+     * @param newFee The new redeem fee value
+     */
+    function setRedeemFee(uint256 newFee) external;
+
+    /**
      * @notice Sets the governor address for the Keeper
      * @param _governor The address of the new governor
      */
