@@ -147,7 +147,7 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     /**
      * @inheritdoc IKeeper
      */
-    function cancelRamp() external override onlyRole(GUARDIAN_ROLE) {
+    function cancelRamp() external override {
         require(hasRole(GUARDIAN_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
         rampAController.stopRamp();
     }
@@ -155,9 +155,48 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     /**
      * @inheritdoc IKeeper
      */
-    function setGovernor(address _governor) external override onlyRole(GOVERNOR_ROLE) {
-        require(hasRole(PROTOCOL_OWNER_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+    function grantGovernorRole(address _governor) external override onlyRole(COUNCIL_ROLE) {
         _grantRole(GOVERNOR_ROLE, _governor);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function revokeGovernorRole(address _governor) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        _revokeRole(GOVERNOR_ROLE, _governor);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function grantCuratorRole(address _curator) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        _grantRole(CURATOR_ROLE, _curator);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function revokeCuratorRole(address _curator) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        _revokeRole(CURATOR_ROLE, _curator);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function grantGuardianRole(address _guardian) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        _grantRole(GUARDIAN_ROLE, _guardian);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function revokeGuardianRole(address _guardian) external override {
+        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        _revokeRole(GUARDIAN_ROLE, _guardian);
     }
 
     /**
