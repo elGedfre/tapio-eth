@@ -432,7 +432,9 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
             exchangeRateProviders[1] = IExchangeRateProvider(erc4626ExchangeRate);
         }
 
-        bytes memory rampAControllerInit = abi.encodeCall(RampAController.initialize, (A, minRampTime));
+        BeaconProxy keeperProxy = new BeaconProxy(keeperBeacon, new bytes(0));
+        bytes memory rampAControllerInit =
+            abi.encodeCall(RampAController.initialize, (A, minRampTime, address(keeperProxy), owner()));
         BeaconProxy rampAControllerProxy = new BeaconProxy(rampAControllerBeacon, rampAControllerInit);
         RampAController rampAConotroller = RampAController(address(rampAControllerProxy));
 
@@ -453,7 +455,18 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
                 SelfPeggingAsset(address(selfPeggingAssetProxy))
             )
         );
-        BeaconProxy keeperProxy = new BeaconProxy(keeperBeacon, keeperInit);
+
+        Keeper keeper = Keeper(address(keeperProxy));
+        keeper.initialize(
+            owner(),
+            address(governor),
+            address(governor),
+            address(governor),
+            address(council),
+            IParameterRegistry(address(parameterRegistry)),
+            IRampAController(address(rampAControllerProxy)),
+            SelfPeggingAsset(address(selfPeggingAssetProxy))
+        );
 
         SelfPeggingAsset selfPeggingAsset = SelfPeggingAsset(address(selfPeggingAssetProxy));
         selfPeggingAsset.initialize(
@@ -476,7 +489,6 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         lpToken.addPool(address(selfPeggingAsset));
         lpToken.setBuffer(bufferPercent);
         lpToken.transferOwnership(governor);
-        rampAConotroller.transferOwnership(governor);
 
         bytes memory wlpTokenInit = abi.encodeCall(WLPToken.initialize, (ILPToken(lpToken)));
         BeaconProxy wlpTokenProxy = new BeaconProxy(wlpTokenBeacon, wlpTokenInit);

@@ -344,6 +344,6 @@ contract FactoryTest is Test {
 
         RampAController rampAController = new RampAController();
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        rampAController.initialize(30 minutes, 0);
+        rampAController.initialize(30 minutes, 0, governor, governor);
     }
 }

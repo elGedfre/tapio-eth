@@ -55,7 +55,8 @@ contract RampAControllerTest is Test {
         providerArray[0] = providers[0];
         providerArray[1] = providers[1];
 
-        bytes memory rampAControllerData = abi.encodeCall(RampAController.initialize, (INITIAL_A, MIN_RAMP_TIME));
+        bytes memory rampAControllerData =
+            abi.encodeCall(RampAController.initialize, (INITIAL_A, MIN_RAMP_TIME, address(this), address(this)));
         ERC1967Proxy rampAControllerProxy = new ERC1967Proxy(address(new RampAController()), rampAControllerData);
 
         bytes memory lpTokenData = abi.encodeCall(LPToken.initialize, ("LP Token", "TLP"));
@@ -296,7 +297,8 @@ contract RampAControllerTest is Test {
     }
 
     function testLowInitialARamp() public {
-        bytes memory rampAControllerData = abi.encodeCall(RampAController.initialize, (1, MIN_RAMP_TIME));
+        bytes memory rampAControllerData =
+            abi.encodeCall(RampAController.initialize, (1, MIN_RAMP_TIME, address(this), address(this)));
         ERC1967Proxy rampAControllerProxy = new ERC1967Proxy(address(new RampAController()), rampAControllerData);
         RampAController lowAController = RampAController(address(rampAControllerProxy));
 
@@ -322,7 +324,8 @@ contract RampAControllerTest is Test {
     }
 
     function testLowInitialARampExceedingMax() public {
-        bytes memory rampAControllerData = abi.encodeCall(RampAController.initialize, (1, MIN_RAMP_TIME));
+        bytes memory rampAControllerData =
+            abi.encodeCall(RampAController.initialize, (1, MIN_RAMP_TIME, address(this), address(this)));
         ERC1967Proxy rampAControllerProxy = new ERC1967Proxy(address(new RampAController()), rampAControllerData);
         RampAController lowAController = RampAController(address(rampAControllerProxy));
 
@@ -338,7 +341,8 @@ contract RampAControllerTest is Test {
     }
 
     function testInitialAEqualsTwo() public {
-        bytes memory rampAControllerData = abi.encodeCall(RampAController.initialize, (2, MIN_RAMP_TIME));
+        bytes memory rampAControllerData =
+            abi.encodeCall(RampAController.initialize, (2, MIN_RAMP_TIME, address(this), address(this)));
         ERC1967Proxy rampAControllerProxy = new ERC1967Proxy(address(new RampAController()), rampAControllerData);
         RampAController lowAController = RampAController(address(rampAControllerProxy));
 
@@ -348,7 +352,8 @@ contract RampAControllerTest is Test {
         lowAController.rampA(maxAllowedA, endTime);
         assertEq(lowAController.futureA(), maxAllowedA, "should allow ramping to max multiple for A=2");
 
-        bytes memory newControllerData = abi.encodeCall(RampAController.initialize, (2, MIN_RAMP_TIME));
+        bytes memory newControllerData =
+            abi.encodeCall(RampAController.initialize, (2, MIN_RAMP_TIME, address(this), address(this)));
         ERC1967Proxy newControllerProxy = new ERC1967Proxy(address(new RampAController()), newControllerData);
         RampAController anotherController = RampAController(address(newControllerProxy));
 
@@ -360,7 +365,8 @@ contract RampAControllerTest is Test {
     }
 
     function testInitialAEqualsThree() public {
-        bytes memory rampAControllerData = abi.encodeCall(RampAController.initialize, (3, MIN_RAMP_TIME));
+        bytes memory rampAControllerData =
+            abi.encodeCall(RampAController.initialize, (3, MIN_RAMP_TIME, address(this), address(this)));
         ERC1967Proxy rampAControllerProxy = new ERC1967Proxy(address(new RampAController()), rampAControllerData);
         RampAController regularAController = RampAController(address(rampAControllerProxy));
 
@@ -376,7 +382,8 @@ contract RampAControllerTest is Test {
     }
 
     function testLowInitialAWithPool() public {
-        bytes memory rampAControllerData = abi.encodeCall(RampAController.initialize, (1, MIN_RAMP_TIME));
+        bytes memory rampAControllerData =
+            abi.encodeCall(RampAController.initialize, (1, MIN_RAMP_TIME, address(this), address(this)));
         ERC1967Proxy rampAControllerProxy = new ERC1967Proxy(address(new RampAController()), rampAControllerData);
         RampAController lowAController = RampAController(address(rampAControllerProxy));
 
