@@ -72,7 +72,7 @@ interface IKeeper {
     function updateYieldErrorMargin(uint256 newMargin) external;
 
     /**
-     * @notice Distribute any losses incurred 
+     * @notice Distribute any losses incurred
      */
     function distributeLoss() external;
 
