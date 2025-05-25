@@ -72,7 +72,7 @@ contract ZapTest is Test {
         fees[1] = 0;
         fees[2] = 0;
 
-        bytes memory data = abi.encodeCall(RampAController.initialize, (100, 30 minutes));
+        bytes memory data = abi.encodeCall(RampAController.initialize, (100, 30 minutes, governance));
         proxy = new ERC1967Proxy(address(new RampAController()), data);
         rampAController = RampAController(address(proxy));
 
@@ -397,7 +397,7 @@ contract ZapTest is Test {
         fees[1] = 0;
         fees[2] = 0;
 
-        bytes memory data = abi.encodeCall(RampAController.initialize, (100, 30 minutes));
+        bytes memory data = abi.encodeCall(RampAController.initialize, (100, 30 minutes, governance));
         proxy = new ERC1967Proxy(address(new RampAController()), data);
         RampAController secondRampAController = RampAController(address(proxy));
 

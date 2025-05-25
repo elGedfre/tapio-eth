@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./interfaces/ILPToken.sol";
 
@@ -21,7 +22,7 @@ error InsufficientBalance(uint256 currentBalance, uint256 amount);
  *   shares[account] * _totalSupply / _totalShares
  * where the _totalSupply is the total supply of lpToken controlled by the protocol.
  */
-contract LPToken is Initializable, ILPToken {
+contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
     /**
      * @dev Constant value representing an infinite allowance.
      */
@@ -88,11 +89,6 @@ contract LPToken is Initializable, ILPToken {
     uint256 public bufferBadDebt;
 
     /**
-     * @dev The address of keeper
-     */
-    address public keeper;
-
-    /**
      * @dev The address of SPA pool.
      */
     address public pool;
@@ -149,9 +145,6 @@ contract LPToken is Initializable, ILPToken {
     /// @notice Error thrown when the pool is not the caller.
     error NoPool();
 
-    /// @notice Error thrown when the keeper is not the caller.
-    error NotKeeper();
-
     /// @notice Error thrown when the amount is invalid.
     error InvalidAmount();
 
@@ -196,10 +189,10 @@ contract LPToken is Initializable, ILPToken {
         require(_buffer < BUFFER_DENOMINATOR, OutOfRange());
         tokenName = _name;
         tokenSymbol = _symbol;
-        keeper = _keeper;
         pool = _pool;
         bufferPercent = _buffer;
 
+        __Ownable_init(_keeper);
         emit SetBufferPercent(_buffer);
     }
 
@@ -341,8 +334,7 @@ contract LPToken is Initializable, ILPToken {
     /**
      * @notice This function is called by the keeper to set the buffer rate.
      */
-    function setBuffer(uint256 _buffer) external {
-        require(msg.sender == keeper, NotKeeper());
+    function setBuffer(uint256 _buffer) external onlyOwner {
         require(_buffer < BUFFER_DENOMINATOR, OutOfRange());
         bufferPercent = _buffer;
         emit SetBufferPercent(_buffer);
@@ -351,8 +343,7 @@ contract LPToken is Initializable, ILPToken {
     /**
      * @notice This function is called by the keeper to set the token symbol.
      */
-    function setSymbol(string memory _symbol) external {
-        require(msg.sender == keeper, NotKeeper());
+    function setSymbol(string memory _symbol) external onlyOwner {
         tokenSymbol = _symbol;
         emit SymbolModified(_symbol);
     }

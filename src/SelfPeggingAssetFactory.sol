@@ -471,8 +471,6 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         LPToken lpToken = LPToken(address(lpTokenProxy));
         lpToken.initialize(name, symbol, bufferPercent, address(keeperProxy), address(selfPeggingAsset));
 
-        rampAConotroller.transferOwnership(governor);
-
         bytes memory wlpTokenInit = abi.encodeCall(WLPToken.initialize, (ILPToken(lpToken)));
         BeaconProxy wlpTokenProxy = new BeaconProxy(wlpTokenBeacon, wlpTokenInit);
 
