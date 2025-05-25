@@ -2,7 +2,6 @@
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "../interfaces/IRampAController.sol";
 import "../interfaces/IParameterRegistry.sol";
 import "../interfaces/IKeeper.sol";
@@ -14,7 +13,7 @@ import "../SelfPeggingAsset.sol";
  * @notice Fast-path executor that lets curators adjust parameters within bounds enforced by ParameterRegistry
  * @dev UUPS upgradeable. Governor is admin, curator and guardian are roles.
  */
-contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
+contract Keeper is AccessControlUpgradeable, IKeeper {
     bytes32 public constant COUNCIL_ROLE = keccak256("COUNCIL_ROLE");
     bytes32 public constant CURATOR_ROLE = keccak256("CURATOR_ROLE");
     bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN_ROLE");
@@ -190,9 +189,4 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
      * @param newFee The new swap fee to set
      */
     function _boundedSwapFeeUpdate(uint256 newFee) internal { }
-
-    /**
-     * @dev Overrides the OpenZeppelin UUPS implementation
-     */
-    function _authorizeUpgrade(address) internal view override onlyRole(DEFAULT_ADMIN_ROLE) { }
 }
