@@ -436,10 +436,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         bytes memory rampAControllerInit =
             abi.encodeCall(RampAController.initialize, (A, minRampTime, address(keeperProxy)));
         BeaconProxy rampAControllerProxy = new BeaconProxy(rampAControllerBeacon, rampAControllerInit);
-        RampAController rampAConotroller = RampAController(address(rampAControllerProxy));
-
         BeaconProxy selfPeggingAssetProxy = new BeaconProxy(selfPeggingAssetBeacon, new bytes(0));
-
         ParameterRegistry parameterRegistry = new ParameterRegistry(governor, address(selfPeggingAssetProxy));
 
         Keeper keeper = Keeper(address(keeperProxy));
