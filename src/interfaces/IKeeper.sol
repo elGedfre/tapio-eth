@@ -24,6 +24,12 @@ interface IKeeper {
     function setSwapFee(uint256 newFee) external;
 
     /**
+     * @notice Sets the governor address for the Keeper
+     * @param _governor The address of the new governor
+     */
+    function setGovernor(address _governor) external;
+
+    /**
      * @notice Allows guardians to cancel an ongoing A ramp in emergencies
      */
     function cancelRamp() external;

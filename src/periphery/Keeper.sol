@@ -15,10 +15,11 @@ import "../SelfPeggingAsset.sol";
  * @dev UUPS upgradeable. Governor is admin, curator and guardian are roles.
  */
 contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
+    bytes32 public constant COUNCIL_ROLE = keccak256("COUNCIL_ROLE");
     bytes32 public constant CURATOR_ROLE = keccak256("CURATOR_ROLE");
     bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN_ROLE");
     bytes32 public constant GOVERNOR_ROLE = keccak256("GOVERNOR_ROLE");
-    // Protocol Owner holds DEFAULT_ADMIN_ROLE (admin key)
+    bytes32 public constant PROTOCOL_OWNER_ROLE = keccak256("PROTOCOL_OWNER_ROLE");
 
     IParameterRegistry private registry;
     IRampAController private rampAController;
@@ -31,6 +32,7 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
     error FeeOutOfBounds();
     error FeeDeltaTooBig();
     error RelativeRangeNotSet();
+    error UnauthorizedAccount();
 
     /**
      * @custom:oz-upgrades-unsafe-allow constructor
@@ -40,9 +42,11 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
     }
 
     function initialize(
+        address _protocolOwner,
         address _governor,
         address _curator,
         address _guardian,
+        address _council,
         IParameterRegistry _registry,
         IRampAController _rampAController,
         SelfPeggingAsset _spa
@@ -68,13 +72,18 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
         _grantRole(GOVERNOR_ROLE, _governor);
         _grantRole(CURATOR_ROLE, _curator);
         _grantRole(GUARDIAN_ROLE, _guardian);
-        _grantRole(DEFAULT_ADMIN_ROLE, _governor);
+        _grantRole(COUNCIL_ROLE, _council);
+        _grantRole(PROTOCOL_OWNER_ROLE, _protocolOwner);
     }
 
     /**
      * @inheritdoc IKeeper
      */
-    function rampA(uint256 newA, uint256 endTime) external override onlyRole(CURATOR_ROLE) {
+    function rampA(uint256 newA, uint256 endTime) external override {
+        require(
+            hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender) || hasRole(CURATOR_ROLE, msg.sender),
+            UnauthorizedAccount()
+        );
         IParameterRegistry.Bounds memory aParams = registry.aParams();
 
         // only if governor has defined ranges
@@ -105,7 +114,11 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
     /**
      * @inheritdoc IKeeper
      */
-    function setSwapFee(uint256 newFee) external override onlyRole(GOVERNOR_ROLE) {
+    function setSwapFee(uint256 newFee) external override {
+        require(
+            hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender),
+            UnauthorizedAccount()
+        );
         IParameterRegistry.Bounds memory swapFeeParams = registry.swapFeeParams();
 
         uint256 cur = spa.swapFee();
@@ -131,7 +144,22 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
      * @inheritdoc IKeeper
      */
     function cancelRamp() external override onlyRole(GUARDIAN_ROLE) {
+        require(
+            hasRole(GUARDIAN_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender),
+            UnauthorizedAccount()
+        );
         rampAController.stopRamp();
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function setGovernor(address _governor) external override onlyRole(GOVERNOR_ROLE) {
+        require(
+            hasRole(PROTOCOL_OWNER_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender),
+            UnauthorizedAccount()
+        );
+        _grantRole(GOVERNOR_ROLE, _governor);
     }
 
     // TODO: add pause logic

@@ -443,9 +443,11 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         bytes memory keeperInit = abi.encodeCall(
             Keeper.initialize,
             (
+                owner(),
                 address(governor),
                 address(governor),
                 address(governor),
+                address(council),
                 IParameterRegistry(address(parameterRegistry)),
                 IRampAController(address(rampAControllerProxy)),
                 SelfPeggingAsset(address(selfPeggingAssetProxy))
