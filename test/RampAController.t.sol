@@ -77,7 +77,6 @@ contract RampAControllerTest is Test {
                 0,
                 owner,
                 owner,
-                owner,
                 owner
             )
         );
@@ -350,7 +349,6 @@ contract RampAControllerTest is Test {
                 providerArray,
                 address(lowAController),
                 0,
-                owner,
                 owner,
                 owner,
                 owner

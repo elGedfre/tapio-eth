@@ -12,8 +12,8 @@ import "../interfaces/IRampAController.sol";
  */
 contract RampAController is IRampAController, Initializable, OwnableUpgradeable {
     // Constants for A parameter limits and precision
-    uint256 private constant MAX_A = 10 ** 6; // as Curve
-    uint256 private constant DEFAULT_RAMP_TIME = 30 minutes;
+    uint256 public constant MAX_A = 10 ** 6; // as Curve
+    uint256 public constant DEFAULT_RAMP_TIME = 30 minutes;
 
     uint256 public override initialA; // when starts
     uint256 public override futureA; // when completes
