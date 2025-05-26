@@ -66,6 +66,9 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
         _grantRole(CURATOR_ROLE, _curator);
         _grantRole(GUARDIAN_ROLE, _guardian);
         _grantRole(COUNCIL_ROLE, _council);
+        _setRoleAdmin(GUARDIAN_ROLE, GOVERNOR_ROLE);
+        _setRoleAdmin(CURATOR_ROLE, GOVERNOR_ROLE);
+        _setRoleAdmin(GOVERNOR_ROLE, COUNCIL_ROLE);
     }
 
     /**
@@ -131,48 +134,6 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
      */
     function cancelRamp() external override onlyRole(GUARDIAN_ROLE) {
         rampAController.stopRamp();
-    }
-
-    /**
-     * @inheritdoc IKeeper
-     */
-    function grantGovernorRole(address _governor) external override onlyRole(COUNCIL_ROLE) {
-        _grantRole(GOVERNOR_ROLE, _governor);
-    }
-
-    /**
-     * @inheritdoc IKeeper
-     */
-    function revokeGovernorRole(address _governor) external override onlyRole(COUNCIL_ROLE) {
-        _revokeRole(GOVERNOR_ROLE, _governor);
-    }
-
-    /**
-     * @inheritdoc IKeeper
-     */
-    function grantCuratorRole(address _curator) external override onlyRole(GOVERNOR_ROLE) {
-        _grantRole(CURATOR_ROLE, _curator);
-    }
-
-    /**
-     * @inheritdoc IKeeper
-     */
-    function revokeCuratorRole(address _curator) external override onlyRole(GOVERNOR_ROLE) {
-        _revokeRole(CURATOR_ROLE, _curator);
-    }
-
-    /**
-     * @inheritdoc IKeeper
-     */
-    function grantGuardianRole(address _guardian) external override onlyRole(GOVERNOR_ROLE) {
-        _grantRole(GUARDIAN_ROLE, _guardian);
-    }
-
-    /**
-     * @inheritdoc IKeeper
-     */
-    function revokeGuardianRole(address _guardian) external override onlyRole(GOVERNOR_ROLE) {
-        _revokeRole(GUARDIAN_ROLE, _guardian);
     }
 
     /**

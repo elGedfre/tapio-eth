@@ -501,6 +501,8 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
         _grantRole(KEEPER_ROLE, _keeper);
         _grantRole(GOVERNOR_ROLE, _governor);
         _grantRole(COUNCIL_ROLE, _council);
+        _setRoleAdmin(KEEPER_ROLE, COUNCIL_ROLE);
+        _setRoleAdmin(GOVERNOR_ROLE, COUNCIL_ROLE);
     }
 
     /**
@@ -822,26 +824,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
         lastActivity = block.timestamp;
         emit Redeemed(msg.sender, redeemAmount, amounts, feeAmount);
         return amounts;
-    }
-
-    /**
-     * @dev Sets the governor address.
-     * @param _governor The new governor address.
-     */
-    function setGovernor(address _governor) external onlyRole(COUNCIL_ROLE) {
-        require(hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
-        require(_governor != address(0), ZeroAddress());
-        _grantRole(GOVERNOR_ROLE, _governor);
-    }
-
-    /**
-     * @dev Sets the keeper address.
-     * @param _keeper The new keeper address.
-     */
-    function setKeeper(address _keeper) external {
-        require(hasRole(GOVERNOR_ROLE, msg.sender), UnauthorizedAccount());
-        require(_keeper != address(0), ZeroAddress());
-        _grantRole(KEEPER_ROLE, _keeper);
     }
 
     /**
