@@ -438,7 +438,6 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
 
         Keeper keeper = Keeper(address(keeperProxy));
         keeper.initialize(
-            owner(),
             address(governor),
             address(governor),
             address(governor),

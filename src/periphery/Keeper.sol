@@ -37,7 +37,6 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     }
 
     function initialize(
-        address _protocolOwner,
         address _governor,
         address _curator,
         address _guardian,
