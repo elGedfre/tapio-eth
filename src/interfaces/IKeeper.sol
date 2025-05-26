@@ -82,42 +82,6 @@ interface IKeeper {
     function pause() external;
 
     /**
-     * @notice Sets the governor address for the Keeper
-     * @param _governor The address of the new governor
-     */
-    function grantGovernorRole(address _governor) external;
-
-    /**
-     * @notice Revokes the governor role from an address
-     * @param _governor The address of the governor to revoke
-     */
-    function revokeGovernorRole(address _governor) external;
-
-    /**
-     * @notice Grant curator role to an address
-     * @param _curator The address of the curator to grant
-     */
-    function grantCuratorRole(address _curator) external;
-
-    /**
-     * @notice Revoke curator role from an address
-     * @param _curator The address of the curator to revoke
-     */
-    function revokeCuratorRole(address _curator) external;
-
-    /**
-     * @notice Grant guardian role to an address
-     * @param _guardian The address of the guardian to grant
-     */
-    function grantGuardianRole(address _guardian) external;
-
-    /**
-     * @notice Revoke guardian role from an address
-     * @param _guardian The address of the guardian to revoke
-     */
-    function revokeGuardianRole(address _guardian) external;
-
-    /**
      * @notice Allows guardians to cancel an ongoing A ramp in emergencies
      */
     function cancelRamp() external;
