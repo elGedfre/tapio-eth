@@ -55,11 +55,9 @@ contract ZapTest is Test {
         tokens[0] = address(token1);
         tokens[1] = address(token2);
 
-        bytes memory data = abi.encodeCall(LPToken.initialize, ("Tapio ETH", "TapETH"));
-        ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), data);
+        ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), new bytes(0));
 
         lpToken = LPToken(address(proxy));
-        lpToken.transferOwnership(governance);
 
         IExchangeRateProvider[] memory providers = new IExchangeRateProvider[](2);
         providers[0] = new ConstantExchangeRateProvider();
@@ -74,7 +72,7 @@ contract ZapTest is Test {
         fees[1] = 0;
         fees[2] = 0;
 
-        data = abi.encodeCall(RampAController.initialize, (100, 30 minutes, governance));
+        bytes memory data = abi.encodeCall(RampAController.initialize, (100, 30 minutes, governance));
         proxy = new ERC1967Proxy(address(new RampAController()), data);
         rampAController = RampAController(address(proxy));
 
@@ -92,11 +90,9 @@ contract ZapTest is Test {
         proxy = new ERC1967Proxy(address(new SelfPeggingAsset()), data);
 
         spa = SelfPeggingAsset(address(proxy));
+        lpToken.initialize("Tapio ETH", "TapETH", 5e8, governance, address(spa));
 
         vm.stopPrank();
-
-        vm.prank(governance);
-        lpToken.addPool(address(spa));
 
         vm.startPrank(admin);
 
@@ -383,10 +379,8 @@ contract ZapTest is Test {
     }
 
     function testZapIn_CrossPoolMismatch() public {
-        bytes memory data = abi.encodeCall(LPToken.initialize, ("Second LP Token", "LP2"));
-        ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), data);
+        ERC1967Proxy proxy = new ERC1967Proxy(address(new LPToken()), new bytes(0));
         LPToken secondLpToken = LPToken(address(proxy));
-        secondLpToken.transferOwnership(governance);
 
         vm.startPrank(admin);
 
@@ -403,7 +397,7 @@ contract ZapTest is Test {
         fees[1] = 0;
         fees[2] = 0;
 
-        data = abi.encodeCall(RampAController.initialize, (100, 30 minutes, governance));
+        bytes memory data = abi.encodeCall(RampAController.initialize, (100, 30 minutes, governance));
         proxy = new ERC1967Proxy(address(new RampAController()), data);
         RampAController secondRampAController = RampAController(address(proxy));
 
@@ -420,12 +414,9 @@ contract ZapTest is Test {
         );
         proxy = new ERC1967Proxy(address(new SelfPeggingAsset()), data);
         SelfPeggingAsset secondSpa = SelfPeggingAsset(address(proxy));
+        secondLpToken.initialize("Second LP Token", "LP2", 5e8, governance, address(secondSpa));
 
         vm.stopPrank();
-
-        vm.prank(governance);
-        secondLpToken.addPool(address(secondSpa));
-
         vm.startPrank(admin);
 
         data = abi.encodeCall(WLPToken.initialize, (secondLpToken));

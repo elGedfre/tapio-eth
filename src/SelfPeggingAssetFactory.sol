@@ -384,10 +384,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
 
         string memory symbolA = ERC20Upgradeable(argument.tokenA).symbol();
         string memory symbolB = ERC20Upgradeable(argument.tokenB).symbol();
-        string memory symbol = string.concat(string.concat(string.concat("SPA-", symbolA), "-"), symbolB);
-        string memory name = string.concat(string.concat(string.concat("Self Pegging Asset ", symbolA), " "), symbolB);
-        bytes memory lpTokenInit = abi.encodeCall(LPToken.initialize, (name, symbol));
-        BeaconProxy lpTokenProxy = new BeaconProxy(lpTokenBeacon, lpTokenInit);
+        BeaconProxy lpTokenProxy = new BeaconProxy(lpTokenBeacon, new bytes(0));
 
         address[] memory tokens = new address[](2);
         uint256[] memory precisions = new uint256[](2);
@@ -466,11 +463,12 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
             governor,
             address(keeperProxy)
         );
-        LPToken lpToken = LPToken(address(lpTokenProxy));
 
-        lpToken.addPool(address(selfPeggingAsset));
-        lpToken.setBuffer(bufferPercent);
-        lpToken.transferOwnership(governor);
+        string memory symbol = string.concat(string.concat(string.concat("SPA-", symbolA), "-"), symbolB);
+        string memory name = string.concat(string.concat(string.concat("Self Pegging Asset ", symbolA), " "), symbolB);
+
+        LPToken lpToken = LPToken(address(lpTokenProxy));
+        lpToken.initialize(name, symbol, bufferPercent, address(keeperProxy), address(selfPeggingAsset));
 
         bytes memory wlpTokenInit = abi.encodeCall(WLPToken.initialize, (ILPToken(lpToken)));
         BeaconProxy wlpTokenProxy = new BeaconProxy(wlpTokenBeacon, wlpTokenInit);
