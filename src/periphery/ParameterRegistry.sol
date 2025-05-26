@@ -12,6 +12,10 @@ import "../SelfPeggingAsset.sol";
  * Each SPA has its own ParameterRegistry
  */
 contract ParameterRegistry is IParameterRegistry, Ownable {
+    uint256 private constant MAX_A = 10 ** 6; // 1M
+    uint32 private constant MAX_DECREASE_PCT_A = 900_000; // -90%
+    uint32 private constant MAX_INCREASE_PCT_A = 9_000_000; // +900%
+
     /// @notice SPA this registry is connected
     SelfPeggingAsset public spa;
 
@@ -23,11 +27,8 @@ contract ParameterRegistry is IParameterRegistry, Ownable {
         spa = SelfPeggingAsset(_spa);
 
         // set default values for A boundry
-        bounds[ParamKey.A] = Bounds({
-            max: 1_000_000, // 1M like in Curve
-            maxDecreasePct: 900_000, // -90%
-            maxIncreasePct: 9_000_000 // +900%
-         });
+        bounds[ParamKey.A] =
+            Bounds({ max: MAX_A, maxDecreasePct: MAX_DECREASE_PCT_A, maxIncreasePct: MAX_INCREASE_PCT_A });
     }
 
     /**

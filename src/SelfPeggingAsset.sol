@@ -53,6 +53,11 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
     uint256 private constant DEFAULT_YIELD_ERROR_MARGIN = 10_000;
 
     /**
+     * @dev This is the maximum value of the amplification coefficient A.
+     */
+    uint256 private constant MAX_A = 10 ** 6;
+
+    /**
      *  @dev This is minimum initial mint
      */
     uint256 private constant INITIAL_MINT_MIN = 100_000;
@@ -461,7 +466,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
             }
         }
         require(address(_poolToken) != address(0), PoolTokenNotSet());
-        require(_A > 0 && _A < RampAController(_rampAController).MAX_A(), ANotSet());
+        require(_A > 0 && _A < MAX_A, ANotSet());
 
         __ReentrancyGuard_init();
         __AccessControl_init();

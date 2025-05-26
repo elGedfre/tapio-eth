@@ -29,7 +29,6 @@ contract SelfPeggingAssetTest is Test {
     MockToken WETH;
     MockToken frxETH;
     uint256[] precisions;
-    RampAController rampAController;
 
     function setUp() public {
         WETH = new MockToken("WETH", "WETH", 18);
@@ -58,27 +57,9 @@ contract SelfPeggingAssetTest is Test {
         exchangeRateProviders[0] = exchangeRateProvider;
         exchangeRateProviders[1] = exchangeRateProvider;
 
-
-        ERC1967Proxy rampAControllerProxy =
-            new ERC1967Proxy(address(new RampAController()), abi.encodeCall(RampAController.initialize, (A, 0, owner)));
-        rampAController = RampAController(address(rampAControllerProxy));
-
         bytes memory data = abi.encodeCall(
             SelfPeggingAsset.initialize,
-            (
-                tokens,
-                precisions,
-                fees,
-                0,
-                lpToken,
-                A,
-                exchangeRateProviders,
-                address(rampAController),
-                0,
-                owner,
-                owner,
-                owner
-            )
+            (tokens, precisions, fees, 0, lpToken, A, exchangeRateProviders, address(0), 0, owner, owner, owner)
         );
 
         proxy = new ERC1967Proxy(address(new SelfPeggingAsset()), data);
@@ -154,20 +135,7 @@ contract SelfPeggingAssetTest is Test {
 
         bytes memory data = abi.encodeCall(
             SelfPeggingAsset.initialize,
-            (
-                _tokens,
-                _precisions,
-                _fees,
-                0,
-                _lpToken,
-                A,
-                exchangeRateProviders,
-                address(rampAController),
-                0,
-                owner,
-                owner,
-                owner
-            )
+            (_tokens, _precisions, _fees, 0, _lpToken, A, exchangeRateProviders, address(0), 0, owner, owner, owner)
         );
 
         proxy = new ERC1967Proxy(address(new SelfPeggingAsset()), data);
@@ -551,20 +519,7 @@ contract SelfPeggingAssetTest is Test {
 
         bytes memory data = abi.encodeCall(
             SelfPeggingAsset.initialize,
-            (
-                _tokens,
-                _precisions,
-                _fees,
-                0,
-                _lpToken,
-                A,
-                exchangeRateProviders,
-                address(rampAController),
-                0,
-                owner,
-                owner,
-                owner
-            )
+            (_tokens, _precisions, _fees, 0, _lpToken, A, exchangeRateProviders, address(0), 0, owner, owner, owner)
         );
         proxy = new ERC1967Proxy(address(new SelfPeggingAsset()), data);
         SelfPeggingAsset _pool = SelfPeggingAsset(address(proxy));
@@ -801,20 +756,7 @@ contract SelfPeggingAssetTest is Test {
 
         bytes memory data = abi.encodeCall(
             SelfPeggingAsset.initialize,
-            (
-                _tokens1,
-                _precisions,
-                _fees,
-                0,
-                _lpToken1,
-                A,
-                exchangeRateProviders1,
-                address(rampAController),
-                0,
-                owner,
-                owner,
-                owner
-            )
+            (_tokens1, _precisions, _fees, 0, _lpToken1, A, exchangeRateProviders1, address(0), 0, owner, owner, owner)
         );
 
         proxy1 = new ERC1967Proxy(address(new SelfPeggingAsset()), data);
@@ -831,7 +773,7 @@ contract SelfPeggingAssetTest is Test {
                 _lpToken2,
                 A,
                 exchangeRateProviders2,
-                address(rampAController),
+                address(0),
                 1e10,
                 owner,
                 owner,
@@ -962,7 +904,7 @@ contract SelfPeggingAssetTest is Test {
                 _lpToken1,
                 A,
                 exchangeRateProviders1,
-                address(rampAController),
+                address(0),
                 1e10,
                 owner,
                 owner,
@@ -987,7 +929,7 @@ contract SelfPeggingAssetTest is Test {
                 _lpToken2,
                 A,
                 exchangeRateProviders2,
-                address(rampAController),
+                address(0),
                 1e10,
                 owner,
                 owner,
@@ -1095,7 +1037,7 @@ contract SelfPeggingAssetTest is Test {
 
         bytes memory data = abi.encodeCall(
             SelfPeggingAsset.initialize,
-            (tokens, precisions, fees, 0, lpToken, 100, providers, address(rampAController), 1e10, owner, owner, owner)
+            (tokens, precisions, fees, 0, lpToken, 100, providers, address(0), 1e10, owner, owner, owner)
         );
 
         proxy = new ERC1967Proxy(address(new SelfPeggingAsset()), data);
@@ -1238,7 +1180,7 @@ contract SelfPeggingAssetTest is Test {
 
         bytes memory data = abi.encodeCall(
             SelfPeggingAsset.initialize,
-            (tokens1, precisions, fees, 0, lpToken1, A, providers1, address(rampAController), 0, owner, owner, owner)
+            (tokens1, precisions, fees, 0, lpToken1, A, providers1, address(0), 0, owner, owner, owner)
         );
         proxy1 = new ERC1967Proxy(address(new SelfPeggingAsset()), data);
         SelfPeggingAsset pool1 = SelfPeggingAsset(address(proxy1));
@@ -1257,7 +1199,7 @@ contract SelfPeggingAssetTest is Test {
                 lpToken2,
                 A,
                 providers2,
-                address(rampAController),
+                address(0),
                 exchangeRateFeeFactor,
                 owner,
                 owner,
