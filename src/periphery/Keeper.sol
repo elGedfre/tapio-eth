@@ -18,7 +18,6 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     bytes32 public constant CURATOR_ROLE = keccak256("CURATOR_ROLE");
     bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN_ROLE");
     bytes32 public constant GOVERNOR_ROLE = keccak256("GOVERNOR_ROLE");
-    bytes32 public constant PROTOCOL_OWNER_ROLE = keccak256("PROTOCOL_OWNER_ROLE");
 
     IParameterRegistry private registry;
     IRampAController private rampAController;
@@ -68,17 +67,13 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
         _grantRole(CURATOR_ROLE, _curator);
         _grantRole(GUARDIAN_ROLE, _guardian);
         _grantRole(COUNCIL_ROLE, _council);
-        _grantRole(PROTOCOL_OWNER_ROLE, _protocolOwner);
     }
 
     /**
      * @inheritdoc IKeeper
      */
-    function rampA(uint256 newA, uint256 endTime) external override {
-        require(
-            hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender) || hasRole(CURATOR_ROLE, msg.sender),
-            UnauthorizedAccount()
-        );
+    function rampA(uint256 newA, uint256 endTime) external override onlyRole(CURATOR_ROLE) {
+        require(hasRole(CURATOR_ROLE, msg.sender), UnauthorizedAccount());
         IParameterRegistry.Bounds memory aParams = registry.aParams();
 
         uint256 curA = rampAController.getA();
@@ -98,8 +93,8 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     /**
      * @inheritdoc IKeeper
      */
-    function setSwapFee(uint256 newFee) external override {
-        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+    function setSwapFee(uint256 newFee) external override onlyRole(GOVERNOR_ROLE) {
+        require(hasRole(GOVERNOR_ROLE, msg.sender), UnauthorizedAccount());
         IParameterRegistry.Bounds memory swapFeeParams = registry.swapFeeParams();
 
         uint256 cur = spa.swapFee();
@@ -111,8 +106,7 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     /**
      * @inheritdoc IKeeper
      */
-    function setMintFee(uint256 newFee) external override {
-        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+    function setMintFee(uint256 newFee) external override onlyRole(GOVERNOR_ROLE) {
         IParameterRegistry.Bounds memory mintFeeParams = registry.mintFeeParams();
 
         uint256 cur = spa.mintFee();
@@ -124,8 +118,7 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     /**
      * @inheritdoc IKeeper
      */
-    function setRedeemFee(uint256 newFee) external override {
-        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+    function setRedeemFee(uint256 newFee) external override onlyRole(GOVERNOR_ROLE) {
         IParameterRegistry.Bounds memory redeemFeeParams = registry.redeemFeeParams();
 
         uint256 cur = spa.redeemFee();
@@ -137,8 +130,7 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     /**
      * @inheritdoc IKeeper
      */
-    function cancelRamp() external override {
-        require(hasRole(GUARDIAN_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+    function cancelRamp() external override onlyRole(GUARDIAN_ROLE) {
         rampAController.stopRamp();
     }
 
@@ -152,48 +144,42 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     /**
      * @inheritdoc IKeeper
      */
-    function revokeGovernorRole(address _governor) external override {
-        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+    function revokeGovernorRole(address _governor) external override onlyRole(COUNCIL_ROLE) {
         _revokeRole(GOVERNOR_ROLE, _governor);
     }
 
     /**
      * @inheritdoc IKeeper
      */
-    function grantCuratorRole(address _curator) external override {
-        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+    function grantCuratorRole(address _curator) external override onlyRole(GOVERNOR_ROLE) {
         _grantRole(CURATOR_ROLE, _curator);
     }
 
     /**
      * @inheritdoc IKeeper
      */
-    function revokeCuratorRole(address _curator) external override {
-        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+    function revokeCuratorRole(address _curator) external override onlyRole(GOVERNOR_ROLE) {
         _revokeRole(CURATOR_ROLE, _curator);
     }
 
     /**
      * @inheritdoc IKeeper
      */
-    function grantGuardianRole(address _guardian) external override {
-        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+    function grantGuardianRole(address _guardian) external override onlyRole(GOVERNOR_ROLE) {
         _grantRole(GUARDIAN_ROLE, _guardian);
     }
 
     /**
      * @inheritdoc IKeeper
      */
-    function revokeGuardianRole(address _guardian) external override {
-        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+    function revokeGuardianRole(address _guardian) external override onlyRole(GOVERNOR_ROLE) {
         _revokeRole(GUARDIAN_ROLE, _guardian);
     }
 
     /**
      * @inheritdoc IKeeper
      */
-    function setOffPegFeeMultiplier(uint256 newMultiplier) external override {
-        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+    function setOffPegFeeMultiplier(uint256 newMultiplier) external override onlyRole(GOVERNOR_ROLE) {
         IParameterRegistry.Bounds memory offPegParams = registry.offPegParams();
 
         uint256 cur = spa.offPegFeeMultiplier();
@@ -205,8 +191,7 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     /**
      * @inheritdoc IKeeper
      */
-    function setExchangeRateFeeFactor(uint256 newFeeFactor) external override {
-        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+    function setExchangeRateFeeFactor(uint256 newFeeFactor) external override onlyRole(GOVERNOR_ROLE) {
         IParameterRegistry.Bounds memory exchangeRateFeeParams = registry.exchangeRateFeeParams();
 
         uint256 cur = spa.exchangeRateFeeFactor();
@@ -218,8 +203,7 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     /**
      * @inheritdoc IKeeper
      */
-    function setDecayPeriod(uint256 newDecayPeriod) external override {
-        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+    function setDecayPeriod(uint256 newDecayPeriod) external override onlyRole(GOVERNOR_ROLE) {
         IParameterRegistry.Bounds memory decayPeriodParams = registry.decayPeriodParams();
 
         uint256 cur = spa.decayPeriod();
@@ -231,8 +215,7 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     /**
      * @inheritdoc IKeeper
      */
-    function setRateChangeSkipPeriod(uint256 newSkipPeriod) external override {
-        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+    function setRateChangeSkipPeriod(uint256 newSkipPeriod) external override onlyRole(GOVERNOR_ROLE) {
         IParameterRegistry.Bounds memory rateChangeSkipPeriodParams = registry.rateChangeSkipPeriodParams();
 
         uint256 cur = spa.rateChangeSkipPeriod();
@@ -244,8 +227,7 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     /**
      * @inheritdoc IKeeper
      */
-    function updateFeeErrorMargin(uint256 newMargin) external override {
-        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+    function updateFeeErrorMargin(uint256 newMargin) external override onlyRole(GOVERNOR_ROLE) {
         IParameterRegistry.Bounds memory feeErrorMarginParams = registry.feeErrorMarginParams();
 
         uint256 cur = spa.feeErrorMargin();
@@ -257,8 +239,7 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     /**
      * @inheritdoc IKeeper
      */
-    function updateYieldErrorMargin(uint256 newMargin) external override {
-        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+    function updateYieldErrorMargin(uint256 newMargin) external override onlyRole(GOVERNOR_ROLE) {
         IParameterRegistry.Bounds memory yieldErrorMarginParams = registry.yieldErrorMarginParams();
 
         uint256 cur = spa.yieldErrorMargin();
@@ -270,8 +251,7 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     /**
      * @inheritdoc IKeeper
      */
-    function distributeLoss() external override {
-        require(hasRole(GOVERNOR_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+    function distributeLoss() external override onlyRole(GOVERNOR_ROLE) {
         spa.distributeLoss();
     }
 

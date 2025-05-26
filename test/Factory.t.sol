@@ -332,7 +332,6 @@ contract FactoryTest is Test {
             0,
             governor,
             governor,
-            governor,
             governor
         );
 

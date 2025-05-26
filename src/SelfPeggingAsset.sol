@@ -10,6 +10,7 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "./interfaces/IExchangeRateProvider.sol";
 import "./interfaces/ILPToken.sol";
 import "./interfaces/IRampAController.sol";
+import "./periphery/RampAController.sol";
 
 /**
  * @title SelfPeggingAsset swap
@@ -33,7 +34,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
         uint256 raisedAt;
     }
 
-    bytes32 public constant PROTOCOL_OWNER_ROLE = keccak256("PROTOCOL_OWNER_ROLE");
     bytes32 public constant COUNCIL_ROLE = keccak256("COUNCIL_ROLE");
     bytes32 public constant GOVERNOR_ROLE = keccak256("GOVERNOR_ROLE");
     bytes32 public constant KEEPER_ROLE = keccak256("KEEPER_ROLE");
@@ -51,16 +51,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
      *  @dev This is the maximum error margin for calculating transaction yield in the SelfPeggingAsset contract.
      */
     uint256 private constant DEFAULT_YIELD_ERROR_MARGIN = 10_000;
-
-    /**
-     *  @dev This is the maximum error margin for updating A in the SelfPeggingAsset contract.
-     */
-    uint256 private constant DEFAULT_MAX_DELTA_D = 100_000;
-
-    /**
-     * @dev This is the maximum value of the amplification coefficient A.
-     */
-    uint256 private constant MAX_A = 10 ** 6;
 
     /**
      *  @dev This is minimum initial mint
@@ -439,7 +429,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
         IExchangeRateProvider[] memory _exchangeRateProviders,
         address _rampAController,
         uint256 _exchangeRateFeeFactor,
-        address _protocolOwner,
         address _council,
         address _governor,
         address _keeper
@@ -472,7 +461,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
             }
         }
         require(address(_poolToken) != address(0), PoolTokenNotSet());
-        require(_A > 0 && _A < MAX_A, ANotSet());
+        require(_A > 0 && _A < RampAController(_rampAController).MAX_A(), ANotSet());
 
         __ReentrancyGuard_init();
         __AccessControl_init();
@@ -506,7 +495,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
 
         _grantRole(KEEPER_ROLE, _keeper);
         _grantRole(GOVERNOR_ROLE, _governor);
-        _grantRole(PROTOCOL_OWNER_ROLE, _protocolOwner);
         _grantRole(COUNCIL_ROLE, _council);
     }
 
@@ -832,23 +820,23 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
     }
 
     /**
+     * @dev Sets the governor address.
+     * @param _governor The new governor address.
+     */
+    function setGovernor(address _governor) external onlyRole(COUNCIL_ROLE) {
+        require(hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        require(_governor != address(0), ZeroAddress());
+        _grantRole(GOVERNOR_ROLE, _governor);
+    }
+
+    /**
      * @dev Sets the keeper address.
      * @param _keeper The new keeper address.
      */
     function setKeeper(address _keeper) external {
-        require(hasRole(PROTOCOL_OWNER_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
+        require(hasRole(GOVERNOR_ROLE, msg.sender), UnauthorizedAccount());
         require(_keeper != address(0), ZeroAddress());
         _grantRole(KEEPER_ROLE, _keeper);
-    }
-
-    /**
-     * @dev Sets the governor address.
-     * @param _governor The new governor address.
-     */
-    function setGovernor(address _governor) external onlyRole(PROTOCOL_OWNER_ROLE) {
-        require(hasRole(PROTOCOL_OWNER_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender), UnauthorizedAccount());
-        require(_governor != address(0), ZeroAddress());
-        _grantRole(GOVERNOR_ROLE, _governor);
     }
 
     /**
@@ -939,27 +927,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, AccessCo
 
         paused = false;
         emit PoolUnpaused();
-    }
-
-    /**
-     * @dev Set the RampAController address
-     * @param _rampAController New controller address
-     */
-    function setRampAController(address _rampAController) external {
-        require(
-            hasRole(PROTOCOL_OWNER_ROLE, msg.sender) || hasRole(COUNCIL_ROLE, msg.sender)
-                || hasRole(GOVERNOR_ROLE, msg.sender),
-            UnauthorizedAccount()
-        );
-
-        if (address(rampAController) != address(0) && rampAController.isRamping()) {
-            revert CannotChangeControllerDuringRamp();
-        }
-        if (IRampAController(_rampAController).initialA() != A) {
-            revert InitialANotMatchCurrentA();
-        }
-        rampAController = IRampAController(_rampAController);
-        emit RampAControllerUpdated(_rampAController);
     }
 
     /**

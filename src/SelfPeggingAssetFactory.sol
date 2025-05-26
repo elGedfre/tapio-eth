@@ -459,7 +459,6 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
             exchangeRateProviders,
             address(rampAControllerProxy),
             exchangeRateFeeFactor,
-            owner(),
             council,
             governor,
             address(keeperProxy)
