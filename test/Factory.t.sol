@@ -321,18 +321,7 @@ contract FactoryTest is Test {
         IExchangeRateProvider[] memory _exchangeRateProviders;
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         selfPeggingAsset.initialize(
-            _tokens,
-            _precisions,
-            _fees,
-            0,
-            LPToken(address(0)),
-            0,
-            _exchangeRateProviders,
-            address(0),
-            0,
-            governor,
-            governor,
-            governor
+            _tokens, _precisions, _fees, 0, LPToken(address(0)), 0, _exchangeRateProviders, address(0), 0, governor
         );
 
         LPToken lpToken = new LPToken();

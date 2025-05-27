@@ -225,6 +225,13 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     /**
      * @inheritdoc IKeeper
      */
+    function unpause() external override onlyRole(COUNCIL_ROLE) {
+        spa.unpause();
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
     function getRegistry() external view override returns (IParameterRegistry) {
         return registry;
     }

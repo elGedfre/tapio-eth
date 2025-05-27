@@ -82,6 +82,11 @@ interface IKeeper {
     function pause() external;
 
     /**
+     * @notice Unpause the SPA
+     */
+    function unpause() external;
+
+    /**
      * @notice Allows guardians to cancel an ongoing A ramp in emergencies
      */
     function cancelRamp() external;
