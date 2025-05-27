@@ -7,11 +7,6 @@ pragma solidity 0.8.28;
  */
 interface IRampAController {
     /**
-     * @dev Returns the current minimum ramp time required for A changes
-     */
-    function minRampTime() external view returns (uint256);
-
-    /**
      * @dev Sets a new minimum ramp time for A changes
      * @param _newMinRampTime New minimum ramp time in seconds
      */
@@ -28,6 +23,11 @@ interface IRampAController {
      * @dev Stops an ongoing ramp and freezes A at the current value
      */
     function stopRamp() external;
+
+    /**
+     * @dev Returns the current minimum ramp time required for A changes
+     */
+    function minRampTime() external view returns (uint256);
 
     /**
      * @dev Returns the current A value based on the ongoing ramp progress or the static value if no ramp

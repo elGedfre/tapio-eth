@@ -16,7 +16,6 @@ import "../SelfPeggingAsset.sol";
  */
 contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
     bytes32 public constant PROTOCOL_OWNER_ROLE = keccak256("PROTOCOL_OWNER_ROLE");
-    bytes32 public constant COUNCIL_ROLE = keccak256("COUNCIL_ROLE");
     bytes32 public constant CURATOR_ROLE = keccak256("CURATOR_ROLE");
     bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN_ROLE");
     bytes32 public constant GOVERNOR_ROLE = keccak256("GOVERNOR_ROLE");
@@ -43,7 +42,6 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
         address _governor,
         address _curator,
         address _guardian,
-        address _council,
         IParameterRegistry _registry,
         IRampAController _rampAController,
         SelfPeggingAsset _spa
@@ -70,10 +68,9 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
         _grantRole(GOVERNOR_ROLE, _governor);
         _grantRole(CURATOR_ROLE, _curator);
         _grantRole(GUARDIAN_ROLE, _guardian);
-        _grantRole(COUNCIL_ROLE, _council);
         _setRoleAdmin(GUARDIAN_ROLE, GOVERNOR_ROLE);
         _setRoleAdmin(CURATOR_ROLE, GOVERNOR_ROLE);
-        _setRoleAdmin(GOVERNOR_ROLE, COUNCIL_ROLE);
+        _setRoleAdmin(GOVERNOR_ROLE, PROTOCOL_OWNER_ROLE);
     }
 
     /**
@@ -240,7 +237,7 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
     /**
      * @inheritdoc IKeeper
      */
-    function unpause() external override onlyRole(COUNCIL_ROLE) {
+    function unpause() external override onlyRole(PROTOCOL_OWNER_ROLE) {
         spa.unpause();
     }
 
@@ -265,6 +262,11 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
         return spa;
     }
 
+    /**
+     * @dev Authorisation to upgrade the implementation of the contract.
+     */
+    function _authorizeUpgrade(address) internal override onlyRole(PROTOCOL_OWNER_ROLE) { }
+
     function checkRange(
         uint256 newValue,
         uint256 currentValue,
@@ -285,9 +287,4 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
 
         require(newValue <= bounds.max, OutOfBounds());
     }
-
-    /**
-     * @dev Authorisation to upgrade the implementation of the contract.
-     */
-    function _authorizeUpgrade(address) internal override onlyRole(PROTOCOL_OWNER_ROLE) { }
 }
