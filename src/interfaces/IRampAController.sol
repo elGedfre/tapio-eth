@@ -7,6 +7,17 @@ pragma solidity 0.8.28;
  */
 interface IRampAController {
     /**
+     * @dev Returns the current minimum ramp time required for A changes
+     */
+    function minRampTime() external view returns (uint256);
+
+    /**
+     * @dev Sets a new minimum ramp time for A changes
+     * @param _newMinRampTime New minimum ramp time in seconds
+     */
+    function setMinRampTime(uint256 _newMinRampTime) external;
+
+    /**
      * @dev Initiates the ramping of A from current value to the target over the specified duration
      * @param _futureA Target A value
      * @param _futureTime Timestamp when ramping should complete

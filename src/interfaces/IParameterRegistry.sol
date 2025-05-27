@@ -18,7 +18,8 @@ interface IParameterRegistry {
         DecayPeriod,
         RateChangeSkipPeriod,
         FeeErrorMargin,
-        YieldErrorMargin
+        YieldErrorMargin,
+        MinRampTime
     }
 
     /**
@@ -82,4 +83,7 @@ interface IParameterRegistry {
 
     /// @return Bounds for the yield error margin
     function yieldErrorMarginParams() external view returns (Bounds memory);
+
+    /// @return Bounds for the minimum ramp time
+    function minRampTimeParams() external view returns (Bounds memory);
 }

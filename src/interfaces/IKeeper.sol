@@ -18,6 +18,12 @@ interface IKeeper {
     function rampA(uint256 newA, uint256 endTime) external;
 
     /**
+     * @notice Set the minimum ramp time
+     * @param newMinRampTime is the new minimum ramp time
+     */
+    function setMinRampTime(uint256 newMinRampTime) external;
+
+    /**
      * @notice Set the swap fee within allowed bounds
      * @param newFee The new swap fee value
      */

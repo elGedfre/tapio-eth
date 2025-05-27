@@ -75,7 +75,6 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
      * @inheritdoc IKeeper
      */
     function rampA(uint256 newA, uint256 endTime) external override onlyRole(CURATOR_ROLE) {
-        require(hasRole(CURATOR_ROLE, msg.sender), UnauthorizedAccount());
         IParameterRegistry.Bounds memory aParams = registry.aParams();
 
         uint256 curA = rampAController.getA();
@@ -95,8 +94,19 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     /**
      * @inheritdoc IKeeper
      */
+    function setMinRampTime(uint256 newMinRampTime) external override onlyRole(GOVERNOR_ROLE) {
+        IParameterRegistry.Bounds memory minRampTimeParams = registry.minRampTimeParams();
+
+        uint256 curMinRampTime = rampAController.minRampTime();
+        checkRange(newMinRampTime, curMinRampTime, minRampTimeParams);
+
+        rampAController.setMinRampTime(newMinRampTime);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
     function setSwapFee(uint256 newFee) external override onlyRole(GOVERNOR_ROLE) {
-        require(hasRole(GOVERNOR_ROLE, msg.sender), UnauthorizedAccount());
         IParameterRegistry.Bounds memory swapFeeParams = registry.swapFeeParams();
 
         uint256 cur = spa.swapFee();

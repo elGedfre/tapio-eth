@@ -108,4 +108,11 @@ contract ParameterRegistry is IParameterRegistry, Ownable {
     function yieldErrorMarginParams() external view returns (Bounds memory) {
         return bounds[ParamKey.YieldErrorMargin];
     }
+
+    /**
+     * @inheritdoc IParameterRegistry
+     */
+    function minRampTimeParams() external view returns (Bounds memory) {
+        return bounds[ParamKey.MinRampTime];
+    }
 }
