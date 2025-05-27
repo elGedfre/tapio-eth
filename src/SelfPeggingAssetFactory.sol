@@ -119,11 +119,6 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
     address public rampAControllerBeacon;
 
     /**
-     * @dev The address of the Keeper contract.
-     */
-    address public keeperBeacon;
-
-    /**
      * @dev Constant exchange rate provider.
      */
     ConstantExchangeRateProvider public constantExchangeRateProvider;
@@ -253,7 +248,6 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         address _lpTokenBeacon,
         address _wlpTokenBeacon,
         address _rampAControllerBeacon,
-        address _keeperBeacon,
         ConstantExchangeRateProvider _constantExchangeRateProvider,
         uint256 _exchangeRateFeeFactor,
         uint256 _bufferPercent
@@ -269,7 +263,6 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         require(_wlpTokenBeacon != address(0), InvalidAddress());
         require(address(_constantExchangeRateProvider) != address(0), InvalidAddress());
         require(_rampAControllerBeacon != address(0), InvalidAddress());
-        require(_keeperBeacon != address(0), InvalidAddress());
 
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
@@ -281,7 +274,6 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
         lpTokenBeacon = _lpTokenBeacon;
         wlpTokenBeacon = _wlpTokenBeacon;
         rampAControllerBeacon = _rampAControllerBeacon;
-        keeperBeacon = _keeperBeacon;
         constantExchangeRateProvider = _constantExchangeRateProvider;
 
         mintFee = _mintFee;
@@ -429,7 +421,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
             exchangeRateProviders[1] = IExchangeRateProvider(erc4626ExchangeRate);
         }
 
-        BeaconProxy keeperProxy = new BeaconProxy(keeperBeacon, new bytes(0));
+        ERC1967Proxy keeperProxy = new ERC1967Proxy(address(new Keeper()), new bytes(0));
         bytes memory rampAControllerInit =
             abi.encodeCall(RampAController.initialize, (A, minRampTime, address(keeperProxy)));
         BeaconProxy rampAControllerProxy = new BeaconProxy(rampAControllerBeacon, rampAControllerInit);
@@ -438,6 +430,7 @@ contract SelfPeggingAssetFactory is UUPSUpgradeable, OwnableUpgradeable {
 
         Keeper keeper = Keeper(address(keeperProxy));
         keeper.initialize(
+            address(owner()),
             address(governor),
             address(governor),
             address(governor),

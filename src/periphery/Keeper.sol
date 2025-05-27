@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "../interfaces/IRampAController.sol";
 import "../interfaces/IParameterRegistry.sol";
 import "../interfaces/IKeeper.sol";
@@ -13,7 +14,8 @@ import "../SelfPeggingAsset.sol";
  * @notice Fast-path executor that lets curators adjust parameters within bounds enforced by ParameterRegistry
  * @dev UUPS upgradeable. Governor is admin, curator and guardian are roles.
  */
-contract Keeper is AccessControlUpgradeable, IKeeper {
+contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
+    bytes32 public constant PROTOCOL_OWNER_ROLE = keccak256("PROTOCOL_OWNER_ROLE");
     bytes32 public constant COUNCIL_ROLE = keccak256("COUNCIL_ROLE");
     bytes32 public constant CURATOR_ROLE = keccak256("CURATOR_ROLE");
     bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN_ROLE");
@@ -37,6 +39,7 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
     }
 
     function initialize(
+        address _owner,
         address _governor,
         address _curator,
         address _guardian,
@@ -56,12 +59,14 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
         require(address(_spa) != address(0), ZeroAddress());
 
         __AccessControl_init();
+        __UUPSUpgradeable_init();
 
         registry = _registry;
         rampAController = _rampAController;
         spa = _spa;
 
         // Role assignment
+        _grantRole(PROTOCOL_OWNER_ROLE, _owner);
         _grantRole(GOVERNOR_ROLE, _governor);
         _grantRole(CURATOR_ROLE, _curator);
         _grantRole(GUARDIAN_ROLE, _guardian);
@@ -280,4 +285,9 @@ contract Keeper is AccessControlUpgradeable, IKeeper {
 
         require(newValue <= bounds.max, OutOfBounds());
     }
+
+    /**
+     * @dev Authorisation to upgrade the implementation of the contract.
+     */
+    function _authorizeUpgrade(address) internal override onlyRole(PROTOCOL_OWNER_ROLE) { }
 }

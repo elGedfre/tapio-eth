@@ -64,7 +64,6 @@ contract Deploy is Config {
                 lpTokenBeacon,
                 wlpTokenBeacon,
                 rampAControllerBeacon,
-                keeperBeacon,
                 new ConstantExchangeRateProvider(),
                 0,
                 0

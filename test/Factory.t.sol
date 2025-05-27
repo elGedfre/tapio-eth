@@ -63,7 +63,6 @@ contract FactoryTest is Test {
                 lpTokenBeacon,
                 wlpTokenBeacon,
                 rampAControllerBeacon,
-                keeperBeacon,
                 new ConstantExchangeRateProvider(),
                 0,
                 0
@@ -304,7 +303,6 @@ contract FactoryTest is Test {
             0,
             100,
             30 minutes,
-            address(0),
             address(0),
             address(0),
             address(0),
