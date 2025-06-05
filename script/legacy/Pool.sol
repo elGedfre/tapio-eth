@@ -4,12 +4,12 @@ pragma solidity 0.8.28;
 import { Vm } from "forge-std/Vm.sol";
 import { stdJson } from "forge-std/StdJson.sol";
 import { console } from "forge-std/console.sol";
-import { Config } from "script/Config.sol";
-import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
-import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
-import { MockToken } from "../src/mock/MockToken.sol";
-import { MockExchangeRateProvider } from "../src/mock/MockExchangeRateProvider.sol";
-import { ChainlinkOracleProvider } from "../src/misc/ChainlinkOracleProvider.sol";
+import { Config } from "script/legacy/Config.sol";
+import { SelfPeggingAssetFactory } from "src/SelfPeggingAssetFactory.sol";
+import { SelfPeggingAsset } from "src/SelfPeggingAsset.sol";
+import { MockToken } from "src/mock/MockToken.sol";
+import { MockExchangeRateProvider } from "src/mock/MockExchangeRateProvider.sol";
+import { ChainlinkOracleProvider } from "src/misc/ChainlinkOracleProvider.sol";
 
 contract Pool is Config {
     function createStandardPool(address tokenA, address tokenB) internal returns (address, address, address, address) {

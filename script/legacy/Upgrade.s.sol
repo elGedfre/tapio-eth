@@ -4,16 +4,16 @@ pragma solidity 0.8.28;
 import { stdJson } from "forge-std/StdJson.sol";
 import { console } from "forge-std/console.sol";
 
-import { Deploy } from "script/Deploy.sol";
-import { Pool } from "script/Pool.sol";
-import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
-import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
-import { MockToken } from "../src/mock/MockToken.sol";
+import { Deploy } from "script/legacy/Deploy.sol";
+import { Pool } from "script/legacy/Pool.sol";
+import { SelfPeggingAssetFactory } from "src/SelfPeggingAssetFactory.sol";
+import { SelfPeggingAsset } from "src/SelfPeggingAsset.sol";
+import { MockToken } from "src/mock/MockToken.sol";
 import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
-import { LPToken } from "../src/LPToken.sol";
-import { WLPToken } from "../src/WLPToken.sol";
-import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
+import { SelfPeggingAsset } from "src/SelfPeggingAsset.sol";
+import { LPToken } from "src/LPToken.sol";
+import { WLPToken } from "src/WLPToken.sol";
+import { SelfPeggingAssetFactory } from "src/SelfPeggingAssetFactory.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract Upgrade is Deploy, Pool {

@@ -4,15 +4,15 @@ pragma solidity 0.8.28;
 import { stdJson } from "forge-std/StdJson.sol";
 import { console2 } from "forge-std/console2.sol";
 
-import { Deploy } from "script/Deploy.sol";
-import { Pool } from "script/Pool.sol";
-import { MockToken } from "../src/mock/MockToken.sol";
-import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
-import { ChainlinkOracleProvider } from "../src/misc/ChainlinkOracleProvider.sol";
+import { Deploy } from "script/legacy/Deploy.sol";
+import { Pool } from "script/legacy/Pool.sol";
+import { MockToken } from "src/mock/MockToken.sol";
+import { SelfPeggingAsset } from "src/SelfPeggingAsset.sol";
+import { ChainlinkOracleProvider } from "src/misc/ChainlinkOracleProvider.sol";
 import "@chainlink/contracts/shared/interfaces/AggregatorV3Interface.sol";
-import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
-import { ChainlinkCompositeOracleProvider } from "../src/misc/ChainlinkCompositeOracleProvider.sol";
-import { MockExchangeRateProvider } from "../src/mock/MockExchangeRateProvider.sol";
+import { SelfPeggingAssetFactory } from "src/SelfPeggingAssetFactory.sol";
+import { ChainlinkCompositeOracleProvider } from "src/misc/ChainlinkCompositeOracleProvider.sol";
+import { MockExchangeRateProvider } from "src/mock/MockExchangeRateProvider.sol";
 
 contract AddPool is Deploy, Pool {
     struct JSONData {

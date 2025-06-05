@@ -4,11 +4,11 @@ pragma solidity 0.8.28;
 import { stdJson } from "forge-std/StdJson.sol";
 import { console } from "forge-std/console.sol";
 
-import { Deploy } from "script/Deploy.sol";
-import { Pool } from "script/Pool.sol";
-import { MockToken } from "../src/mock/MockToken.sol";
-import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
-import { MockExchangeRateProvider } from "../src/mock/MockExchangeRateProvider.sol";
+import { Deploy } from "script/legacy/Deploy.sol";
+import { Pool } from "script/legacy/Pool.sol";
+import { MockToken } from "src/mock/MockToken.sol";
+import { SelfPeggingAsset } from "src/SelfPeggingAsset.sol";
+import { MockExchangeRateProvider } from "src/mock/MockExchangeRateProvider.sol";
 
 contract Testnet is Deploy, Pool {
     function init() internal {

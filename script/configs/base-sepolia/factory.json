@@ -1,0 +1,13 @@
+{
+  "initialize": {
+    "governor": "0x00",
+    "mintFee": "0",
+    "swapFee": "0",
+    "redeemFee": "0",
+    "offPegFeeMultiplier": "0",
+    "A": "100",
+    "minRampTime": "30 minutes",
+    "exchangeRateFeeFactor": "0",
+    "bufferPercent": "0"
+  }
+}

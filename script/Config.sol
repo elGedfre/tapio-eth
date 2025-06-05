@@ -3,49 +3,93 @@ pragma solidity 0.8.28;
 
 import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
-import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
+import { SelfPeggingAssetFactory } from "src/SelfPeggingAssetFactory.sol";
 
 contract Config is Script {
-    bool testnet = vm.envBool("TESTNET");
-
     uint256 deployerPrivateKey;
+    uint256 adminPrivateKey;
 
-    address GOVERNOR;
+    uint256[] public forks;
+
     address DEPLOYER;
+    address ADMIN;
 
-    SelfPeggingAssetFactory factory;
-    address selfPeggingAssetBeacon;
-    address lpTokenBeacon;
-    address wlpTokenBeacon;
-    address rampAControllerBeacon;
-    address zap;
+    mapping(uint256 => string) rpcs;
 
-    function loadConfig() internal {
-        if (!testnet) {
-            // POPULATE ADDRESSES BASED ON CHAIN ID
-            // usdc = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-            // usdt = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    constructor() {
+        rpcs[8453] = "BASE_RPC";
+        rpcs[84_532] = "BASE_SEPOLIA_RPC";
+        rpcs[42_161] = "ARB_RPC";
+        rpcs[421_614] = "ARB_SEPOLIA_RPC";
+        rpcs[10] = "OP_RPC";
+        rpcs[11_155_420] = "OP_SEPOLIA_RPC";
+        rpcs[80_069] = "BERA_BEPOLIA_RPC";
+        rpcs[10_143] = "MONAD_TESTNET_RPC";
+        rpcs[998] = "HYPER_TESTNET";
+        rpcs[146] = "SONIC_MAINNET_RPC";
+        rpcs[57_054] = "SONIC_TESTNET_RPC";
+        rpcs[1301] = "UNICHAIN_SEPOLIA_RPC";
+    }
+
+    function setUp() internal {
+        if (vm.envUint("HEX_PRIV_KEY") == 0) revert("No private keys found");
+        deployerPrivateKey = vm.envUint("HEX_PRIV_KEY");
+        adminPrivateKey = vm.envUint("MODERATOR_PRIV_KEY");
+        DEPLOYER = vm.addr(deployerPrivateKey);
+        ADMIN = vm.addr(adminPrivateKey);
+    }
+
+    function startsWith(string memory str, string memory prefix) internal pure returns (bool) {
+        bytes memory strBytes = bytes(str);
+        bytes memory prefixBytes = bytes(prefix);
+        if (strBytes.length < prefixBytes.length) return false;
+        for (uint256 i = 0; i < prefixBytes.length; i++) {
+            if (strBytes[i] != prefixBytes[i]) return false;
         }
+        return true;
     }
 
-    function getNetworkName(uint256 chainId) internal view returns (string memory) {
-        if (chainId == 84_532) return "basesepolia";
-        else if (chainId == 421_614) return "arbitrumsepolia";
-        else if (chainId == 11_155_420) return "opsepolia";
-        else if (chainId == 10_143) return "monadtestnet";
-        else if (chainId == 80_069) return "bera-bepolia";
-        else if (chainId == 998) return "hyper-testnet";
-        else if (chainId == 42_161) return "arbitrum";
-        else if (chainId == 5) return "base";
-        else if (chainId == 10) return "optimism";
-        else if (chainId == 8453) return "base";
-        else if (chainId == 57_054) return "sonic-testnet";
-        else if (chainId == 146) return "sonic-mainnet";
-        else revert("Invalid chain ID");
+    function getBaseDir(string memory chain, bool isDryRun) internal view returns (string memory) {
+        string memory root = vm.projectRoot();
+        string memory version = vm.envString("VERSION");
+        return isDryRun
+            ? string(abi.encodePacked(root, "/deployments/", version, "/", chain, "/dry-run"))
+            : string(abi.encodePacked(root, "/deployments/", version, "/", chain));
     }
 
-    function getChainId() public view returns (uint256) {
-        uint256 chainId = block.chainid;
-        return chainId;
+    function getDeploymentPath(string memory chain) internal view returns (string memory) {
+        string memory baseDir = getBaseDir(chain, vm.envBool("DRY_RUN"));
+        return string(abi.encodePacked(baseDir, "/deploymentData.json"));
+    }
+
+    function readDeploymentData(string memory chain)
+        internal
+        view
+        returns (
+            address factory,
+            address lpTokenBeacon,
+            address selfPeggingAssetBeacon,
+            address wlpTokenBeacon,
+            address zap
+        )
+    {
+        string memory deploymentPath = getDeploymentPath(chain);
+        string memory json = vm.readFile(deploymentPath);
+
+        factory = vm.parseJsonAddress(json, ".Factory");
+        lpTokenBeacon = vm.parseJsonAddress(json, ".LPTokenBeacon");
+        selfPeggingAssetBeacon = vm.parseJsonAddress(json, ".SelfPeggingAssetBeacon");
+        wlpTokenBeacon = vm.parseJsonAddress(json, ".WLPTokenBeacon");
+        zap = vm.parseJsonAddress(json, ".Zap");
+    }
+
+    function writeJsonFile(string memory filePath, string memory json) internal {
+        if (vm.exists(filePath)) {
+            console.log("File %s already exists, skipping", filePath);
+            return;
+        }
+        console.log("Writing JSON to %s: %s", filePath, json);
+        vm.writeFile(filePath, json);
+        console.log("Created file at %s", filePath);
     }
 }
