@@ -35,7 +35,7 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
     error OutOfBounds();
     error DeltaTooBig();
     error RelativeRangeNotSet();
-    error UnauthorizedAccount();
+    error WrongSymbol();
 
     /**
      * @custom:oz-upgrades-unsafe-allow constructor
@@ -201,6 +201,20 @@ contract Keeper is AccessControlUpgradeable, UUPSUpgradeable, IKeeper {
 
         lpToken.setBuffer(newBuffer);
         emit BufferPercentUpdated(cur, newBuffer);
+    }
+
+    /**
+     * @inheritdoc IKeeper
+     */
+    function setTokenSymbol(string calldata newSymbol) external override onlyRole(GOVERNOR_ROLE) {
+        string memory cur = lpToken.symbol();
+        require(
+            bytes(newSymbol).length > 0 && keccak256(abi.encodePacked(cur)) != keccak256(abi.encodePacked(newSymbol)),
+            WrongSymbol()
+        );
+
+        lpToken.setSymbol(newSymbol);
+        emit TokenSymbolUpdated(cur, newSymbol);
     }
 
     /**

@@ -20,6 +20,7 @@ interface IKeeper {
     event OffPegFeeMultiplierUpdated(uint256 oldMultiplier, uint256 newMultiplier);
     event ExchangeRateFeeFactorUpdated(uint256 oldFactor, uint256 newFactor);
     event BufferPercentUpdated(uint256 oldBuffer, uint256 newBuffer);
+    event TokenSymbolUpdated(string oldSymbol, string newSymbol);
     event DecayPeriodUpdated(uint256 oldPeriod, uint256 newPeriod);
     event RateChangeSkipPeriodUpdated(uint256 oldPeriod, uint256 newPeriod);
     event FeeErrorMarginUpdated(uint256 oldMargin, uint256 newMargin);
@@ -77,6 +78,12 @@ interface IKeeper {
      * @param newBuffer The new buffer value
      */
     function setBufferPercent(uint256 newBuffer) external;
+
+    /**
+     * @notice Set the token symbol
+     * @param newSymbol The new token symbol
+     */
+    function setTokenSymbol(string calldata newSymbol) external;
 
     /**
      * @notice Set the decay period

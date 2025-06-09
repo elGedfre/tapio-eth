@@ -128,14 +128,6 @@ contract LPToken is Initializable, OwnableUpgradeable, ILPToken {
      */
     event SymbolModified(string);
 
-    /**
-     * @notice Emitted when the SPA pool is set.
-     */
-    event PoolSet(address);
-
-    /// @notice Error thrown when the SPA pool address is already set.
-    error PoolAlreadySet();
-
     /// @notice Error thrown when the allowance is below zero.
     error AllowanceBelowZero();
 

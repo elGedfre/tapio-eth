@@ -322,12 +322,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /// @notice Error thrown when the A value is not set.
     error ANotSet();
 
-    /// @notice Error thrown when the controller is in a ramp
-    error CannotChangeControllerDuringRamp();
-
-    /// @notice Error thrown when the controller initial A not match
-    error InitialANotMatchCurrentA();
-
     /// @notice Error thrown when the amount is invalid.
     error InvalidAmount();
 
@@ -358,12 +352,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
     /// @notice Error thrown when the pool is not paused.
     error NotPaused();
 
-    /// @notice Error thrown when the account address is zero
-    error AccountIsZero();
-
-    /// @notice Error thrown when the block number is an past block
-    error PastBlock();
-
     /// @notice Error thrown when there is no loss
     error NoLosses();
 
@@ -381,18 +369,6 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
 
     /// @notice Error thrown when redeem amount is max
     error MaxRedeemAmount(uint256 redeemAmount, uint256 maxRedeemAmount);
-
-    /// @notice Error thrown in and out token are the same
-    error SameTokenInTokenOut(uint256 tokenInIndex, uint256 tokenOutIndex);
-
-    /// @notice Error thrown when the pool is imbalanced
-    error ImbalancedPool(uint256 oldD, uint256 newD);
-
-    /// @notice Error thrown when the account is unauthorized
-    error UnauthorizedAccount();
-
-    /// @notice Error thrown when the address is zero
-    error ZeroAddress();
 
     modifier syncRamping() {
         if (address(rampAController) != address(0)) {
