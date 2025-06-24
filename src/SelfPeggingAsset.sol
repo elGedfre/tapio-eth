@@ -1296,6 +1296,7 @@ contract SelfPeggingAsset is Initializable, ReentrancyGuardUpgradeable, OwnableU
      */
     function _volatilityFee(uint256 _i, uint256 _baseFee) internal view returns (uint256) {
         uint256 multI = _currentMultiplier(_i);
+        if (multI <= FEE_DENOMINATOR) return 0;
         uint256 diff = multI - FEE_DENOMINATOR;
         return (_baseFee * diff) / FEE_DENOMINATOR;
     }
