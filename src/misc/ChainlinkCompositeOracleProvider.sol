@@ -69,6 +69,11 @@ contract ChainlinkCompositeOracleProvider {
     error InvalidFeedPrice();
 
     /**
+     * @notice Error emitted when oracle round is incomplete
+     */
+    error IncompleteRound();
+
+    /**
      * @notice Contract constructor
      * @param _sequencerUptimeFeed L2 Sequencer uptime feed
      * @param _configs Array of configs for feeds
@@ -103,15 +108,12 @@ contract ChainlinkCompositeOracleProvider {
             Config memory config = configs[i];
             currentDecimals = _getCurrentDecimals(config);
 
-            (, int256 feedPrice,, uint256 updatedAt,) = config.feed.latestRoundData();
+            (uint80 roundID, int256 feedPrice,, uint256 updatedAt, uint80 answeredInRound) =
+                config.feed.latestRoundData();
 
-            if (feedPrice <= 0) {
-                revert InvalidFeedPrice();
-            }
-
-            if (block.timestamp - updatedAt > config.maxStalePeriod) {
-                revert StalePrice();
-            }
+            require(feedPrice > 0, InvalidFeedPrice());
+            require(block.timestamp - updatedAt <= config.maxStalePeriod, StalePrice());
+            require(answeredInRound >= roundID, IncompleteRound());
 
             if (config.isInverted) {
                 uint256 invertedFeedPrice =

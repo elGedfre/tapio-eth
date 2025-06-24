@@ -50,6 +50,16 @@ contract ChainlinkOracleProvider {
     error GracePeriodNotOver();
 
     /**
+     * @notice Error emitted when price from feed is invalid
+     */
+    error InvalidFeedPrice();
+
+    /**
+     * @notice Error emitted when oracle round is incomplete
+     */
+    error IncompleteRound();
+
+    /**
      * @notice Contract constructor
      * @param _sequencerUptimeFeed L2 Sequencer uptime feed
      */
@@ -74,13 +84,13 @@ contract ChainlinkOracleProvider {
     function price() external view returns (uint256) {
         _validateSequencerStatus();
 
-        (, int256 price,, uint256 updatedAt,) = feed.latestRoundData();
+        (uint80 roundID, int256 feedPrice,, uint256 updatedAt, uint80 answeredInRound) = feed.latestRoundData();
 
-        if (block.timestamp - updatedAt > maxStalePeriod) {
-            revert StalePrice();
-        }
+        require(feedPrice > 0, InvalidFeedPrice());
+        require(block.timestamp - updatedAt <= maxStalePeriod, StalePrice());
+        require(answeredInRound >= roundID, IncompleteRound());
 
-        return uint256(price);
+        return uint256(feedPrice);
     }
 
     /**
