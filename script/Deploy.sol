@@ -13,7 +13,6 @@ import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy
 import "../src/misc/ConstantExchangeRateProvider.sol";
 import { Zap } from "../src/periphery/Zap.sol";
 import { Keeper } from "../src/periphery/Keeper.sol";
-
 import { RampAController } from "../src/periphery/RampAController.sol";
 
 contract Deploy is Config {
@@ -46,26 +45,27 @@ contract Deploy is Config {
         console.log("deploy-factory-logs");
         console.log("---------------");
 
-        SelfPeggingAssetFactory.InitializeArgument memory args = SelfPeggingAssetFactory.InitializeArgument(
-            GOVERNOR,
-            GOVERNOR,
-            0,
-            0,
-            0,
-            0,
-            100,
-            30 minutes,
-            selfPeggingAssetBeacon,
-            spaTokenBeacon,
-            wspaTokenBeacon,
-            rampAControllerBeacon,
-            keeperImplementation,
-            address(new ConstantExchangeRateProvider()),
-            0,
-            0
+        bytes memory data = abi.encodeCall(
+            SelfPeggingAssetFactory.initialize,
+            SelfPeggingAssetFactory.InitializeArgument(
+                DEPLOYER,
+                GOVERNOR,
+                0,
+                0,
+                0,
+                0,
+                100,
+                30 minutes,
+                selfPeggingAssetBeacon,
+                spaTokenBeacon,
+                wspaTokenBeacon,
+                rampAControllerBeacon,
+                keeperImplementation,
+                address(new ConstantExchangeRateProvider()),
+                0,
+                0
+            )
         );
-
-        bytes memory data = abi.encodeCall(SelfPeggingAssetFactory.initialize, (args));
         ERC1967Proxy proxy = new ERC1967Proxy(address(new SelfPeggingAssetFactory()), data);
 
         factory = SelfPeggingAssetFactory(address(proxy));

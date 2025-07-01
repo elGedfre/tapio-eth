@@ -48,22 +48,22 @@ contract GovernanceTest is Test {
         tokenA = new MockToken("test 1", "T1", 18);
         tokenB = new MockToken("test 2", "T2", 18);
 
-        address selfPeggingAssetImplentation = address(new SelfPeggingAsset());
-        address spaTokenImplentation = address(new SPAToken());
-        address wspaTokenImplentation = address(new WSPAToken());
-        address rampAControllerImplentation = address(new RampAController());
+        address selfPeggingAssetImplementation = address(new SelfPeggingAsset());
+        address spaTokenImplementation = address(new SPAToken());
+        address wspaTokenImplementation = address(new WSPAToken());
+        address rampAControllerImplementation = address(new RampAController());
         address keeperImplementation = address(new Keeper());
-        UpgradeableBeacon beacon = new UpgradeableBeacon(selfPeggingAssetImplentation, protocolOwner);
+        UpgradeableBeacon beacon = new UpgradeableBeacon(selfPeggingAssetImplementation, protocolOwner);
         spaBeacon = beacon;
         address selfPeggingAssetBeacon = address(beacon);
 
-        beacon = new UpgradeableBeacon(spaTokenImplentation, governor);
+        beacon = new UpgradeableBeacon(spaTokenImplementation, governor);
         address spaTokenBeacon = address(beacon);
 
-        beacon = new UpgradeableBeacon(wspaTokenImplentation, governor);
+        beacon = new UpgradeableBeacon(wspaTokenImplementation, governor);
         address wspaTokenBeacon = address(beacon);
 
-        beacon = new UpgradeableBeacon(rampAControllerImplentation, governor);
+        beacon = new UpgradeableBeacon(rampAControllerImplementation, governor);
         address rampAControllerBeacon = address(beacon);
 
         SelfPeggingAssetFactory.InitializeArgument memory args = SelfPeggingAssetFactory.InitializeArgument(

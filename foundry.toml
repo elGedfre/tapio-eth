@@ -4,7 +4,6 @@
 auto_detect_solc = false
 block_timestamp = 1_680_220_800 # March 31, 2023 at 00:00 GMT
 bytecode_hash = "none"
-evm_version = "shanghai"
 fuzz = { runs = 10_000 }
 gas_reports = ["*"]
 optimizer = true
@@ -50,6 +49,8 @@ opsepolia = "https://sepolia.optimism.io"
 monadtestnet = "https://testnet-rpc.monad.xyz"
 bera-bepolia = "https://bepolia.rpc.berachain.com"
 hyper-testnet = "https://rpc.hyperliquid-testnet.xyz/evm"
+sonic-testnet = "https://sonic-testnet.drpc.org"
+sonic-mainnet = "https://rpc.soniclabs.com"
 
 [etherscan]
 arbitrumsepolia = { key = "${ETHERSCAN_ARBITRUM_KEY}", chain = 421614 }
@@ -58,3 +59,5 @@ opsepolia = { key = "${ETHERSCAN_OP_KEY}", chain = 11155420 }
 arbitrum = { key = "${ETHERSCAN_ARBITRUM_KEY}", chain = 42161 }
 base = { key = "${ETHERSCAN_BASE_KEY}", chain = 8453 }
 optimism = { key = "${ETHERSCAN_OP_KEY}", chain = 10 }
+sonic-testnet = { key = "${ETHERSCAN_SONIC_KEY}", chain = 57054, url = "https://api-testnet.sonicscan.org/api" }
+sonic-mainnet = { key = "${ETHERSCAN_SONIC_KEY}", chain = 146, url = "https://api.sonicscan.org/api" }
