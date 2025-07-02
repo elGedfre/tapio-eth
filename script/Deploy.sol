@@ -51,9 +51,9 @@ contract Deploy is Config {
                 DEPLOYER,
                 GOVERNOR,
                 0,
+                0.0005e10,
                 0,
-                0,
-                0,
+                1e10,
                 100,
                 30 minutes,
                 selfPeggingAssetBeacon,
@@ -63,7 +63,7 @@ contract Deploy is Config {
                 keeperImplementation,
                 address(new ConstantExchangeRateProvider()),
                 0,
-                0
+                0.1e10
             )
         );
         ERC1967Proxy proxy = new ERC1967Proxy(address(new SelfPeggingAssetFactory()), data);

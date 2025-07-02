@@ -1,0 +1,15 @@
+{
+  "mintFee": 0,
+  "swapFee": 5000000,
+  "redeemFee": 0,
+  "offPegFeeMultiplier": 10000000000,
+  "A": 100,
+  "minRampTime": 1800,
+  "bufferPercent": 1000000000,
+  "exchangeRateFeeFactor": 0,
+  "rateChangeSkipPeriod": 86400,
+  "yieldErrorMargin": 10000,
+  "feeErrorMargin": 100000,
+  "decayPeriod": 300,
+  "tokenSymbol": "SPA-wS-OS"
+}

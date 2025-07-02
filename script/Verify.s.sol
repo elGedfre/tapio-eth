@@ -7,6 +7,7 @@ import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
 
 import { SelfPeggingAsset } from "../src/SelfPeggingAsset.sol";
+import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
 import { SPAToken } from "../src/SPAToken.sol";
 import { IRampAController } from "../src/interfaces/IRampAController.sol";
 import { Keeper } from "../src/periphery/Keeper.sol";
@@ -18,8 +19,9 @@ contract Verify is Script {
 
     address private spa;
     address private keeper;
-    address private rampA;
+    address private factory;
     address private spaToken;
+    IRampAController private rampA;
 
     struct Expected {
         uint256 mintFee;
@@ -35,14 +37,11 @@ contract Verify is Script {
         uint256 yieldErrorMargin;
         uint256 decayPeriod;
         string tokenSymbol;
-        address treasury;
     }
 
     Expected private exp;
 
     function run() external {
-        vm.createSelectFork(RPC_URL);
-
         _setUp();
         _verify();
         console.log("Deployment configuration match expected values");
@@ -50,11 +49,11 @@ contract Verify is Script {
 
     function _setUp() internal {
         // addresses
-        string memory aJson = vm.readFile("script/addresses.json");
-        spa = aJson.readAddress(".SelfPeggingAssetBeacon");
-        keeper = aJson.readAddress(".Keeper");
-        rampA = aJson.readAddress(".RampAController");
-        spaToken = aJson.readAddress(".SPATokenBeacon");
+        string memory aJson = vm.readFile("broadcast/sonic-testnet.json");
+        // string memory aJson = vm.readFile("broadcast/sonic-mainnet.json");
+        spa = aJson.readAddress(".wSOSPool");
+        factory = aJson.readAddress(".Factory");
+        spaToken = aJson.readAddress(".wSOSPoolSPAToken");
 
         // expected
         string memory eJson = vm.readFile("script/expected.json");
@@ -71,12 +70,13 @@ contract Verify is Script {
         exp.yieldErrorMargin = eJson.readUint(".yieldErrorMargin");
         exp.decayPeriod = eJson.readUint(".decayPeriod");
         exp.tokenSymbol = eJson.readString(".tokenSymbol");
-        exp.treasury = eJson.readAddress(".treasury");
     }
 
-    function _verify() internal view {
+    function _verify() internal {
         // SPA pool
         SelfPeggingAsset pool = SelfPeggingAsset(spa);
+        keeper = pool.owner();
+        rampA = pool.rampAController();
         _eq(pool.mintFee(), exp.mintFee, "mintFee");
         _eq(pool.swapFee(), exp.swapFee, "swapFee");
         _eq(pool.redeemFee(), exp.redeemFee, "redeemFee");
@@ -93,12 +93,11 @@ contract Verify is Script {
         _eq(lp.symbol(), exp.tokenSymbol, "tokenSymbol");
 
         // RampAController
-        IRampAController rc = IRampAController(rampA);
-        _eq(rc.getA(), exp.A, "A (amp coeff)");
-        _eq(rc.minRampTime(), exp.minRampTime, "minRampTime");
+        _eq(rampA.getA(), exp.A, "A (amp coeff)");
+        _eq(rampA.minRampTime(), exp.minRampTime, "minRampTime");
 
         // Keeper
-        _eq(Keeper(keeper).treasury(), exp.treasury, "treasury");
+        _eq(Keeper(keeper).treasury(), SelfPeggingAssetFactory(factory).governor(), "treasury");
     }
 
     function _eq(uint256 actual, uint256 expected, string memory name) private pure {

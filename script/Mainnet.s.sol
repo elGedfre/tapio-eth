@@ -93,11 +93,11 @@ contract Mainnet is Deploy, Pool {
 
             (address wSstSSPAToken, address wSstSPool, address wSstSWSPAToken,) = createStandardAndERC4626Pool(ws, stS);
 
-            initialMint(ws, stS, 5e14, 4.9e14, SelfPeggingAsset(wSstSPool));
+            // initialMint(ws, stS, 5e14, 4.9e14, SelfPeggingAsset(wSstSPool));
 
             (address wSwOSSPAToken, address wSwOSPool, address wSwOSWSPAToken,) = createStandardAndERC4626Pool(ws, wOS);
 
-            initialMint(ws, wOS, 5e14, 3e14, SelfPeggingAsset(wSwOSPool));
+            // initialMint(ws, wOS, 5e14, 3e14, SelfPeggingAsset(wSwOSPool));
 
             vm.writeJson(vm.serializeAddress("contracts", "Zap", zap), path);
             vm.writeJson(vm.serializeAddress("contracts", "Factory", address(factory)), path);
