@@ -49,11 +49,11 @@ contract Verify is Script {
 
     function _setUp() internal {
         // addresses
-        string memory aJson = vm.readFile("broadcast/sonic-testnet.json");
-        // string memory aJson = vm.readFile("broadcast/sonic-mainnet.json");
-        spa = aJson.readAddress(".wSOSPool");
+        // string memory aJson = vm.readFile("broadcast/sonic-testnet.json");
+        string memory aJson = vm.readFile("broadcast/sonic-mainnet.json");
+        spa = aJson.readAddress(".wSwOSPool");
         factory = aJson.readAddress(".Factory");
-        spaToken = aJson.readAddress(".wSOSPoolSPAToken");
+        spaToken = aJson.readAddress(".wSwOSPoolSPAToken");
 
         // expected
         string memory eJson = vm.readFile("script/expected.json");

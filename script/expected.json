@@ -11,5 +11,5 @@
   "yieldErrorMargin": 10000,
   "feeErrorMargin": 100000,
   "decayPeriod": 300,
-  "tokenSymbol": "SPA-wS-OS"
+  "tokenSymbol": "SPA-wS-wOS"
 }
