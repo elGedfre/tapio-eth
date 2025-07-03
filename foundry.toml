@@ -51,6 +51,7 @@ bera-bepolia = "https://bepolia.rpc.berachain.com"
 hyper-testnet = "https://rpc.hyperliquid-testnet.xyz/evm"
 sonic-testnet = "https://sonic-testnet.drpc.org"
 sonic-mainnet = "https://rpc.soniclabs.com"
+local = "http://127.0.0.1:8545"
 
 [etherscan]
 arbitrumsepolia = { key = "${ETHERSCAN_ARBITRUM_KEY}", chain = 421614 }

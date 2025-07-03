@@ -19,8 +19,8 @@ contract TestTapioFunctionality is Script, Test {
     address wspa;
     address zap;
 
-    address ws = 0x41CeC3959d31B8Da4498A5151adbCf633095e62F; // wS
-    address os = 0x388ddEEB518067a32c200D55194Df16C4203f2a6; // OS
+    address ws;
+    address os;
 
     address alice;
     address bob;
@@ -32,11 +32,13 @@ contract TestTapioFunctionality is Script, Test {
 
     function run() public {
         // addresses
-        string memory aJson = vm.readFile("broadcast/sonic-testnet.json");
-        // string memory aJson = vm.readFile("broadcast/sonic-mainnet.json");
-        spa = aJson.readAddress(".wSOSPool");
-        wspa = aJson.readAddress(".wSOSPoolWSPAToken");
+        // string memory aJson = vm.readFile("broadcast/sonic-testnet.json");
+        string memory aJson = vm.readFile("broadcast/sonic-mainnet.json");
+        spa = aJson.readAddress(".wSwOSPool");
+        wspa = aJson.readAddress(".wSwOSPoolWSPAToken");
         zap = aJson.readAddress(".Zap");
+        ws = aJson.readAddress(".wS");
+        os = aJson.readAddress(".wOS");
         console.log("=== Contracts Loaded ===");
         console.log("wS OS Pool: %s", address(spa));
         console.log("WSPA Token: %s", address(wspa));
@@ -44,10 +46,11 @@ contract TestTapioFunctionality is Script, Test {
 
         // Set up fork
         // vm.createSelectFork("https://rpc.soniclabs.com");
-        vm.createSelectFork("https://rpc.blaze.soniclabs.com");
+        // vm.createSelectFork("https://rpc.blaze.soniclabs.com");
+        // vm.createSelectFork("http://127.0.0.1:8545");
         console.log("=== Fork Setup ===");
-        console.log("Fork created at block: %s", block.number);
-        console.log("Timestamp: %s", block.timestamp);
+        console2.log("Fork created at block: %s", block.number);
+        console2.log("Timestamp: %s", block.timestamp);
 
         alice = makeAddr("Alice");
         bob = makeAddr("Bob");
@@ -56,7 +59,7 @@ contract TestTapioFunctionality is Script, Test {
         console.log("- Bob: %s", bob);
 
         deal(ws, alice, INITIAL_MINT_AMOUNT * 2);
-        deal(os, alice, INITIAL_MINT_AMOUNT);
+        deal(os, alice, INITIAL_MINT_AMOUNT * 2);
         deal(ws, bob, INITIAL_MINT_AMOUNT);
         deal(os, bob, INITIAL_MINT_AMOUNT);
         console.log("=== Assets Prepared ===");
@@ -67,9 +70,15 @@ contract TestTapioFunctionality is Script, Test {
 
         // Alice mints WSPA tokens
         vm.startPrank(alice);
+        uint256[] memory amountsInitial = new uint256[](2);
+        amountsInitial[0] = 5e18;
+        amountsInitial[1] = 5e18;
         uint256[] memory amountsAlice = new uint256[](2);
         amountsAlice[0] = INITIAL_MINT_AMOUNT;
         amountsAlice[1] = INITIAL_MINT_AMOUNT;
+        IERC20(ws).approve(spa, 5e18);
+        IERC20(os).approve(spa, 5e18);
+        SelfPeggingAsset(spa).mint(amountsInitial, 0);
         IERC20(ws).approve(zap, INITIAL_MINT_AMOUNT);
         IERC20(os).approve(zap, INITIAL_MINT_AMOUNT);
         uint256 aliceWspaReceived = IZap(zap).zapIn(spa, wspa, alice, 0, amountsAlice);
