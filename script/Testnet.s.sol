@@ -23,14 +23,13 @@ contract Testnet is Deploy, Pool {
         loadConfig();
 
         vm.startBroadcast(deployerPrivateKey);
-
-        deployBeacons();
-        deployFactory();
-        deployZap();
-
         uint256 chainId = getChainId();
         string memory networkName = getNetworkName(chainId);
         string memory path = string.concat("./broadcast/", networkName, ".json");
+
+        deployBeacons();
+        deployFactory(networkName);
+        deployZap();
 
         if (chainId == 57_054) {
             MockExchangeRateProvider wSToS = new MockExchangeRateProvider(1e18, 18);

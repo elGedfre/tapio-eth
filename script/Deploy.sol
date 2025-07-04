@@ -16,6 +16,21 @@ import { Keeper } from "../src/periphery/Keeper.sol";
 import { RampAController } from "../src/periphery/RampAController.sol";
 
 contract Deploy is Config {
+    using stdJson for string;
+
+    struct Config {
+        uint256 mintFee;
+        uint256 swapFee;
+        uint256 redeemFee;
+        uint256 offPegFeeMultiplier;
+        uint256 A;
+        uint256 minRampTime;
+        uint256 bufferPercent;
+        uint256 exchangeRateFeeFactor;
+    }
+
+    Config private cfg;
+
     function deployBeacons() internal {
         console.log("---------------");
         console.log("deploy-beacon-logs");
@@ -40,7 +55,19 @@ contract Deploy is Config {
         rampAControllerBeacon = address(beacon);
     }
 
-    function deployFactory() internal {
+    function deployFactory(string memory networkName) internal {
+        string memory path = string.concat("script/configs/", networkName, ".json");
+        string memory cJson = vm.readFile(path);
+
+        cfg.mintFee = cJson.readUint(".mintFee");
+        cfg.swapFee = cJson.readUint(".swapFee");
+        cfg.redeemFee = cJson.readUint(".redeemFee");
+        cfg.offPegFeeMultiplier = cJson.readUint(".offPegFeeMultiplier");
+        cfg.A = cJson.readUint(".A");
+        cfg.minRampTime = cJson.readUint(".minRampTime");
+        cfg.exchangeRateFeeFactor = cJson.readUint(".exchangeRateFeeFactor");
+        cfg.bufferPercent = cJson.readUint(".bufferPercent");
+
         console.log("---------------");
         console.log("deploy-factory-logs");
         console.log("---------------");
@@ -50,20 +77,20 @@ contract Deploy is Config {
             SelfPeggingAssetFactory.InitializeArgument(
                 DEPLOYER,
                 GOVERNOR,
-                0,
-                0.0005e10,
-                0,
-                1e10,
-                100,
-                30 minutes,
+                cfg.mintFee,
+                cfg.swapFee,
+                cfg.redeemFee,
+                cfg.offPegFeeMultiplier,
+                cfg.A,
+                cfg.minRampTime,
                 selfPeggingAssetBeacon,
                 spaTokenBeacon,
                 wspaTokenBeacon,
                 rampAControllerBeacon,
                 keeperImplementation,
                 address(new ConstantExchangeRateProvider()),
-                0,
-                0.1e10
+                cfg.exchangeRateFeeFactor,
+                cfg.bufferPercent
             )
         );
         ERC1967Proxy proxy = new ERC1967Proxy(address(new SelfPeggingAssetFactory()), data);

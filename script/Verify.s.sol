@@ -11,15 +11,13 @@ import { SelfPeggingAssetFactory } from "../src/SelfPeggingAssetFactory.sol";
 import { SPAToken } from "../src/SPAToken.sol";
 import { IRampAController } from "../src/interfaces/IRampAController.sol";
 import { Keeper } from "../src/periphery/Keeper.sol";
+import { Config } from "script/Config.sol";
 
-contract Verify is Script {
+contract Verify is Script, Config {
     using stdJson for string;
-
-    string private constant RPC_URL = "https://rpc.soniclabs.com";
 
     address private spa;
     address private keeper;
-    address private factory;
     address private spaToken;
     IRampAController private rampA;
 
@@ -48,15 +46,17 @@ contract Verify is Script {
     }
 
     function _setUp() internal {
+        uint256 chainId = getChainId();
+        string memory networkName = getNetworkName(chainId);
+        string memory path = string.concat("./broadcast/", networkName, ".json");
         // addresses
-        // string memory aJson = vm.readFile("broadcast/sonic-testnet.json");
-        string memory aJson = vm.readFile("broadcast/sonic-mainnet.json");
+        string memory aJson = vm.readFile(path);
         spa = aJson.readAddress(".wSwOSPool");
-        factory = aJson.readAddress(".Factory");
+        factory = SelfPeggingAssetFactory(aJson.readAddress(".Factory"));
         spaToken = aJson.readAddress(".wSwOSPoolSPAToken");
 
         // expected
-        string memory eJson = vm.readFile("script/expected.json");
+        string memory eJson = vm.readFile("script/configs/expected.json");
         exp.mintFee = eJson.readUint(".mintFee");
         exp.swapFee = eJson.readUint(".swapFee");
         exp.redeemFee = eJson.readUint(".redeemFee");
@@ -97,7 +97,7 @@ contract Verify is Script {
         _eq(rampA.minRampTime(), exp.minRampTime, "minRampTime");
 
         // Keeper
-        _eq(Keeper(keeper).treasury(), SelfPeggingAssetFactory(factory).governor(), "treasury");
+        _eq(Keeper(keeper).treasury(), factory.governor(), "treasury");
     }
 
     function _eq(uint256 actual, uint256 expected, string memory name) private pure {
