@@ -46,12 +46,12 @@ contract Testnet is Deploy, Pool {
             MockToken(stS).mint(DEPLOYER, amount);
             MockToken(OS).mint(DEPLOYER, amount);
 
-            (address spaToken, address pool, address wspaToken,) =
+            (address spaToken, address pool, address wspaToken,,) =
                 createMockExchangeRatePool(address(wS), address(stS), address(wSToS), address(stSToS));
 
             initialMint(address(wS), address(stS), amount, amount, SelfPeggingAsset(pool));
 
-            (address spaToken2, address pool2, address wspaToken2,) =
+            (address spaToken2, address pool2, address wspaToken2,,) =
                 createMockExchangeRatePool(address(wS), address(OS), address(wSToS), address(OSToS));
             initialMint(address(wS), address(OS), amount, amount, SelfPeggingAsset(pool2));
 

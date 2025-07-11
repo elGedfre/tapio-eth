@@ -16,10 +16,13 @@ import { Config } from "script/Config.sol";
 contract Verify is Script, Config {
     using stdJson for string;
 
+    bytes32 implSlot = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+
     address private spa;
     address private keeper;
     address private spaToken;
-    IRampAController private rampA;
+    address private wspaToken;
+    address private rampA;
 
     struct Expected {
         uint256 mintFee;
@@ -52,8 +55,27 @@ contract Verify is Script, Config {
         // addresses
         string memory aJson = vm.readFile(path);
         spa = aJson.readAddress(".wSwOSPool");
+        factoryImplementation = aJson.readAddress(".FactoryImplementation");
+        selfPeggingAssetBeacon = aJson.readAddress(".SelfPeggingAssetBeacon");
+        spaTokenBeacon = aJson.readAddress(".SPATokenBeacon");
+        wspaTokenBeacon = aJson.readAddress(".WSPATokenBeacon");
+        rampAControllerBeacon = aJson.readAddress(".RampAControllerBeacon");
+        keeperImplementation = aJson.readAddress(".KeeperImplementation");
         factory = SelfPeggingAssetFactory(aJson.readAddress(".Factory"));
         spaToken = aJson.readAddress(".wSwOSPoolSPAToken");
+        wspaToken = aJson.readAddress(".wSwOSPoolWSPAToken");
+        rampA = aJson.readAddress(".wSwOSRampAController");
+        keeper = aJson.readAddress(".wSwOSKeeper");
+
+        require(readImpl(address(factory)) == factoryImplementation, "mismatch factory implementation");
+        require(readBeaconProxyImpl(spaToken) == readBeaconImpl(spaTokenBeacon), "mismatch spa token implementation");
+        require(readBeaconProxyImpl(wspaToken) == readBeaconImpl(wspaTokenBeacon), "mismatch wspa token implementation");
+        require(readBeaconProxyImpl(spa) == readBeaconImpl(selfPeggingAssetBeacon), "mismatch spa pool implementation");
+        require(
+            readBeaconProxyImpl(rampA) == readBeaconImpl(rampAControllerBeacon),
+            "mismatch ramp a controller implementation"
+        );
+        require(readImpl(keeper) == keeperImplementation, "mismatch keeper implementation");
 
         // expected
         string memory eJson = vm.readFile("script/configs/expected.json");
@@ -75,8 +97,6 @@ contract Verify is Script, Config {
     function _verify() internal {
         // SPA pool
         SelfPeggingAsset pool = SelfPeggingAsset(spa);
-        keeper = pool.owner();
-        rampA = pool.rampAController();
         _eq(pool.mintFee(), exp.mintFee, "mintFee");
         _eq(pool.swapFee(), exp.swapFee, "swapFee");
         _eq(pool.redeemFee(), exp.redeemFee, "redeemFee");
@@ -93,11 +113,29 @@ contract Verify is Script, Config {
         _eq(lp.symbol(), exp.tokenSymbol, "tokenSymbol");
 
         // RampAController
-        _eq(rampA.getA(), exp.A, "A (amp coeff)");
-        _eq(rampA.minRampTime(), exp.minRampTime, "minRampTime");
+        _eq(IRampAController(rampA).getA(), exp.A, "A (amp coeff)");
+        _eq(IRampAController(rampA).minRampTime(), exp.minRampTime, "minRampTime");
 
         // Keeper
         _eq(Keeper(keeper).treasury(), factory.governor(), "treasury");
+    }
+
+    function readImpl(address proxy) internal view returns (address) {
+        return address(uint160(uint256(vm.load(proxy, implSlot))));
+    }
+
+    function readBeaconProxyImpl(address proxy) internal view returns (address) {
+        bytes memory code = address(proxy).code;
+        bytes32 result;
+        // offset to get immutable variable of deployed bytecode (beacon address) is 0x18 or bytes24
+        assembly {
+            result := mload(add(code, add(0x20, 0x18)))
+        }
+        return address(uint160(uint256(vm.load(address(uint160(uint256(result))), bytes32(uint256(1))))));
+    }
+
+    function readBeaconImpl(address beacon) internal view returns (address) {
+        return address(uint160(uint256(vm.load(beacon, bytes32(uint256(1))))));
     }
 
     function _eq(uint256 actual, uint256 expected, string memory name) private pure {

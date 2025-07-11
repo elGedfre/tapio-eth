@@ -93,7 +93,8 @@ contract Deploy is Config {
                 cfg.bufferPercent
             )
         );
-        ERC1967Proxy proxy = new ERC1967Proxy(address(new SelfPeggingAssetFactory()), data);
+        factoryImplementation = address(new SelfPeggingAssetFactory());
+        ERC1967Proxy proxy = new ERC1967Proxy(factoryImplementation, data);
 
         factory = SelfPeggingAssetFactory(address(proxy));
         factory.transferOwnership(GOVERNOR);

@@ -12,6 +12,7 @@ contract Config is Script {
     address DEPLOYER;
 
     SelfPeggingAssetFactory factory;
+    address factoryImplementation;
     address selfPeggingAssetBeacon;
     address spaTokenBeacon;
     address wspaTokenBeacon;

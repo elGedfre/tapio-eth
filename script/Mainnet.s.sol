@@ -69,19 +69,19 @@ contract Mainnet is Deploy, Pool {
                 )
             );
 
-            (, address pool,,) = createChainlinkPool(weth, wstETH, wstETHOracle);
+            (, address pool,,,) = createChainlinkPool(weth, wstETH, wstETHOracle);
 
             initialMint(weth, wstETH, ethAmount, ethAmount, SelfPeggingAsset(pool));
 
-            (, pool,,) = createChainlinkPool(weth, weETH, weETHOracle);
+            (, pool,,,) = createChainlinkPool(weth, weETH, weETHOracle);
 
             initialMint(weth, weETH, ethAmount, ethAmount, SelfPeggingAsset(pool));
 
-            (, pool,,) = createChainlinkPool(weth, cbETH, cbETHOracle);
+            (, pool,,,) = createChainlinkPool(weth, cbETH, cbETHOracle);
 
             initialMint(weth, cbETH, ethAmount, ethAmount, SelfPeggingAsset(pool));
 
-            (, pool,,) = createStandardPool(usdc, usdt);
+            (, pool,,,) = createStandardPool(usdc, usdt);
 
             initialMint(usdc, usdt, usdAmount, usdAmount, SelfPeggingAsset(pool));
         } else if (chainId == 146) {
@@ -90,28 +90,49 @@ contract Mainnet is Deploy, Pool {
             address stS = 0xE5DA20F15420aD15DE0fa650600aFc998bbE3955;
             address wOS = 0x9F0dF7799f6FDAd409300080cfF680f5A23df4b1;
 
-            (address wSstSSPAToken, address wSstSPool, address wSstSWSPAToken,) = createStandardAndERC4626Pool(ws, stS);
+            (
+                address wSstSSPAToken,
+                address wSstSPool,
+                address wSstSWSPAToken,
+                address wSstSRampAController,
+                address wSstSKeeper
+            ) = createStandardAndERC4626Pool(ws, stS);
 
             // initialMint(ws, stS, 5e14, 4.9e14, SelfPeggingAsset(wSstSPool));
 
-            (address wSwOSSPAToken, address wSwOSPool, address wSwOSWSPAToken,) = createStandardAndERC4626Pool(ws, wOS);
+            (
+                address wSwOSSPAToken,
+                address wSwOSPool,
+                address wSwOSWSPAToken,
+                address wSwOSRampAController,
+                address wSwOSKeeper
+            ) = createStandardAndERC4626Pool(ws, wOS);
 
             // initialMint(ws, wOS, 5e14, 3e14, SelfPeggingAsset(wSwOSPool));
 
             vm.writeJson(vm.serializeAddress("contracts", "Zap", zap), path);
             vm.writeJson(vm.serializeAddress("contracts", "Factory", address(factory)), path);
+            vm.writeJson(
+                vm.serializeAddress("contracts", "FactoryImplementation", address(factoryImplementation)), path
+            );
             vm.writeJson(vm.serializeAddress("contracts", "SelfPeggingAssetBeacon", selfPeggingAssetBeacon), path);
             vm.writeJson(vm.serializeAddress("contracts", "SPATokenBeacon", spaTokenBeacon), path);
             vm.writeJson(vm.serializeAddress("contracts", "WSPATokenBeacon", wspaTokenBeacon), path);
+            vm.writeJson(vm.serializeAddress("contracts", "RampAControllerBeacon", rampAControllerBeacon), path);
+            vm.writeJson(vm.serializeAddress("contracts", "KeeperImplementation", keeperImplementation), path);
             vm.writeJson(vm.serializeAddress("contracts", "wS", address(ws)), path);
             vm.writeJson(vm.serializeAddress("contracts", "stS", address(stS)), path);
             vm.writeJson(vm.serializeAddress("contracts", "wOS", address(wOS)), path);
             vm.writeJson(vm.serializeAddress("contracts", "wSstSPool", address(wSstSPool)), path);
             vm.writeJson(vm.serializeAddress("contracts", "wSstSPoolSPAToken", wSstSSPAToken), path);
             vm.writeJson(vm.serializeAddress("contracts", "wSstSPoolWSPAToken", wSstSWSPAToken), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wSstSRampAController", wSstSRampAController), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wSstSKeeper", wSstSKeeper), path);
             vm.writeJson(vm.serializeAddress("contracts", "wSwOSPool", address(wSwOSPool)), path);
             vm.writeJson(vm.serializeAddress("contracts", "wSwOSPoolSPAToken", wSwOSSPAToken), path);
             vm.writeJson(vm.serializeAddress("contracts", "wSwOSPoolWSPAToken", wSwOSWSPAToken), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wSwOSRampAController", wSwOSRampAController), path);
+            vm.writeJson(vm.serializeAddress("contracts", "wSwOSKeeper", wSwOSKeeper), path);
         }
 
         vm.stopBroadcast();
